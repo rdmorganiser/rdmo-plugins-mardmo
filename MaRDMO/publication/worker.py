@@ -3,7 +3,8 @@ from .utils import generate_label, get_citation
 from .sparql import queryPublication
 from .models import Publication
 
-from ..utils import query_sparql, get_questionsPU, value_editor
+from ..utils import query_sparql, value_editor
+from ..questions import get_questionsPU
 from ..config import BASE_URI, endpoint
 
 class PublicationRetriever:

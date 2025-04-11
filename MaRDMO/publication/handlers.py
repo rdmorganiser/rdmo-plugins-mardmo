@@ -5,7 +5,8 @@ from rdmo.projects.models import Value
 from rdmo.options.models import Option
 
 from ..config import BASE_URI, endpoint
-from ..utils import add_basics, add_references, add_relations, get_data, get_questionsPU, query_sparql, value_editor
+from ..utils import add_basics, add_references, add_relations, get_data, query_sparql, value_editor
+from ..questions import get_questionsPU
 
 from .constants import INDEX_COUNTERS, PROPS, RELATANT_URIS, RELATION_URIS
 from .utils import generate_label
@@ -70,7 +71,7 @@ def PInformation(sender, **kwargs):
                     #...structure the data...
                     data = Publication.from_query(results)
                     #...and add the Information to the Questionnaire.
-                    if str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog' or str(instance.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+                    if instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog' or instance.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
                         value_editor(project = instance.project, 
                                      uri = f'{BASE_URI}{questions["Publication Name"]["uri"]}', 
                                      text = generate_label(data), 
@@ -97,7 +98,7 @@ def PInformation(sender, **kwargs):
                     #...structure the data...
                     data = Publication.from_query(results)
                     #and add the Information to the Questionnaire.
-                    if str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog' or str(instance.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+                    if instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog' or instance.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
                         value_editor(project = instance.project, 
                                      uri = f'{BASE_URI}{questions["Publication Name"]["uri"]}', 
                                      text = generate_label(data), 
@@ -116,7 +117,7 @@ def PInformation(sender, **kwargs):
                                    uri = f'{BASE_URI}{questions["Publication Reference"]["uri"]}',
                                    set_index = instance.set_index)
             # For Models add Relations          
-            if str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+            if instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
                 if source == 'mathmoddb':
                     mathmoddb = get_data('model/data/mapping.json')
                     add_relations(project = instance.project, 
@@ -128,7 +129,7 @@ def PInformation(sender, **kwargs):
                                   relation = f'{BASE_URI}{questions["Publication P2E"]["uri"]}')
                     
             # For Algorithms add Relations
-            if str(instance.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+            if instance.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
                 if source == 'mathalgodb':
                     mathalgodb = get_data('algorithm/data/mapping.json')
                     add_relations(project = instance.project, 

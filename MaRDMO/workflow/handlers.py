@@ -3,7 +3,8 @@ from django.db.models.signals import post_save
 from rdmo.projects.models import Value
 
 from ..config import BASE_URI, endpoint
-from ..utils import add_basics, add_entities, add_references, add_relations, get_data, get_questionsWO, value_editor, query_sparql
+from ..utils import add_basics, add_entities, add_references, add_relations, get_data, value_editor, query_sparql
+from ..questions import get_questionsWO
 
 from .sparql import queryInfo
 from .models import Method, ProcessStep, Relatant, Software, Hardware, DataSet
@@ -14,7 +15,7 @@ def BasicInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Get Questions of Workflow Catalog
     questions = get_questionsWO()
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Software Programming Language
         if instance.attribute.uri == f'{BASE_URI}{questions["Software Programming Language ID"]["uri"]}':
             add_basics(project = instance.project,
@@ -112,7 +113,7 @@ def BasicInformationAndEntryAddition(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Get Questions of Workflow Catalog
     questions = get_questionsWO()
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Input Data Set
         if instance.attribute.uri == f'{BASE_URI}{questions["Process Step Input ID"]["uri"]}':
             # Check if actual Input Data Set is chosen
@@ -310,7 +311,7 @@ def BasicInformationAndEntryAddition(sender, **kwargs):
 def SoftwareInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Catalog
         questions = get_questionsWO()
         # Check if Software ID is concerned
@@ -379,7 +380,7 @@ def SoftwareInformation(sender, **kwargs):
 def HardwareInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Section
         questions = get_questionsWO()
         if instance.attribute.uri == f'{BASE_URI}{questions["Hardware ID"]["uri"]}':
@@ -431,7 +432,7 @@ def HardwareInformation(sender, **kwargs):
 def InstrumentInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Section
         questions = get_questionsWO()
         if instance.attribute.uri == f'{BASE_URI}{questions["Instrument ID"]["uri"]}':
@@ -452,7 +453,7 @@ def InstrumentInformation(sender, **kwargs):
 def DataSetInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Section
         questions = get_questionsWO()
         if instance.attribute.uri == f'{BASE_URI}{questions["Data Set ID"]["uri"]}':
@@ -541,7 +542,7 @@ def DataSetInformation(sender, **kwargs):
 def MethodInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Section
         questions = get_questionsWO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Method ID"]["uri"]}':
@@ -587,7 +588,7 @@ def MethodInformation(sender, **kwargs):
 def ProcessStepInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Workflow Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-interdisciplinary-workflow-catalog'):
         # Get Questions of Workflow Section
         questions = get_questionsWO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Process Step ID"]["uri"]}':

@@ -7,7 +7,9 @@ from .constants import PROPS, RELATANT_URIS, RELATION_URIS, INDEX_COUNTERS
 from .sparql import queryHandler
 from .models import ResearchField, ResearchProblem, MathematicalModel, QuantityOrQuantityKind, MathematicalFormulation, Task, Relatant
 
-from ..utils import add_basics, add_entities, add_properties, add_relations, add_references, extract_parts, get_data, get_questionsMO, query_sparql, splitVariableText, value_editor
+from ..utils import add_basics, add_entities, add_properties, add_relations, add_references, extract_parts, get_data, \
+    query_sparql, splitVariableText, value_editor
+from ..questions import get_questionsMO
 from ..config import BASE_URI
 
 
@@ -15,7 +17,7 @@ from ..config import BASE_URI
 def RFInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Research Field ID"]["uri"]}':
@@ -57,7 +59,7 @@ def RFInformation(sender, **kwargs):
 def RPInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Research Problem ID"]["uri"]}':
@@ -107,7 +109,7 @@ def RPInformation(sender, **kwargs):
 def QQKInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Quantity ID"]["uri"]}':
@@ -200,7 +202,7 @@ def QQKInformation(sender, **kwargs):
 def MFInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Mathematical Formulation ID"]["uri"]}':
@@ -317,7 +319,7 @@ def MFInformation(sender, **kwargs):
 def TInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Task ID"]["uri"]}':
@@ -402,7 +404,7 @@ def TInformation(sender, **kwargs):
 def MMInformation(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Get Questions of Model Catalog
         questions = get_questionsMO()
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Mathematical Model ID"]["uri"]}':
@@ -479,7 +481,7 @@ def RelationHandler(sender, **kwargs):
     # Get Questions of Algorithm Catalog
     questions = get_questionsMO()
     # Check if Model Catalog is used
-    if instance and str(instance.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+    if instance and instance.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
         # Research Problem - Research Field Relation
         if instance and instance.attribute.uri == f'{BASE_URI}{questions["Research Problem RFRelatant"]["uri"]}':
             # Check if actual Research Field chosen

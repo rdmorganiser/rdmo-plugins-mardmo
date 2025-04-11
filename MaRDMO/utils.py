@@ -19,21 +19,6 @@ from .algorithm.sparql import queryProviderAL
 
 logger = logging.getLogger(__name__)  # Get Django's logger for the current module
 
-def get_questionsWO():
-    """Retrieve the questions dictionary from MaRDMOConfig."""
-    return apps.get_app_config("MaRDMO").questionsWO
-
-def get_questionsAL():
-    """Retrieve the questions dictionary from MaRDMOConfig."""
-    return apps.get_app_config("MaRDMO").questionsAL
-
-def get_questionsMO():
-    """Retrieve the questions dictionary from MaRDMOConfig."""
-    return apps.get_app_config("MaRDMO").questionsMO
-
-def get_questionsPU():
-    """Retrieve the questions dictionary from MaRDMOConfig."""
-    return apps.get_app_config("MaRDMO").questionsPU
 
 def get_id(project, uri, keys):
     values = project.values.filter(snapshot=None, attribute=Attribute.objects.get(uri=uri))
