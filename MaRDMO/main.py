@@ -108,7 +108,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
     def render(self):
 
         # MaRDMO: Mathematical Model Documentation
-        if str(self.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+        if self.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
             
             data = self.get_post_data()
             
@@ -122,7 +122,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                            status=200)
         
         # MaRDMO: Algorithm Documentation
-        elif str(self.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+        elif self.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
             
             data = self.get_post_data()
             
@@ -137,7 +137,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
 
         # MaRDMO: Search Interdisciplinary Workflows, Mathematical Models or Algorithms
-        elif str(self.project.catalog).split('/')[-1] == 'mardmo-search-catalog':
+        elif self.project.catalog.uri.split('/')[-1] == 'mardmo-search-catalog':
 
             data = self.get_post_data()
 
@@ -151,7 +151,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                            status=200)
         
         # MaRDMO: Interdisciplinary Workflow Documentation
-        elif str(self.project.catalog).split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
+        elif self.project.catalog.uri.split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
 
             data = self.get_post_data()
             
@@ -200,7 +200,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             return redirect('project', self.project.id)
         else:
             # MaRDMO: Mathematical Model Documentation
-            if str(self.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+            if self.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
 
                 if not (self.mathmoddb_id and self.mathmoddb_secret):
                     # Check for MathModDB Credentials
@@ -243,7 +243,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                                   status=200)
 
             # MaRDMO: Algorithm Documentation
-            if str(self.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+            if self.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
 
                 if not (self.mathalgodb_id and self.mathalgodb_secret):
                     # Check for MathAlgoDB Credentials
@@ -284,7 +284,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                                   status=200)
 
             # MaRDMO: Search Interdisciplinary Workflow, Mathematical Models or Algorithms    
-            elif str(self.project.catalog).split('/')[-1] == 'mardmo-search-catalog':
+            elif self.project.catalog.uri.split('/')[-1] == 'mardmo-search-catalog':
 
                 data = self.get_post_data()
 
@@ -309,7 +309,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                               status=200)
             
             # MaRDMO: Interdisciplinary Workflow Documentation
-            elif str(self.project.catalog).split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
+            elif self.project.catalog.uri.split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
 
                 if not (self.oauth2_client_id and self.oauth2_client_secret):
                     # Check for MaRDI Portal Credentials
@@ -344,7 +344,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         options = get_data('data/options.json')
 
         # MaRDMO: Mathematical Model Documentation
-        if str(self.project.catalog).split('/')[-1] == 'mardmo-model-catalog':
+        if self.project.catalog.uri.split('/')[-1] == 'mardmo-model-catalog':
 
             # Load Data for Mathematical Model Documentation
             questions = get_data('model/data/questions.json')
@@ -363,7 +363,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             return answers, options, mathmoddb
         
         # MaRDMO: Algorithm Documentation
-        if str(self.project.catalog).split('/')[-1] == 'mardmo-algorithm-catalog':
+        if self.project.catalog.uri.split('/')[-1] == 'mardmo-algorithm-catalog':
 
             # Load Data for Mathematical Model Documentation
             questions = get_data('algorithm/data/questions.json')
@@ -382,7 +382,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             return answers, options, mathalgodb
 
         # MaRDMO: Search Interdisciplinary Workflow, Mathematical Model or Algorithm
-        elif str(self.project.catalog).split('/')[-1] == 'mardmo-search-catalog':
+        elif self.project.catalog.uri.split('/')[-1] == 'mardmo-search-catalog':
 
             # Load Data for Interdisciplinary Workflow, Mathematical Model or Algorithm Search
             questions = get_data('search/data/questions.json')
@@ -397,7 +397,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             return answers, options
 
         # MaRDMO: Interdisciplinary Workflow Documentation
-        elif str(self.project.catalog).split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
+        elif self.project.catalog.uri.split('/')[-1] == 'mardmo-interdisciplinary-workflow-catalog':
 
             # Load Data for Interdisciplinary Workflow Documentation
             questions = get_data('workflow/data/questions.json')

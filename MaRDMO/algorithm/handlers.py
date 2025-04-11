@@ -7,7 +7,9 @@ from .sparql import queryHandlerAL
 from .models import Benchmark, Software, Problem, Algorithm, Relatant
 
 from ..config import BASE_URI
-from ..utils import add_basics, add_entities, add_relations, add_references, extract_parts, get_data, get_questionsAL, query_sparql, value_editor
+from ..utils import add_basics, add_entities, add_relations, add_references, extract_parts, get_data, query_sparql, value_editor
+from ..questions import get_questionsAL
+
 
 @receiver(post_save, sender=Value)
 def BenchmarkInformation(sender, **kwargs):
@@ -15,7 +17,7 @@ def BenchmarkInformation(sender, **kwargs):
     # Get Questions of Algorithm Catalog
     questions = get_questionsAL()
     # Check if Algorithm Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-algorithm-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-algorithm-catalog'):
         # Check if Benchmark ID concerned
         if instance.attribute.uri == f'{BASE_URI}{questions["Benchmark ID"]["uri"]}':
             # Check if actual Benchmark chosen
@@ -58,7 +60,7 @@ def SoftwareInformation(sender, **kwargs):
     # Get Questions of Algorithm Catalog
     questions = get_questionsAL()
     # Check if Algorithm Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-algorithm-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-algorithm-catalog'):
         # Check if Software ID concerned
         if instance.attribute.uri == f'{BASE_URI}{questions["Software ID"]["uri"]}':
             # Check if actual Software chosen
@@ -110,7 +112,7 @@ def ProblemInformation(sender, **kwargs):
     # Get Questions of Algorithm Catalog
     questions = get_questionsAL()
     # Check if Algorithm Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-algorithm-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-algorithm-catalog'):
         # Check if Algorithmic Problem ID concerned
         if instance.attribute.uri == f'{BASE_URI}{questions["Problem ID"]["uri"]}':
             # Check if actual Algorithmic Problem chosen
@@ -157,7 +159,7 @@ def AlgorithmInformation(sender, **kwargs):
     # Get Questions of Algorithm Catalog
     questions = get_questionsAL()
     # Check if Algorithm Catalog is used
-    if instance and str(instance.project.catalog).endswith('mardmo-algorithm-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-algorithm-catalog'):
         # Check if Algorithm ID concerned
         if instance.attribute.uri == f'{BASE_URI}{questions["Algorithm ID"]["uri"]}':
             # Check if actual Algorithm chosen
@@ -221,7 +223,7 @@ def RelationHandler(sender, **kwargs):
     instance = kwargs.get("instance", None)
     # Get Questions of Algorithm Catalog
     questions = get_questionsAL()
-    if instance and str(instance.project.catalog).endswith('mardmo-algorithm-catalog'):
+    if instance and instance.project.catalog.uri.endswith('mardmo-algorithm-catalog'):
         # Benchmark - Problem Relation
         if instance.attribute.uri == f'{BASE_URI}{questions["Problem BRelatant"]["uri"]}':
             # Check if actual Benchmark chosen
