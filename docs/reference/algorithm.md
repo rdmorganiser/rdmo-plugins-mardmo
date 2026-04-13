@@ -9,8 +9,8 @@
 ## Providers
 ::: MaRDMO.algorithm.providers
 
-## Utilities
-::: MaRDMO.algorithm.utils
+## Workers
+::: MaRDMO.algorithm.worker
 
 ## Constants
 ::: MaRDMO.algorithm.constants
