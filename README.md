@@ -20,7 +20,7 @@ Model documentation in MaRDMO is based on the [MathModDB ontology](https://porta
 
 Workflow documentation follows a [standardized scheme](https://portal.mardi4nfdi.de/wiki/MD_UseCases) developed in MaRDI. Within the plugin, users can record a workflow, related models, methods, software, hardware, experimentall devices, data sets, and publications. These inputs are gathered in a guided interview, enabling MaRDMO to produce metadata that is directly compatible with the MaRDI knowledge graph for interdisciplinary workflows.
 
-Algorithm documentation in MaRDMO follows the [MathAlgoDB ontology](https://portal.mardi4nfdi.de/wiki/Service:6534228). Within the plugin, users can record an algorithm, related algorithmic tasks, implementing software, benchmarks, and publications. These inputs are gathered in a guided interview, enabling MaRDMO to produce metadata that is directly compatible with the MaRDI knowledge graph for algorithms.
+Algorithm documentation in MaRDMO follows the [MathAlgoDB ontology](https://portal.mardi4nfdi.de/wiki/Service:6534228). Within the plugin, users can record an algorithm, related algorithmic tasks, implementing software, benchmarks, and publications. These inputs are gathered in a guided interview, enabling MaRDMO to produce metadata that is directly compatible with the MaRDI knowledge graph for algorithms. A demo video showing the documentation process for an algorithm in MaRDMO is available [here](https://www.youtube.com/playlist?list=PLgoPZ7uPWbo-aC9pnVMYRZYM3iygBYWwn).
 
 <div align="center" style="margin-top: 20px; font-size: 14px; color: grey;">
   <img src="https://github.com/user-attachments/assets/fb22ea44-8648-44e8-8a1e-51f31564d23c" width="800" />
