@@ -8,7 +8,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [MaRDMO-Plugin]
+          paths: [.]
 
 nav:
   - Home: index.md
