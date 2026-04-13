@@ -1,0 +1,21 @@
+site_name: MaRDMO Documentation
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+
+nav:
+  - Home: index.md
+  - Reference:
+      - MaRDMO: reference/mardmo.md
+      - Model: reference/model.md
+      - Algorithm: reference/algorithm.md
+      - Workflow: reference/workflow.md
+      - Publication: reference/publication.md
+      - Search: reference/search.md

@@ -1,0 +1,3 @@
+# Algorithm
+
+::: MaRDMO.algorithm

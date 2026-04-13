@@ -1,0 +1,3 @@
+# Model
+
+::: MaRDMO.model

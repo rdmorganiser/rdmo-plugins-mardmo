@@ -1,0 +1,3 @@
+# Publication
+
+::: MaRDMO.publication
