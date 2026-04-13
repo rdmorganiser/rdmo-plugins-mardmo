@@ -11,9 +11,9 @@ This repository contains the MaRDMO Plugin for the [Research Datamanagement Orga
 The plugin allows a standardized documentation of:
 
 <ol>
-  <li>Mathematical Models</li>
-  <li>Interdisciplinary Workflows</li>
   <li>Algorithms</li>
+  <li>Interdisciplinary Workflows</li>
+  <li>Mathematical Models</li>
 </ol>
 
 Model documentation in MaRDMO is based on the [MathModDB ontology](https://portal.mardi4nfdi.de/wiki/MathModDB). Within the plugin, users can record a model, related expressions, computational tasks, quantities or quantity kinds, research problems, academic disciplines, and publications. These inputs are gathered in a guided interview, enabling MaRDMO to produce metadata that is directly compatible with the MaRDI knowledge graph for mathematical models. A demo video showing the documentation process for a mathematical model in MaRDMO is available [here](https://www.youtube.com/watch?v=UmbBNUZJ994&list=PLgoPZ7uPWbo-jqDXzx4fSm_4JyAYEMPjn).
