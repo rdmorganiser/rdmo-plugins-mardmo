@@ -1,7 +1,6 @@
 '''Module containing general Handlers for MaRDMO'''
 
 from .adders import add_entities, add_new_entities
-from .getters import get_id
 from .helpers import extract_parts
 from .models import Relatant
 
@@ -9,34 +8,30 @@ from .algorithm.constants import get_uri_prefix_map as get_uri_prefix_map_algori
 from .model.constants import get_uri_prefix_map as get_uri_prefix_map_model
 from .workflow.constants import get_uri_prefix_map as get_uri_prefix_map_workflow
 
-# Lazy singletons – avoid circular imports and repeated instantiation
-_MODEL_INFO    = None
-_ALGO_INFO     = None
-_WORKFLOW_INFO = None
+# Lazy singletons – avoid circular imports and repeated instantiation.
+# Using a mutable dict so no global statement is needed.
+_INFO_CACHE: dict = {}
 
 
 def _get_model_info():
-    global _MODEL_INFO
-    if _MODEL_INFO is None:
-        from .model.handlers import Information as M
-        _MODEL_INFO = M()
-    return _MODEL_INFO
+    if 'model' not in _INFO_CACHE:
+        from .model.handlers import Information as M  # pylint: disable=import-outside-toplevel
+        _INFO_CACHE['model'] = M()
+    return _INFO_CACHE['model']
 
 
 def _get_algo_info():
-    global _ALGO_INFO
-    if _ALGO_INFO is None:
-        from .algorithm.handlers import Information as A
-        _ALGO_INFO = A()
-    return _ALGO_INFO
+    if 'algo' not in _INFO_CACHE:
+        from .algorithm.handlers import Information as A  # pylint: disable=import-outside-toplevel
+        _INFO_CACHE['algo'] = A()
+    return _INFO_CACHE['algo']
 
 
 def _get_workflow_info():
-    global _WORKFLOW_INFO
-    if _WORKFLOW_INFO is None:
-        from .workflow.handlers import Information as W
-        _WORKFLOW_INFO = W()
-    return _WORKFLOW_INFO
+    if 'workflow' not in _INFO_CACHE:
+        from .workflow.handlers import Information as W  # pylint: disable=import-outside-toplevel
+        _INFO_CACHE['workflow'] = W()
+    return _INFO_CACHE['workflow']
 
 
 # Map prefix → (item_type, batch_method_name) per catalog family.
@@ -87,7 +82,7 @@ _CATALOG_DISPATCH = {
 }
 
 
-class Information:
+class Information:  # pylint: disable=too-few-public-methods
     '''Class containing functions, querying external sources for specific
        entities and integrating the related metadata into the questionnaire.'''
 
@@ -98,11 +93,10 @@ class Information:
         '''Relation Information.
 
         1. Adds the related entity to the correct questionnaire section.
-        2. Explicitly hydrates the entity via _fill on the appropriate
+        2. Explicitly hydrates the entity via fill_entity on the appropriate
            Information class.
         '''
-        catalog_str = str(instance.project.catalog)
-        catalog_key = catalog_str.rsplit('/', maxsplit=1)[-1]
+        catalog_key = str(instance.project.catalog).rsplit('/', maxsplit=1)[-1]
 
         dispatch = _CATALOG_DISPATCH.get(catalog_key)
         if dispatch is None:
@@ -147,20 +141,12 @@ class Information:
         info     = get_info()
         batch_fn = getattr(info, batch_method_name)
 
-        visited    = info._collect_existing_ids(instance.project)
-        id_entries = get_id(instance.project, config["question_id"],
-                            ['set_index', 'external_id'])
-
-        for set_index, ext_id in id_entries:
-            if ext_id == instance.external_id:
-                info._fill(
-                    project           = instance.project,
-                    text              = instance.text,
-                    external_id       = instance.external_id,
-                    set_index         = set_index,
-                    item_type         = item_type,
-                    batch_fill_method = batch_fn,
-                    catalog           = catalog_key,
-                    visited           = visited,
-                )
-                break
+        info.fill_entity(
+            project           = instance.project,
+            text              = instance.text,
+            external_id       = instance.external_id,
+            question_id       = config["question_id"],
+            item_type         = item_type,
+            batch_fill_method = batch_fn,
+            catalog           = catalog_key,
+        )

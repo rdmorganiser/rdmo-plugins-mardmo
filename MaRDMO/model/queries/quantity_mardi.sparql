@@ -10,8 +10,6 @@ SELECT DISTINCT
 ?class ?qudt_quantitykind_id ?qudt_constant_id
 (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=" <|> ") AS ?aliases)
 (GROUP_CONCAT(DISTINCT ?descriptionLong; SEPARATOR=" <|> ") AS ?description_long)
-(GROUP_CONCAT(DISTINCT(?formula); SEPARATOR=" <|> ") AS ?formulas)
-(GROUP_CONCAT(DISTINCT CONCAT(?symbol, " || ", ?cq, " || ", ?cql, " || ", ?cqd); SEPARATOR=" <|> ") AS ?contains_quantity)
 (GROUP_CONCAT(DISTINCT CONCAT(?sbq, " || ", ?sbql, " || ", ?sbqd, " || ", ?sbqc); SEPARATOR=" <|> ") AS ?specialized_by)
 (GROUP_CONCAT(DISTINCT CONCAT(?sq, " || ", ?sql, " || ", ?sqd, " || ", ?sqc); SEPARATOR=" <|> ") AS ?specializes)
 (GROUP_CONCAT(DISTINCT CONCAT(?abq, " || ", ?abql, " || ", ?abqd, " || ", ?abqc); SEPARATOR=" <|> ") AS ?approximated_by)
@@ -108,33 +106,6 @@ WHERE {{
 
     OPTIONAL {{
         ?id wdt:{QUDT constant ID} ?qudt_constant_id
-    }}
-
-    OPTIONAL {{
-        ?id wdt:{defining formula} ?formula.
-    }}
-
-    OPTIONAL {{
-        ?id p:{in defining formula} ?statement.
-        ?statement ps:{in defining formula} ?symbol.
-
-        OPTIONAL {{
-            ?statement pq:{symbol represents} ?cqraw.
-                                                                           
-            BIND(CONCAT("mardi:", STRAFTER(STR(?cqraw), STR(wd:))) AS ?cq)
-                                                                           
-            OPTIONAL {{
-                ?cqraw rdfs:label ?cqlraw.
-                FILTER (lang(?cqlraw) = 'en')
-            }}
-            BIND(COALESCE(?cqlraw, "No Label Provided!") AS ?cql)
-
-            OPTIONAL {{
-               ?cqraw schema:description ?cqdraw
-               FILTER (lang(?cqdraw) = 'en')
-            }}
-            BIND(COALESCE(?cqdraw, "No Description Provided!") AS ?cqd)
-        }}
     }}
 
     OPTIONAL {{

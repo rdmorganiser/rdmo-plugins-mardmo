@@ -175,7 +175,6 @@ class MathematicalModel(Provider):
         '''Queries external sources for user input'''
         if not search or len(search) < 3:
             return []
-        
 
         return query_sources(
             search = search,

@@ -1,13 +1,150 @@
 '''Module containing Models for the Model Documentation'''
+# pylint: disable=too-many-lines
+
+import logging
 
 from dataclasses import dataclass, field
 from typing import Optional
 
+import requests
+
 from .constants import data_properties_per_class, qudt_reference_ids
 
-from ..getters import get_items, get_mathmoddb, get_options
+from ..getters import get_items, get_mathmoddb, get_options, get_properties, get_url
 from ..helpers import split_value
 from ..models import Relatant, RelatantWithClass
+
+logger = logging.getLogger(__name__)
+
+_USER_AGENT = 'MaRDMO (https://zib.de; reidelbach@zib.de)'
+
+
+def _wbgetentities_batch(api_url, qids, props, extra_params=None):
+    '''Fetch wbgetentities in batches of 50. Returns {qid: entity_data}.'''
+    result = {}
+    params_base = {
+        'action': 'wbgetentities',
+        'props':  props,
+        'format': 'json',
+        **(extra_params or {}),
+    }
+    for i in range(0, len(qids), 50):
+        chunk = qids[i:i + 50]
+        try:
+            resp = requests.get(
+                api_url,
+                params={**params_base, 'ids': '|'.join(chunk)},
+                headers={'User-Agent': _USER_AGENT},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            result.update(resp.json().get('entities', {}))
+        except requests.exceptions.RequestException as exc:
+            logger.error("wbgetentities batch failed: %s", exc)
+    return result
+
+
+def _extract_qualifier_qid(claim, pid_sym_rep):
+    '''Return the QID of the symbol-represents qualifier, or None.'''
+    for q_claim in claim.get('qualifiers', {}).get(pid_sym_rep, []):
+        val = q_claim.get('datavalue', {}).get('value', {})
+        if isinstance(val, dict):
+            return val.get('id')
+    return None
+
+
+def _parse_formula_claims(entities, pid_formula, pid_in_formula, pid_sym_rep):
+    '''Parse wbgetentities claims into intermediate formula data.
+
+    Returns (intermediate, qty_qids_needed) where:
+      intermediate = {qid: {'formulas': [...], 'raw_qty': [(symbol, qty_qid|None)]}}
+      qty_qids_needed = set of QIDs whose labels/descriptions must be resolved
+    '''
+    intermediate    = {}
+    qty_qids_needed = set()
+    for qid, entity in entities.items():
+        claims   = entity.get('claims', {})
+        formulas = [
+            c['mainsnak']['datavalue']['value']
+            for c in claims.get(pid_formula, [])
+            if c.get('mainsnak', {}).get('datavalue', {}).get('value')
+        ]
+        raw_qty = []
+        for claim in claims.get(pid_in_formula, []):
+            symbol  = claim.get('mainsnak', {}).get('datavalue', {}).get('value', '')
+            qty_qid = _extract_qualifier_qid(claim, pid_sym_rep)
+            if qty_qid:
+                qty_qids_needed.add(qty_qid)
+            raw_qty.append((symbol, qty_qid))
+        intermediate[qid] = {'formulas': formulas, 'raw_qty': raw_qty}
+    return intermediate, qty_qids_needed
+
+
+def _fetch_qty_labels(api_url, qty_qids_needed):
+    '''Fetch English labels/descriptions for a set of QIDs.
+
+    Returns {qid: (label, description)}.
+    '''
+    if not qty_qids_needed:
+        return {}
+    entities = _wbgetentities_batch(
+        api_url, list(qty_qids_needed), 'labels|descriptions',
+        extra_params={'languages': 'en'},
+    )
+    return {
+        qid: (
+            entity.get('labels', {}).get('en', {}).get('value', 'No Label Provided!'),
+            entity.get('descriptions', {}).get('en', {})
+                  .get('value', 'No Description Provided!'),
+        )
+        for qid, entity in entities.items()
+    }
+
+
+def _build_formula_entry(data, qty_info):
+    '''Build the formula result dict for a single item from parsed data.'''
+    symbols           = []
+    contains_quantity = []
+    for symbol, qty_qid in data['raw_qty']:
+        symbols.append(symbol)
+        label, desc = qty_info.get(
+            qty_qid, ('No Label Provided!', 'No Description Provided!')
+        )
+        contains_quantity.append(
+            Relatant.from_triple(f'mardi:{qty_qid}' if qty_qid else '', label, desc)
+        )
+    return {
+        'formulas':          data['formulas'],
+        'symbols':           symbols,
+        'contains_quantity': contains_quantity,
+    }
+
+
+def fetch_formula_data(qids: list) -> dict:
+    '''Fetch defining formula and in-defining-formula data via wbgetentities API.
+
+    qids: list of raw QIDs like ['Q123', 'Q456'] (no "mardi:" prefix).
+    Returns: {qid: {'formulas': [str], 'symbols': [str], 'contains_quantity': [Relatant]}}
+    '''
+    if not qids:
+        return {}
+
+    props          = get_properties()
+    pid_formula    = props.get('defining formula')
+    pid_in_formula = props.get('in defining formula')
+    pid_sym_rep    = props.get('symbol represents')
+    api_url        = get_url('mardi', 'api')
+
+    entities                    = _wbgetentities_batch(api_url, qids, 'claims')
+    intermediate, qty_qids_needed = _parse_formula_claims(
+        entities, pid_formula, pid_in_formula, pid_sym_rep
+    )
+    qty_info = _fetch_qty_labels(api_url, qty_qids_needed)
+
+    return {
+        qid: _build_formula_entry(data, qty_info)
+        for qid, data in intermediate.items()
+    }
 
 @dataclass
 class RelatantWithQualifier:
@@ -179,7 +316,7 @@ class ResearchProblem:
             **research_problem
         )
 
-@dataclass
+@dataclass  # pylint: disable=too-many-instance-attributes
 class MathematicalModel:
     '''Data Class For Mathematical Model Item'''
     aliases: list[str] = field(default_factory=list)
@@ -326,14 +463,18 @@ class MathematicalModel:
                 data = data,
                 key = 'contains_formulation',
                 transform = RelatantWithQualifier.from_query,
-                object_role = lambda item: item.qualifier == f'mardi:{items["computational domain"]}'
+                object_role = (
+                    lambda item: item.qualifier == f'mardi:{items["computational domain"]}'
+                )
             ),
             # Get Contains Constitutive Equation Relation(s)
             'contains_constitutive_equation': split_value(
                 data = data,
                 key = 'contains_formulation',
                 transform = RelatantWithQualifier.from_query,
-                object_role = lambda item: item.qualifier == f'mardi:{items["constitutive equation"]}'
+                object_role = (
+                    lambda item: item.qualifier == f'mardi:{items["constitutive equation"]}'
+                )
             ),
             # Get Contains Weak Formulation Relation(s)
             'contains_weak_formulation': split_value(
@@ -445,7 +586,7 @@ class MathematicalModel:
             **mathematical_model
         )
 
-@dataclass
+@dataclass  # pylint: disable=too-many-instance-attributes
 class QuantityOrQuantityKind:
     '''Data Class For Quantity [Kind] Item'''
     aliases: list[str] = field(default_factory=list)
@@ -515,23 +656,6 @@ class QuantityOrQuantityKind:
                 for idx, prop in enumerate(data_properties_per_class['quantity'])
                 if data.get(prop, {}).get('value') == 'True'
             },
-            # Get Formulas
-            'formulas': split_value(
-                data = data,
-                key = 'formulas'
-            ),
-            # Get Symbols
-            'symbols': split_value(
-                data = data,
-                key = 'contains_quantity',
-                transform = lambda s: s.split(' || ', 1)[0]
-            ),
-            # Get contained Quantities
-            'contains_quantity': split_value(
-                data = data,
-                key = 'contains_quantity',
-                transform = lambda q: Relatant.from_query(q.split(' || ', 1)[1])
-            ),
             # Get Specialized By Relation(s)
             'specialized_by': split_value(
                 data = data,
@@ -610,7 +734,7 @@ class QuantityOrQuantityKind:
             **quantity
         )
 
-@dataclass
+@dataclass  # pylint: disable=too-many-instance-attributes
 class MathematicalFormulation:
     '''Data Class For Formulation Item'''
     reference: Optional[str] = None
@@ -684,23 +808,6 @@ class MathematicalFormulation:
             },
             # Get Reference
             'reference': data.get('reference', {}).get('value'),
-            # Get Formulas
-            'formulas': split_value(
-                data = data,
-                key = 'formulas'
-            ),
-            # Get Symbols
-            'symbols': split_value(
-                data = data,
-                key = 'contains_quantity',
-                transform = lambda s: s.split(' || ', 1)[0]
-            ),
-            # Get contained Quantities
-            'contains_quantity': split_value(
-                data = data,
-                key = 'contains_quantity',
-                transform = lambda q: Relatant.from_query(q.split(' || ', 1)[1])
-            ),
             # Get Assumption Relation(s)
             'assumes': split_value(
                 data = data,
@@ -839,7 +946,7 @@ class MathematicalFormulation:
             **mathematical_formulation
         )
 
-@dataclass
+@dataclass  # pylint: disable=too-many-instance-attributes
 class Task:
     '''Data Class For Task Item'''
     aliases: list[str] = field(default_factory=list)
@@ -981,14 +1088,18 @@ class Task:
                 data = data,
                 key = 'contains_formulation',
                 transform = RelatantWithQualifier.from_query,
-                object_role = lambda item: item.qualifier == f'mardi:{items["computational domain"]}'
+                object_role = (
+                    lambda item: item.qualifier == f'mardi:{items["computational domain"]}'
+                )
             ),
             # Get Contains Constitutive Equation Relation(s)
             'contains_constitutive_equation': split_value(
                 data = data,
                 key = 'contains_formulation',
                 transform = RelatantWithQualifier.from_query,
-                object_role = lambda item: item.qualifier == f'mardi:{items["constitutive equation"]}'
+                object_role = (
+                    lambda item: item.qualifier == f'mardi:{items["constitutive equation"]}'
+                )
             ),
             # Get Contains Weak Formulation Relation(s)
             'contains_weak_formulation': split_value(

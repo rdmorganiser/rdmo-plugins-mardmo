@@ -23,9 +23,8 @@ from ..publication.worker import PublicationExport
 class PrepareModel(PublicationExport):
     '''Class preparing Model Answers for Preview and Export'''
     def __init__(self):
+        super().__init__()
         self.mathmoddb = get_mathmoddb()
-        self.items = get_items()
-        self.properties = get_properties()
 
     def preview(self, answers):
         '''Function to establish relations between Model Documentation Data'''
@@ -189,6 +188,19 @@ class PrepareModel(PublicationExport):
             if not check:
                 # both attempts failed → pretend no results
                 check = [{}]
+
+            # SPARQL returns math values as MathML; check math statements via API
+            math_check = payload.check_math_relations_via_api(get_url('mardi', 'api'))
+            if math_check:
+                relation_keys = [
+                    k for k in payload.get_dictionary() if k.startswith('RELATION')
+                ]
+                for idx, key in enumerate(relation_keys):
+                    if key in math_check:
+                        check[0][f'RELATION{idx}'] = {
+                            'value': math_check[key],
+                            'type':  'literal',
+                        }
 
             payload.add_check_results(
                 check = check

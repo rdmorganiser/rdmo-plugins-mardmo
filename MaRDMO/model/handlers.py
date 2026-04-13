@@ -260,6 +260,18 @@ class Information(BaseInformation):
         if not data_by_id:
             return
 
+        # Fetch formula data via API for mardi items
+        mardi_qids = [eid.split(':')[-1] for _, eid, _ in items if eid.startswith('mardi:')]
+        formula_data = models.fetch_formula_data(mardi_qids)
+        for _, external_id, _ in items:
+            if external_id.startswith('mardi:') and external_id in data_by_id:
+                qid = external_id.split(':')[-1]
+                if qid in formula_data:
+                    fd = formula_data[qid]
+                    data_by_id[external_id].formulas          = fd['formulas']
+                    data_by_id[external_id].symbols           = fd['symbols']
+                    data_by_id[external_id].contains_quantity = fd['contains_quantity']
+
         for text, external_id, set_index in items:
             data = data_by_id.get(external_id)
             if not data:
@@ -347,6 +359,18 @@ class Information(BaseInformation):
         )
         if not data_by_id:
             return
+
+        # Fetch formula data via API for mardi items
+        mardi_qids = [eid.split(':')[-1] for _, eid, _ in items if eid.startswith('mardi:')]
+        formula_data = models.fetch_formula_data(mardi_qids)
+        for _, external_id, _ in items:
+            if external_id.startswith('mardi:') and external_id in data_by_id:
+                qid = external_id.split(':')[-1]
+                if qid in formula_data:
+                    fd = formula_data[qid]
+                    data_by_id[external_id].formulas          = fd['formulas']
+                    data_by_id[external_id].symbols           = fd['symbols']
+                    data_by_id[external_id].contains_quantity = fd['contains_quantity']
 
         section_indices = {}
         for text, external_id, set_index in items:

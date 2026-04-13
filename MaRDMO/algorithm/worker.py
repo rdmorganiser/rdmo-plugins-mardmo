@@ -15,9 +15,8 @@ from ..publication.worker import PublicationExport
 class PrepareAlgorithm(PublicationExport):
     '''Class preparing Model Answers for Preview and Export'''
     def __init__(self):
+        super().__init__()
         self.mathalgodb = get_mathalgodb()
-        self.items = get_items()
-        self.properties = get_properties()
 
     def preview(self, answers):
         '''Function to establish relations between Algorithm Documentation Data'''

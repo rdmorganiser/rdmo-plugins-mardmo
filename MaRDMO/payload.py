@@ -1,11 +1,16 @@
 '''Functions to create Payload for Export'''
 
+import logging
+
 from dataclasses import dataclass, field
 from typing import Optional
 
 import re
+import requests
 
 from .queries import query_item
+
+_logger = logging.getLogger(__name__)
 
 @dataclass
 class PayloadState:
@@ -244,6 +249,93 @@ class GeneratePayload:
             exists_value = check[0].get(exists_key, {}).get('value', 'false')
             self.state.dictionary[key]['exists'] = exists_value
 
+    def check_math_relations_via_api(self, api_url):
+        '''Check existence of math-datatype RELATION statements via wbgetentities.
+
+        SPARQL returns math values as MathML, but portal stores LaTeX.  This
+        method queries the Wikibase API directly to compare raw LaTeX values.
+
+        Returns {relation_key: 'true'/'false'}.
+        '''
+        relation_keys = [k for k in self.state.dictionary if k.startswith('RELATION')]
+        math_entries  = {}  # key → (item_qid, prop_id, latex, qualifiers)
+
+        for key in relation_keys:
+            entry     = self.state.dictionary[key]
+            statement = entry['payload']['statement']
+            if statement['property']['data_type'] != 'math':
+                continue
+            item_key = entry['url'].split('/')[-2]
+            item_qid = self.state.dictionary.get(item_key, {}).get('id', '')
+            if not item_qid:
+                continue  # new item → statement cannot exist yet
+            math_entries[key] = (
+                item_qid,
+                statement['property']['id'],
+                statement['value']['content'],
+                statement.get('qualifiers', []),
+            )
+
+        if not math_entries:
+            return {}
+
+        # Fetch claims for all relevant items
+        items_needed   = set(v[0] for v in math_entries.values())
+        claims_by_item = {}
+        chunk_size     = 50
+
+        for i in range(0, len(items_needed), chunk_size):
+            chunk = list(items_needed)[i:i + chunk_size]
+            try:
+                resp = requests.get(
+                    api_url,
+                    params={
+                        'action': 'wbgetentities',
+                        'ids':    '|'.join(chunk),
+                        'props':  'claims',
+                        'format': 'json',
+                    },
+                    headers={'User-Agent': 'MaRDMO (https://zib.de; reidelbach@zib.de)'},
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                for qid, entity in resp.json().get('entities', {}).items():
+                    claims_by_item[qid] = entity.get('claims', {})
+            except requests.exceptions.RequestException as exc:
+                _logger.warning("Math relation API check failed: %s", exc)
+
+        result = {}
+        for key, (item_qid, prop_id, latex, qualifiers) in math_entries.items():
+            exists = 'false'
+            for claim in claims_by_item.get(item_qid, {}).get(prop_id, []):
+                claim_val = claim.get('mainsnak', {}).get('datavalue', {}).get('value', '')
+                if claim_val != latex:
+                    continue
+                if not qualifiers:
+                    exists = 'true'
+                    break
+                # Check that all qualifiers match
+                qual_match = True
+                for q in qualifiers:
+                    q_prop = q['property']['id']
+                    q_val  = q['value']['content']
+                    # Resolve temporary item key to actual QID if available
+                    if q_val in self.state.dictionary:
+                        q_val = self.state.dictionary[q_val].get('id', q_val)
+                    api_qual_vals = {
+                        c.get('datavalue', {}).get('value', {}).get('id')
+                        for c in claim.get('qualifiers', {}).get(q_prop, [])
+                    }
+                    if q_val not in api_qual_vals:
+                        qual_match = False
+                        break
+                if qual_match:
+                    exists = 'true'
+                    break
+            result[key] = exists
+
+        return result
+
     def add_aliases(self, aliases_dict):
         '''Add Aliases to Payload'''
         if not aliases_dict:
@@ -299,14 +391,13 @@ class GeneratePayload:
     def add_answers(self, mardmo_property, wikibase_property, datatype = 'string'):
         '''Add answer to Payload.'''
         for entry in self.state.subject.get(mardmo_property, {}).values():
-            if not re.search(r"<math.*?</math>", entry, re.DOTALL): #IGNORE MATHML EXPORT UNTIL HANDLERS RE-WRITTEN FOR LATEX
-                self.add_answer(
-                    verb=self.wikibase['properties'][wikibase_property],
-                    object_and_type=[
-                        entry,
-                        datatype,
-                    ]
-                )
+            self.add_answer(
+                verb=self.wikibase['properties'][wikibase_property],
+                object_and_type=[
+                    entry,
+                    datatype,
+                ]
+            )
 
     def add_single_relation(
         self,
@@ -423,37 +514,36 @@ class GeneratePayload:
     def add_in_defining_formula(self):
         '''Add in defining formula Statement'''
         for element in self.state.subject.get('element', {}).values():
-            if not re.search(r"<math.*?</math>", element.get('symbol', ''), re.DOTALL): #IGNORE MATHML EXPORT UNTIL HANDLERS RE-WRITTEN FOR LATEX
-                # Get Item Key
-                quantity_item = self.get_item_key(
-                    element.get('quantity', {}),
-                    'object'
+            # Get Item Key
+            quantity_item = self.get_item_key(
+                element.get('quantity', {}),
+                'object'
+            )
+            # Add Quantity Qualifier
+            qualifier = self.add_qualifier(
+                self.wikibase['properties']['symbol represents'],
+                'wikibase-item',
+                quantity_item
+            )
+            # Pattern of New Item
+            pattern = re.compile(r"^Item\d{10}$")
+            # Add Symbol to Payload
+            if (
+                self.state.dictionary[self.state.subject_item]['id']
+                or self.state.subject_item == quantity_item
+            ):
+                self._add_relation(
+                    item = self.state.subject_item,
+                    statement = {
+                        'property_id': self.wikibase['properties']['in defining formula'],
+                        'value': element.get('symbol', ''),
+                        'datatype': 'math'
+                    },
+                    qualifier = qualifier
                 )
-                # Add Quantity Qualifier
-                qualifier = self.add_qualifier(
-                    self.wikibase['properties']['symbol represents'],
-                    'wikibase-item',
-                    quantity_item
-                )
-                # Pattern of New Item
-                pattern = re.compile(r"^Item\d{10}$")
-                # Add Symbol to Payload
-                if (
-                    self.state.dictionary[self.state.subject_item]['id']
-                    or self.state.subject_item == quantity_item
-                ):
-                    self._add_relation(
-                        item = self.state.subject_item,
-                        statement = {
-                            'property_id': self.wikibase['properties']['in defining formula'],
-                            'value': element.get('symbol', ''),
-                            'datatype': 'math'
-                        },
-                        qualifier = qualifier
-                    )
-                else:
-                    if (isinstance(quantity_item, str) and pattern.match(quantity_item)):
-                        self.dependency[self.state.subject_item].add(quantity_item)
+            else:
+                if (isinstance(quantity_item, str) and pattern.match(quantity_item)):
+                    self.dependency[self.state.subject_item].add(quantity_item)
                     self.add_answer(
                         verb=self.wikibase['properties']['in defining formula'],
                         object_and_type=[

@@ -225,6 +225,29 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
                                    catalog=catalog)
             next_idx += 1
 
+    def fill_entity(self, project, text, external_id, question_id,
+                    item_type, batch_fill_method, catalog):
+        '''Public entry: find the set_index for external_id and hydrate via _fill.
+
+        Called from the top-level handlers dispatcher when a relation value is
+        saved to the questionnaire.
+        '''
+        visited    = self._collect_existing_ids(project)
+        id_entries = get_id(project, question_id, ['set_index', 'external_id'])
+        for set_index, ext_id in id_entries:
+            if ext_id == external_id:
+                self._fill(
+                    project           = project,
+                    text              = text,
+                    external_id       = external_id,
+                    set_index         = set_index,
+                    item_type         = item_type,
+                    batch_fill_method = batch_fill_method,
+                    catalog           = catalog,
+                    visited           = visited,
+                )
+                break
+
     def _fill(
         self, project, text, external_id, set_index,
         item_type, batch_fill_method, catalog='', visited=None

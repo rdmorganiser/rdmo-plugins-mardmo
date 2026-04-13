@@ -110,9 +110,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             # Get answers, options, and mathmoddb
             answers, options = self.get_post_data('preview')
 
-            # Adjust MathML for Preview
-            inline_mathml(answers)
-
             # Select Template
             if str(self.project.catalog).endswith('mardmo-model-basics-catalog'):
                 template = 'MaRDMO/modelTemplate-basics.html'
