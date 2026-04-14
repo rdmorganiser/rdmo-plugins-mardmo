@@ -1,4 +1,16 @@
-'''Worker Module to collect Publication Metadata'''
+'''Background workers for collecting and exporting publication metadata.
+
+Two worker classes handle different phases of publication documentation:
+retrieval (fetching bibliographic data from external APIs) and export
+(formatting and pushing data to the MaRDI Portal).
+
+Provides:
+
+- :class:`PublicationRetriever` — fetches citation metadata for a DOI and
+  writes the results into the questionnaire via the adders module
+- :class:`PublicationExport`    — base class for catalog-specific export
+  workers that package questionnaire answers for portal submission
+'''
 
 from .constants import ITEMINFOS, CITATIONINFOS, JOURNALS, AUTHORS, LANGUAGES
 from .utils import clean_background_data, get_citation
@@ -16,8 +28,19 @@ class PublicationRetriever:
     questions = get_questions('publication')
 
     def get_information(self, project, snapshot, answers, options):
-        '''Function retrieving Publication Information for algorithm,
-           workflow and model documentation.
+        '''Fetch and store citation metadata for all publications in *answers*.
+
+        Iterates over ``answers["publication"]``, skips entries without an ID
+        or (for workflow catalogs) entries not flagged for export, then resolves
+        each publication via :func:`~.utils.get_citation` and writes the
+        resulting metadata fields (title, year, language, journal, authors,
+        etc.) back into the questionnaire.
+
+        Args:
+            project:  RDMO project instance.
+            snapshot: RDMO snapshot (``None`` for the current snapshot).
+            answers:  Top-level answers dict (mutated in place with citation data).
+            options:  Global RDMO options dict (used for the ``"Yes"`` option check).
         '''
 
         for key in answers.get('publication', {}):
@@ -130,13 +153,26 @@ class PublicationRetriever:
         return answers
 
 class PublicationExport:
-    '''Collect Metadata for Author, Journal, and Publication Export'''
+    '''Base class providing author, journal, and publication export helpers.
+
+    Subclassed by :class:`~MaRDMO.model.worker.PrepareModel` and
+    :class:`~MaRDMO.algorithm.worker.PrepareAlgorithm`.  Holds the shared
+    Wikibase vocabulary and the private ``_export_*`` helpers that build
+    publication-related payload entries.
+    '''
 
     def __init__(self):
+        '''Initialise with Wikibase properties and items from MaRDMOConfig.'''
         self.properties = get_properties()
         self.items = get_items()
 
     def _export_journals(self, payload, publications: dict):
+        '''Add journal item entries (instance-of + ISSN) for all publications.
+
+        Args:
+            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
+            publications: Dict of publication answer dicts keyed by index.
+        '''
         for publication in publications.values():
             for entry in publication.get('journal', {}).values():
                 if not entry.get("ID") or entry.get("ID") == 'no journal found':
@@ -158,6 +194,12 @@ class PublicationExport:
                     )
 
     def _export_authors(self, payload, publications: dict):
+        '''Add author item entries (instance-of, profile type, ORCID, zbMATH) for all publications.
+
+        Args:
+            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
+            publications: Dict of publication answer dicts keyed by index.
+        '''
         for publication in publications.values():
             for entry in publication.get('author', {}).values():
                 if not entry.get("ID") or entry.get("ID") == 'no author found':
@@ -196,6 +238,14 @@ class PublicationExport:
                     )
 
     def _export_publications(self, payload, publications: dict, relations: list):
+        '''Add publication item entries and their relatant links to the payload.
+
+        Args:
+            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
+            publications: Dict of publication answer dicts.
+            relations:    List of ``(relation_key, relatant_key)`` pairs that
+                          link each publication to its parent entity.
+        '''
         for entry in publications.values():
             if not entry.get("ID"):
                 continue

@@ -1,4 +1,28 @@
-'''Functions to add Information to the Questionaire.'''
+'''Functions to retrieve configuration data and questionnaire values for MaRDMO.
+
+Provides fast, app-config-backed accessors for Wikibase vocabulary (items,
+properties), ontology registries (MathModDB, MathAlgoDB), RDMO question
+definitions, and project answer values.  Most getters are thin wrappers
+around :attr:`~MaRDMO.apps.MaRDMOConfig` attributes or
+:func:`~functools.lru_cache`-decorated file readers.
+
+Provides:
+
+- ``get_mathmoddb``              — return a :class:`~.helpers.PropertyRegistry` for MathModDB
+- ``get_mathalgodb``             — return a :class:`~.helpers.PropertyRegistry` for MathAlgoDB
+- ``get_options``                — return the RDMO options dict from the app config
+- ``get_items``                  — return the Wikibase items dict from the app config
+- ``get_properties``             — return the Wikibase properties dict from the app config
+- ``get_questions``              — return the questions sub-dict for a given catalog section
+- ``get_url``                    — return a configured URL for a Wikibase provider
+- ``get_item_url``               — return the base item-browse URL for a Wikibase provider
+- ``get_data``                   — load and cache JSON data from a package-relative file
+- ``get_sparql_query``           — load and cache a SPARQL query file
+- ``get_sparql_query_optional``  — load and cache a SPARQL query file, or ``None`` if absent
+- ``get_id``                     — retrieve attribute field(s) from all questionnaire values at a URI
+- ``get_answers``                — read questionnaire values for one attribute and merge into a dict
+- ``get_user_entries``           — fetch raw ID/name/description values for a domain attribute
+'''
 
 import json
 import os
@@ -13,44 +37,98 @@ from .constants import flag_dict
 from .helpers import nested_set, PropertyRegistry
 
 def get_mathmoddb():
-    """Retrieve the mathmoddb ontology from MaRDMOConfig."""
+    '''Return a :class:`~.helpers.PropertyRegistry` for the MathModDB ontology.
+
+    Returns:
+        :class:`~.helpers.PropertyRegistry` wrapping
+        :attr:`~MaRDMO.apps.MaRDMOConfig.mathmoddb`.
+    '''
     return PropertyRegistry(
         apps.get_app_config("MaRDMO").mathmoddb
     )
 
 def get_mathalgodb():
-    """Retrieve the mathalgodb ontology from MaRDMOConfig."""
+    '''Return a :class:`~.helpers.PropertyRegistry` for the MathAlgoDB ontology.
+
+    Returns:
+        :class:`~.helpers.PropertyRegistry` wrapping
+        :attr:`~MaRDMO.apps.MaRDMOConfig.mathalgodb`.
+    '''
     return PropertyRegistry(
         apps.get_app_config("MaRDMO").mathalgodb
     )
 
 def get_options():
-    """Retrieve the rdmo options from MaRDMOConfig."""
+    '''Return the RDMO options dict from the app config.
+
+    Returns:
+        Dict mapping RDMO option URIs to display strings.
+    '''
     return apps.get_app_config("MaRDMO").options
 
 def get_items():
-    """Retrieve the wikibase items dict from MaRDMOConfig."""
+    '''Return the Wikibase items dict from the app config.
+
+    Returns:
+        Dict mapping item label strings to Wikibase QID strings.
+    '''
     return apps.get_app_config("MaRDMO").items
 
 def get_properties():
-    """Retrieve the wikibase properties dict from MaRDMOConfig."""
+    '''Return the Wikibase properties dict from the app config.
+
+    Returns:
+        Dict mapping property label strings to Wikibase property ID strings.
+    '''
     return apps.get_app_config("MaRDMO").properties
 
 def get_questions(question_set):
-    """Retrieve the questions dictionary from MaRDMOConfig."""
+    '''Return the questions sub-dict for a given catalog question set.
+
+    Args:
+        question_set: Key identifying the question set (catalog section name).
+
+    Returns:
+        Dict mapping question names to their RDMO attribute URI fragments and
+        related metadata.
+    '''
     return apps.get_app_config("MaRDMO").questions[question_set]
 
 def get_url(source, url_type):
-    """Get Wikibase API URL, SPARQL URL, or Website URL"""
+    '''Return a configured URL for a Wikibase provider.
+
+    Args:
+        source:   Provider key (e.g. ``"mardi"`` or ``"wikidata"``).
+        url_type: URL type key — one of ``"api"``, ``"sparql"``, or ``"uri"``.
+
+    Returns:
+        URL string from ``settings.MARDMO_PROVIDER[source][url_type]``.
+    '''
     return settings.MARDMO_PROVIDER[source][url_type]
 
 def get_item_url(source):
-    """Get general Wikibase Item URL from Wikibase URL"""
+    '''Return the base URL for browsing Wikibase items on a provider's wiki.
+
+    Args:
+        source: Provider key (e.g. ``"mardi"``).
+
+    Returns:
+        URL string ending in ``"/wiki/Item:"`` for constructing full item links.
+    '''
     return f"{settings.MARDMO_PROVIDER[source]['uri']}/wiki/Item:"
 
 @lru_cache(maxsize=None)
 def get_data(file_name):
-    """Get Data from JSON File (cached after first read)."""
+    '''Load and return JSON data from a file relative to the MaRDMO package root.
+
+    Result is cached indefinitely after the first read.
+
+    Args:
+        file_name: Path relative to the package directory (e.g. ``"data/items.json"``).
+
+    Returns:
+        Parsed JSON value (typically a dict or list).
+    '''
     path = os.path.join(os.path.dirname(__file__), file_name)
     with open(path, "r", encoding="utf-8") as json_file:
         data = json.load(json_file)
@@ -58,14 +136,33 @@ def get_data(file_name):
 
 @lru_cache(maxsize=None)
 def get_sparql_query(file_name):
-    """Get Data from SPARQL File (cached after first read)."""
+    '''Load and return the contents of a SPARQL query file.
+
+    Result is cached indefinitely after the first read.
+
+    Args:
+        file_name: Path relative to the package directory (e.g.
+                   ``"model/queries/field.sparql"``).
+
+    Returns:
+        Query string (may contain ``{}`` format placeholders).
+    '''
     path = os.path.join(os.path.dirname(__file__), file_name)
     with open(path, "r", encoding="utf-8") as sparql_file:
         return sparql_file.read()
 
 @lru_cache(maxsize=None)
 def get_sparql_query_optional(file_name):
-    """Get Data from SPARQL File, or None if the file does not exist (cached)."""
+    '''Load a SPARQL query file, returning ``None`` if the file does not exist.
+
+    Result is cached indefinitely after the first read.
+
+    Args:
+        file_name: Path relative to the package directory.
+
+    Returns:
+        Query string on success; ``None`` when the file is absent.
+    '''
     path = os.path.join(os.path.dirname(__file__), file_name)
     if not os.path.exists(path):
         return None
@@ -73,7 +170,21 @@ def get_sparql_query_optional(file_name):
         return sparql_file.read()
 
 def get_id(project, uri, keys):
-    """Get Set of User requested Identifiers for specific URI"""
+    '''Retrieve one or more attribute fields from all questionnaire values at *uri*.
+
+    Args:
+        project: RDMO project instance.
+        uri:     Full RDMO attribute URI to filter on.
+        keys:    List of :class:`~rdmo.projects.models.Value` field names to
+                 read (e.g. ``["set_index"]``, ``["external_id"]``, or
+                 ``["set_index", "set_prefix"]``).  When *keys* has exactly
+                 one element, multi-value pipe-separated strings are split and
+                 only the first part is returned.
+
+    Returns:
+        List of scalar values (single-key case) or list of lists (multi-key
+        case), one entry per matching questionnaire value.
+    '''
     values = project.values.filter(
         snapshot=None,
         attribute=Attribute.objects.get(
@@ -96,8 +207,30 @@ def get_id(project, uri, keys):
     return identifiers
 
 def get_answers(project, val, config):
+    '''Read questionnaire values for one attribute and merge them into *val*.
 
-    """Unified function to get user answers into dictionary."""
+    Iterates over all :class:`~rdmo.projects.models.Value` objects for the
+    attribute described by *config*, determines the appropriate path in *val*
+    via a :data:`~.constants.flag_dict` handler, and calls
+    :func:`~.helpers.nested_set` to write the entry.
+
+    Args:
+        project: RDMO project instance.
+        val:     Top-level answers dict that is mutated in place.
+        config:  Dict describing how to map a questionnaire attribute to *val*:
+
+                 * ``"uri"``              – RDMO attribute URI fragment
+                 * ``"key1"``             – top-level key in *val*
+                 * ``"key2"``             – second-level key (may be empty)
+                 * ``"set_prefix"``       – bool flag: use set_prefix as path element
+                 * ``"set_index"``        – bool flag: use set_index as path element
+                 * ``"collection_index"`` – bool flag: use collection_index
+                 * ``"external_id"``      – bool flag: write external_id field
+                 * ``"option_text"``      – bool flag: write option URI as text
+
+    Returns:
+        The mutated *val* dict.
+    '''
 
     val.setdefault(config["key1"], {})
 
@@ -149,7 +282,20 @@ def get_answers(project, val, config):
     return val
 
 def get_user_entries(project, query_attribute, values):
-    '''Get ID, Name and Description User Answers'''
+    '''Fetch raw ID, Name, and Description questionnaire values for a domain attribute.
+
+    Args:
+        project:         RDMO project instance.
+        query_attribute: Attribute path fragment (e.g. ``"software"``); the
+                         three sub-attributes ``<fragment>/id``, ``/name``,
+                         and ``/description`` are queried.
+        values:          Dict to populate; mutated in place.
+
+    Returns:
+        The *values* dict with keys ``"id"``, ``"name"``, and ``"description"``
+        each holding a :class:`~django.db.models.QuerySet` of
+        :class:`~rdmo.projects.models.Value` instances.
+    '''
     for question in ('id', 'name', 'description'):
         # Fetch User entries from the project (ID)
         values[question] = project.values.filter(

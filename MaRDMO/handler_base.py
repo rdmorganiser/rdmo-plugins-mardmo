@@ -35,6 +35,7 @@ _PUB_INFO: list = []
 
 
 def _get_pub_info():
+    '''Return the singleton :class:`~MaRDMO.publication.handlers.Information` instance.'''
     if not _PUB_INFO:
         from .publication.handlers import Information  # pylint: disable=import-outside-toplevel
         _PUB_INFO.append(Information())
@@ -68,16 +69,39 @@ class _RelatantSpec:
 
 
 def _values_clause(items):
-    '''Return "wd:Q1 wd:Q2 …" from a list of (text, ext_id, idx).'''
+    '''Build a SPARQL VALUES list string ``"wd:Q1 wd:Q2 …"`` from item tuples.
+
+    Args:
+        items: List of ``(text, external_id, set_index)`` tuples; the
+               ``external_id`` field is expected in ``"source:QID"`` format.
+
+    Returns:
+        Space-separated string of ``wd:QID`` tokens suitable for insertion
+        into a SPARQL VALUES clause.
+    '''
     return ' '.join(f'wd:{ext_id.split(":")[-1]}' for _, ext_id, _ in items)
 
 
 def _fetch_by_source(items, mardi_file, wikidata_file, model_class):
-    '''Run one SPARQL query per source; return {external_id: instance} dict.
+    '''Run one SPARQL query per source and return a ``{external_id: instance}`` dict.
 
-    Uses get_sparql_query for the mardi file (always required) and
-    get_sparql_query_optional for the wikidata file (no-op if absent).
-    Both functions are lru_cached, so repeated calls are free.
+    Splits *items* by source prefix (``mardi:`` / ``wikidata:``), fires a
+    separate SPARQL request to each endpoint, and merges the results.
+
+    Uses :func:`~MaRDMO.getters.get_sparql_query` for the MaRDI template
+    (always required) and :func:`~MaRDMO.getters.get_sparql_query_optional`
+    for the Wikidata template (no-op if the file is absent).  Both helpers
+    are LRU-cached so repeated calls are free.
+
+    Args:
+        items:          List of ``(text, external_id, set_index)`` tuples.
+        mardi_file:     Relative path to the MaRDI SPARQL template.
+        wikidata_file:  Relative path to the Wikidata SPARQL template.
+        model_class:    Dataclass with a ``from_query_batch(results)`` class
+                        method that parses the raw SPARQL bindings.
+
+    Returns:
+        Dict mapping ``"source:QID"`` external IDs to dataclass instances.
     '''
     data_by_id     = {}
     mardi_items    = [(t, eid, si) for t, eid, si in items if eid.startswith('mardi:')]
@@ -120,7 +144,16 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
     _ENTITY_KEYS: tuple = ()
 
     def _entry(self, instance, item_type, batch_fill_method):
-        '''Common entry-point: build visited set, call _fill.'''
+        '''Common signal entry-point: build visited set, then delegate to :meth:`_fill`.
+
+        Args:
+            instance:          RDMO Value instance that triggered the signal,
+                               carrying ``project``, ``text``, ``external_id``,
+                               and ``set_index`` attributes.
+            item_type:         Questionnaire item type string (e.g. ``'Task'``).
+            batch_fill_method: Bound method (e.g. ``_fill_task_batch``) used to
+                               hydrate the entity from the knowledge graph.
+        '''
         visited = self._collect_existing_ids(instance.project)
         self._fill(
             project           = instance.project,
@@ -134,8 +167,17 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
         )
 
     def _collect_existing_ids(self, project):
-        '''Single batched DB query for all external_ids already in the
-        questionnaire across all entity sections.'''
+        '''Return the set of external IDs already recorded in the questionnaire.
+
+        Issues a single batched DB query across all entity sections defined in
+        :attr:`_ENTITY_KEYS` so that hydration can skip already-present items.
+
+        Args:
+            project: RDMO project instance whose questionnaire values are queried.
+
+        Returns:
+            Set of external ID strings (e.g. ``{'mardi:Q42', 'wikidata:Q7'}``).
+        '''
         from rdmo.domain.models import Attribute  # pylint: disable=import-outside-toplevel
         id_uris = [
             f'{self.base}{self.questions[k]["ID"]["uri"]}'
@@ -151,12 +193,19 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
         )
 
     def _hydrate_relatants(self, project, data, prop_keys, spec):
-        '''Register and hydrate all relatants found under prop_keys.
+        '''Register and hydrate all relatants found under the given property keys.
 
-        See _RelatantSpec for full parameter documentation.  Skips IDs
-        already in spec.visited.  Collects mardi/wikidata items for a
-        single batch SPARQL call when spec.batch_fill_method is set;
-        otherwise falls back to spec.fill_method per relatant.
+        Skips IDs already in ``spec.visited``.  When ``spec.batch_fill_method``
+        is set, MaRDI and Wikidata items are collected and dispatched in a single
+        SPARQL query; otherwise ``spec.fill_method`` is called per relatant.
+        See :class:`_RelatantSpec` for full parameter documentation.
+
+        Args:
+            project:   RDMO project instance.
+            data:      Dataclass instance whose attributes are iterated over
+                       ``prop_keys`` to yield :class:`~MaRDMO.models.Relatant` items.
+            prop_keys: Sequence of attribute names on *data* to iterate.
+            spec:      :class:`_RelatantSpec` instance bundling context parameters.
         '''
         if spec.section_indices is not None and spec.question_set_uri in spec.section_indices:
             next_idx = spec.section_indices[spec.question_set_uri]
@@ -199,7 +248,17 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
                                    catalog=spec.catalog, visited=spec.visited)
 
     def _hydrate_publications(self, project, publications, catalog, visited):
-        '''Register and hydrate publications via the publication handler.'''
+        '''Register and hydrate related publications via the publication handler.
+
+        Args:
+            project:      RDMO project instance.
+            publications: Iterable of :class:`~MaRDMO.models.Relatant` items
+                          representing publications to register.
+            catalog:      Current project catalog string, forwarded to the
+                          publication handler.
+            visited:      Mutable set of already-processed external IDs;
+                          updated in place to prevent duplicate processing.
+        '''
         pub_info    = _get_pub_info()
         pub_id_uri  = f'{self.base}{self.questions["Publication"]["ID"]["uri"]}'
         pub_set_uri = f'{self.base}{self.questions["Publication"]["uri"]}'
@@ -227,10 +286,20 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
 
     def fill_entity(self, project, text, external_id, question_id,
                     item_type, batch_fill_method, catalog):
-        '''Public entry: find the set_index for external_id and hydrate via _fill.
+        '''Look up the set_index for *external_id* and hydrate the entity via :meth:`_fill`.
 
         Called from the top-level handlers dispatcher when a relation value is
         saved to the questionnaire.
+
+        Args:
+            project:           RDMO project instance.
+            text:              Display text for the entity (label + description + source).
+            external_id:       External ID string (e.g. ``'mardi:Q42'``).
+            question_id:       Full RDMO attribute URI used to locate the entity's
+                               set_index in the questionnaire.
+            item_type:         Questionnaire item type string (e.g. ``'Task'``).
+            batch_fill_method: Bound ``_fill_*_batch`` method for SPARQL hydration.
+            catalog:           Current project catalog string.
         '''
         visited    = self._collect_existing_ids(project)
         id_entries = get_id(project, question_id, ['set_index', 'external_id'])
@@ -252,10 +321,22 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
         self, project, text, external_id, set_index,
         item_type, batch_fill_method, catalog='', visited=None
     ):
-        '''Guard, add_basics for non-mardi items, delegate to batch_fill_method.
+        '''Write basic questionnaire fields and delegate SPARQL hydration.
 
-        item_type         – questionnaire item type string
-        batch_fill_method – corresponding _fill_*_batch method to delegate to
+        Skips empty or ``'not found'`` entries, calls :func:`~MaRDMO.adders.add_basics`
+        for all entities, then delegates to *batch_fill_method* for MaRDI and
+        Wikidata entities.
+
+        Args:
+            project:           RDMO project instance.
+            text:              Display text for the entity.
+            external_id:       External ID string (e.g. ``'mardi:Q42'``).
+            set_index:         Questionnaire set index for this entity.
+            item_type:         Questionnaire item type string (e.g. ``'Task'``).
+            batch_fill_method: Bound ``_fill_*_batch`` method for SPARQL hydration.
+            catalog:           Current project catalog string (default ``''``).
+            visited:           Mutable set of already-processed external IDs
+                               (default ``None``; a new set is created if omitted).
         '''
         if not text or text == 'not found':
             return

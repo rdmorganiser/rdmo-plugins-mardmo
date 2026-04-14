@@ -1,4 +1,25 @@
-'''Module containing Providers for the Documentation of Interdisciplinary Workflows'''
+'''RDMO optionset providers for the Workflow documentation catalog.
+
+Each provider class implements ``get_options`` and is referenced from the
+workflow catalog configuration. Providers query MaRDI Portal and Wikidata
+for entity suggestions covering research disciplines, methods, tasks, hardware,
+instruments, data sets, process steps, and related mathematical models.
+
+Provides:
+
+- :class:`MaRDIAndWikidataSearch`  — generic entity search across MaRDI Portal and Wikidata
+- :class:`MainMathematicalModel`   — look up the main mathematical model for a workflow
+- :class:`Method`                  — numerical/analytical method lookup; refresh on select
+- :class:`RelatedMethod`           — method lookup with optional user creation
+- :class:`WorkflowTask`            — task/computation step lookup; refresh on select
+- :class:`Hardware`                — hardware platform lookup; refresh on select
+- :class:`Instrument`              — scientific instrument lookup; refresh on select
+- :class:`DataSet`                 — data set lookup; refresh on select
+- :class:`RelatedInstrument`       — instrument lookup with optional user creation
+- :class:`RelatedDataSet`          — data-set lookup with optional user creation
+- :class:`ProcessStep`             — workflow process-step lookup; refresh on select
+- :class:`Discipline`              — research discipline lookup sourced from questionnaire answers
+'''
 # pylint: disable=too-few-public-methods  # Provider subclasses only need get_options
 
 from rdmo.options.providers import Provider
@@ -20,7 +41,18 @@ class MaRDIAndWikidataSearch(Provider):
     search = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -37,7 +69,18 @@ class MainMathematicalModel(Provider):
     search = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -56,7 +99,18 @@ class Method(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -76,7 +130,18 @@ class RelatedMethod(Provider):
     search = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search:
             return []
 
@@ -101,7 +166,20 @@ class WorkflowTask(Provider):
     '''
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries MaRDI Portal for Task related to chosen Model'''
+        '''Query the MaRDI Portal for Computational Tasks linked to the currently selected Model.
+
+        Reads the Model ID from the questionnaire, fetches associated Task
+        items via SPARQL, and returns them as options.
+
+        Args:
+            project: RDMO project instance used to look up the current model ID.
+            search:  Unused (tasks are filtered by model, not free-text).
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts for matching tasks.
+        '''
 
         questions = get_questions('workflow')
         options = []
@@ -158,7 +236,18 @@ class Hardware(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -176,7 +265,18 @@ class Instrument(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -194,7 +294,18 @@ class DataSet(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -211,7 +322,18 @@ class RelatedInstrument(Provider):
     search = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search:
             return []
 
@@ -235,7 +357,18 @@ class RelatedDataSet(Provider):
     search = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search:
             return []
 
@@ -260,7 +393,18 @@ class ProcessStep(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external source for user input'''
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
         if not search or len(search) < 3:
             return []
 
@@ -280,7 +424,19 @@ class Discipline(Provider):
     refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
-        '''Queries external sources for user input'''
+        '''Query knowledge graphs and the MSC 2020 classification for matching disciplines.
+
+        Args:
+            project: RDMO project instance (unused).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            Combined, sorted list of up to 30 ``{"id": …, "text": …}`` option dicts
+            from MaRDI Portal / Wikidata (``academic discipline`` class) and MSC 2020.
+        '''
         if not search or len(search) < 3:
             return []
 

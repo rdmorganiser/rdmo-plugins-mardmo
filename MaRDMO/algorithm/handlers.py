@@ -35,6 +35,7 @@ class Information(BaseInformation):
     _ENTITY_KEYS = ('Algorithm', 'Problem', 'Software', 'Benchmark', 'Publication')
 
     def __init__(self):
+        '''Load algorithm and publication questions, MathAlgoDB registry, and base URI.'''
         self.questions  = get_questions('algorithm') | get_questions('publication')
         self.mathalgodb = get_mathalgodb()
         self.base       = BASE_URI
@@ -44,19 +45,35 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def benchmark(self, instance):
-        '''Handle Benchmark ID save: hydrate basics and SPARQL data.'''
+        '''Handle Benchmark ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Benchmark', self._fill_benchmark_batch)
 
     def software(self, instance):
-        '''Handle Software ID save: hydrate basics and cascade to Benchmark.'''
+        '''Handle Software ID save: hydrate basics and cascade to Benchmark.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Software', self._fill_software_batch)
 
     def problem(self, instance):
-        '''Handle Problem ID save: hydrate basics and cascade to Benchmark.'''
+        '''Handle Algorithmic Problem ID save: hydrate basics and cascade to Benchmark.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Problem', self._fill_problem_batch)
 
     def algorithm(self, instance):
-        '''Handle Algorithm ID save: hydrate basics and cascade to Problem and Software.'''
+        '''Handle Algorithm ID save: hydrate basics and cascade to Problem and Software.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Algorithm', self._fill_algorithm_batch)
 
     # ------------------------------------------------------------------ #
@@ -64,7 +81,14 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def _fill_benchmark_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple benchmarks with a single SPARQL query per source.'''
+        '''Hydrate multiple Benchmark pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -96,7 +120,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_software_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple software items with a single SPARQL query per source.'''
+        '''Hydrate multiple Software pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -148,7 +179,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_problem_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple algorithmic problems with a single SPARQL query per source.'''
+        '''Hydrate multiple Algorithmic Problem pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -204,7 +242,14 @@ class Information(BaseInformation):
             # IntraClass relations are not cascade-hydrated
 
     def _fill_algorithm_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple algorithms with a single SPARQL query per source.'''
+        '''Hydrate multiple Algorithm pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:

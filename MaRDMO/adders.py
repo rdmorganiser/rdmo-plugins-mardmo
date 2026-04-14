@@ -1,4 +1,20 @@
-'''Functions to add Information to the Questionaire.'''
+'''Module conaining functions writing retrieved metadata into an RDMO questionnaire.
+
+After a background worker has collected entity data from external knowledge
+graphs, the results must be stored as RDMO ``Value`` objects so that the
+questionnaire reflects the fetched information.  This module provides helpers
+that create or update those values for a given project and set of answers.
+
+Provides:
+
+- ``add_basics``             — write basic (label/description) values for a single entity entry
+- ``add_entities``           — write a list of entities into a set of questionnaire answers
+- ``add_new_entities``       — write newly user-created entities into the questionnaire
+- ``add_relations_static``   — write relation values using a fixed property-to-question mapping
+- ``add_relations_flexible`` — write relation values using a dynamic property-to-question mapping
+- ``add_properties``         — write data-property values for an entity at a given URI
+- ``add_references``         — write external-reference values for an entity
+'''
 
 from rdmo.options.models import Option
 
@@ -15,12 +31,22 @@ from .helpers import (
 )
 
 def add_basics(project, text, questions, item_type, index = (None, None)):
-    '''Function extracts Label, Description and Source of Items selected or defined
-       in the ID Question on each Page. Label and Description are added to the Name
-       and Description Questions on the individual Pages.
-       
-       Input: Selected/Defined Item as String 'Label (Description) [source]'
-       Output: Label, Description and Source'''
+    '''Parse the ID-question text and write label/description into the questionnaire.
+
+    Splits *text* (format ``"Label (Description) [source]"``) and stores the
+    label and description in the Name and Description answer fields of the
+    entity page identified by *item_type*.
+
+    Args:
+        project:   RDMO project instance.
+        text:      Human-readable ID string ``"Label (Description) [source]"``.
+        questions: Questions dict for the relevant catalog.
+        item_type: Entity type key in *questions* (e.g. ``"Research Field"``).
+        index:     ``(set_index, set_prefix)`` tuple for the target page.
+
+    Returns:
+        Tuple ``(label, description, source)`` extracted from *text*.
+    '''
 
     # Extract Label, Description, Source from ID Question
     label, description, source = extract_parts(text)
@@ -50,12 +76,19 @@ def add_basics(project, text, questions, item_type, index = (None, None)):
     return label, description, source
 
 def add_entities(project, question_set, datas, source, prefix):
-    '''Function checks if an Item selected in one Section of the Questionnaire is 
-       defined in another Section of the Questionnaire. If the Item is not yet in
-       the Questionnaire a new Page is created and the ID Question is answered.
+    '''Ensure each item in *datas* has a page in *question_set*, creating one if absent.
 
-       Input: Item Information
-       Output: -'''
+    Checks the existing questionnaire values (by external ID and by
+    label/description) before adding a new set entry.  Skips items that are
+    already present under any of those checks.
+
+    Args:
+        project:      RDMO project instance.
+        question_set: Attribute URI of the set question (e.g. the section root).
+        datas:        Iterable of :class:`~MaRDMO.models.Relatant` instances.
+        source:       Source tag written into the ID field (e.g. ``"mardi"``).
+        prefix:       Label prefix for the set page (e.g. ``"AD"``).
+    '''
 
     # Generate ID, Name and Description URL from Set URL
     question = {'id': f'{question_set}/id',
@@ -112,12 +145,18 @@ def add_entities(project, question_set, datas, source, prefix):
             info['value_ids'].append(data.id)
 
 def add_new_entities(project, question_set, datas, prefix):
-    '''Function checks if an Item defined in one Section of the Questionnaire is 
-       defined in another Section of the Questionnaire. If the Item is not yet in
-       the Questionnaire a new Page is created and the ID Question is answered.
+    '''Ensure each user-defined item in *datas* has a page in *question_set*.
 
-       Input: Item Information
-       Output: -'''
+    Like :func:`add_entities`, but for user-created items (no external ID).
+    Deduplicates by label/description only and marks new entries with
+    ``external_id = "not found"``.
+
+    Args:
+        project:      RDMO project instance.
+        question_set: Attribute URI of the set question.
+        datas:        Iterable of :class:`~MaRDMO.models.Relatant` instances.
+        prefix:       Label prefix for the set page.
+    '''
 
     # Generate ID, Name and Description URL from Set URL
     question = {'id': f'{question_set}/id',
@@ -183,12 +222,21 @@ def add_new_entities(project, question_set, datas, prefix):
             idx += 1
 
 def add_relations_static(project, data, props, index, statement):
-    '''Function checks if a related pair (relation and relatant) are part of the 
-       Questionnaire (fixed relation). If the pair is not yet in the Questionnaire 
-       it is added to the Questionnaire. Qualifiers are likewise checked and added.
+    '''Write static (fixed-type) relations from *data* into the questionnaire.
 
-       Input: Item Information + Relation (if flexible)
-       Output: -'''
+    Iterates over the relatant lists named by ``props['keys']`` and, for each
+    relatant not already present (checked by external ID and text), adds a
+    new collection entry to ``statement['relatant']``.
+
+    Args:
+        project:   RDMO project instance.
+        data:      Dataclass instance whose attributes hold lists of relatants.
+        props:     Dict with key ``'keys'`` listing attribute names on *data*.
+        index:     Dict containing ``'set_prefix'``; ``'set_prefix_reduced'``
+                   and ``'idx'`` are computed and written back into this dict.
+        statement: Dict with key ``'relatant'`` (attribute URI of the
+                   collection question).
+    '''
 
     # Get existing Set and Item Information
     info = {'set_prefix_ids': get_id(project, statement['relatant'], ['set_prefix']),
@@ -242,12 +290,24 @@ def add_relations_static(project, data, props, index, statement):
             info['texts'].append(f"{value.label} ({value.description}) [{source}]")
 
 def add_relations_flexible(project, data, props, index, statement):
-    '''Function checks if an Item and a Relation (fixed/flexible) are part of the 
-       Questionnaire. If the Item / Relation Pair is not yet in the Questionnaire 
-       it is added to the Questionnaire. Qualifiers are likewise checked and added.
+    '''Write flexible (typed) relations from *data* into the questionnaire.
 
-       Input: Item Information + Relation (if flexible)
-       Output: -'''
+    For each relatant in ``data.<prop>`` (where *prop* ∈ ``props['keys']``),
+    checks whether the (relation-type, relatant) pair already exists.  If not,
+    writes the relation-type option and the relatant text/ID, handling optional
+    order-number and assumption qualifiers.
+
+    Args:
+        project:   RDMO project instance.
+        data:      Dataclass instance whose attributes hold lists of relatants.
+        props:     Dict with keys ``'keys'`` (attribute names) and ``'mapping'``
+                   (:class:`~MaRDMO.helpers.PropertyRegistry` mapping prop
+                   name → relation URL).
+        index:     Dict containing ``'set_prefix'``; updated with
+                   ``'set_prefix_reduced'`` and ``'idx'`` in place.
+        statement: Dict with keys ``'relation'``, ``'relatant'``, and
+                   optionally ``'order'`` and ``'assumption'`` (attribute URIs).
+    '''
 
     # Get existing Set, Item and Relation Information
     info = {'set_prefix_ids': get_id(project, statement['relatant'], ['set_prefix']),
@@ -369,10 +429,18 @@ def add_relations_flexible(project, data, props, index, statement):
         index['idx'] += 1
 
 def add_properties(project, data, uri, set_prefix):
-    '''Function which adds Data Properties to the Questionnaire.
-       
-       Input: Data Properties
-       Output: -'''
+    '''Write the data-property option values from *data.properties* into the questionnaire.
+
+    Iterates over the ``{collection_index: [option_uri, …]}`` mapping in
+    ``data.properties`` and calls :func:`~MaRDMO.helpers.value_editor` for
+    each entry at ``set_index=0``.
+
+    Args:
+        project:    RDMO project instance.
+        data:       Dataclass instance with a ``properties`` attribute.
+        uri:        Attribute URI of the data-property collection question.
+        set_prefix: Set-prefix of the parent entity page.
+    '''
 
     for key, value in data.properties.items():
         value_editor(
@@ -387,10 +455,19 @@ def add_properties(project, data, uri, set_prefix):
         )
 
 def add_references(project, data, uri, set_index = 0, set_prefix = None):
-    '''Function which adds References to the Questionnaire.
-       
-       Input: References
-       Output: -'''
+    '''Write the reference entries from *data.reference* into the questionnaire.
+
+    Does nothing when ``data.reference`` is empty.  Each entry in the
+    ``{collection_index: [option_uri, text]}`` mapping is stored as an option
+    value at the given *set_index* / *set_prefix*.
+
+    Args:
+        project:    RDMO project instance.
+        data:       Dataclass instance with a ``reference`` attribute.
+        uri:        Attribute URI of the reference collection question.
+        set_index:  Set-index of the parent entity page (default ``0``).
+        set_prefix: Set-prefix of the parent entity page (optional).
+    '''
     if not data.reference:
         return
 

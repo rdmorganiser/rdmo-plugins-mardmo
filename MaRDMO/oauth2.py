@@ -1,4 +1,19 @@
-'''Functions for OAuth2 Authorization with live progress tracking and redirect'''
+'''OAuth2-based export provider with live progress tracking for MaRDMO.
+
+Provides :class:`OauthProviderMixin`, the abstract base class that handles:
+
+- OAuth2 authorisation flow against the MaRDI Portal (``/authorize`` →
+  ``/callback`` → token exchange).
+- Background export job execution with progress reported via
+  :mod:`~MaRDMO.store` and streamed to the browser.
+- Wikibase REST API posting: :meth:`~OauthProviderMixin._post_data` retries
+  failed requests, handles duplicate-item policy violations, and substitutes
+  temporary ``Item<n>`` placeholders with the real Wikibase QIDs.
+
+Subclasses must implement :meth:`~OauthProviderMixin.get_authorize_params`
+and :meth:`~OauthProviderMixin.post_success` to supply catalog-specific
+export logic.
+'''
 
 import logging
 import copy
@@ -25,25 +40,62 @@ _progress_store = {}
 
 
 class OauthProviderMixin:
-    '''Class containing functions for the authorization, post, and
-       callback related to the OAuth2 protocol.'''
+    '''Mixin providing a full OAuth2 authorization-code flow with async Wikibase posting.
+
+    Subclasses must implement :meth:`get_authorize_params`, :meth:`get_callback_auth`,
+    :meth:`get_callback_headers`, :meth:`get_callback_params`,
+    :meth:`get_callback_data`, and :meth:`post_success`.  The mixin handles
+    state validation, token exchange, background upload, and progress tracking.
+    '''
 
     # ------------------- OAUTH FLOW -------------------
 
     def post(self, request, jsons=None, dependency=None):
-        '''Start the Posting Process'''
+        '''Persist posting arguments in the session and start the OAuth flow.
+
+        Args:
+            request:    Django HTTP request.
+            jsons:      Payload dict to upload (serialisable).
+            dependency: Ordered iterable of item keys to post before relations.
+
+        Returns:
+            Redirect to the OAuth authorization endpoint.
+        '''
         self.store_in_session(request, 'request', ('post', jsons, dependency))
         return self.authorize(request)
 
     def authorize(self, request):
-        '''Authorize for Posting'''
+        '''Redirect the user to the OAuth authorization endpoint.
+
+        Generates a random CSRF *state* token, stores it in the session, and
+        builds the redirect URL from :meth:`get_authorize_params`.
+
+        Args:
+            request: Django HTTP request.
+
+        Returns:
+            :class:`~django.http.HttpResponseRedirect` to the authorization URL.
+        '''
         state = get_random_string(length=32)
         self.store_in_session(request, 'state', state)
         url = self.authorize_url + '?' + urlencode(self.get_authorize_params(request, state))
         return HttpResponseRedirect(url)
 
     def callback(self, request):
-        '''OAuth callback after user authorization'''
+        '''Handle the OAuth callback, exchange the code for a token, and start posting.
+
+        Validates the *state* parameter, exchanges the authorization code for an
+        access token, then launches :meth:`_background_post` in a daemon thread
+        and redirects to the live-progress page.
+
+        Args:
+            request: Django HTTP request (must contain ``code`` and ``state``
+                     GET parameters set by the authorization server).
+
+        Returns:
+            Redirect to the progress page on success, or an error page on
+            state-mismatch or token-exchange failure.
+        '''
         if request.GET.get('state') != self.pop_from_session(request, 'state'):
             return self.render_error(
                 request,
@@ -226,7 +278,25 @@ class OauthProviderMixin:
     # ------------------- CORE POST LOGIC -------------------
 
     def _post_data(self, key, jsons, access_token):
-        """Post data for a single key, handles both relations and items."""
+        """Post the payload entry for *key* to the Wikibase REST API.
+
+        Skips entries that already have an ID (items) or are marked as
+        existing (relations).  Retries up to five times on timeout or
+        connection errors with exponential back-off.
+
+        Args:
+            key:          Payload key string (e.g. ``'Item0000000001'`` or
+                          ``'RELATION_…'``).
+            jsons:        Full payload dict; may be mutated in place when a
+                          placeholder is replaced by a real QID.
+            access_token: OAuth2 bearer token string.
+
+        Returns:
+            Updated payload dict with the new QID substituted for *key*.
+
+        Raises:
+            RuntimeError: If all retry attempts fail with no response.
+        """
 
         # No Post, if key not in Payload
         if not jsons.get(key):
@@ -304,7 +374,19 @@ class OauthProviderMixin:
         raise RuntimeError(_("POST request failed after multiple retries (no response)"))
 
     def _extract_error_message(self, response):
-        """Extract detailed error message from API response"""
+        """Extract a human-readable error message from an API response.
+
+        Handles both the Wikibase REST API (``message``, ``code``/``context``)
+        and the Wikibase Action API (``error.info``, ``error.code``) response
+        formats.
+
+        Args:
+            response: :class:`requests.Response` object from a failed API call.
+
+        Returns:
+            Error message string; falls back to the raw response text (up to
+            200 characters) or ``"Error details unavailable"`` if parsing fails.
+        """
         try:
             error_data = response.json()
 
@@ -339,7 +421,16 @@ class OauthProviderMixin:
                 return "Error details unavailable"
 
     def _handle_response(self, response, key, jsons):
-        """Handle POST response and update placeholders."""
+        """Process a successful POST response and replace the placeholder with the new QID.
+
+        Args:
+            response: Successful :class:`requests.Response` object.
+            key:      Payload key that was just posted (e.g. ``'Item0000000001'``).
+            jsons:    Full payload dict; mutated in place for non-alias keys.
+
+        Returns:
+            Updated payload dict with the new Wikibase ID substituted for *key*.
+        """
         response.raise_for_status()
         if not key.startswith("ALIAS"):
             jsons[key]['id'] = response.json().get('id')
@@ -347,7 +438,22 @@ class OauthProviderMixin:
         return jsons
 
     def _handle_policy_violation(self, response, key, jsons):
-        """Handle data-policy-violation errors and return updated jsons"""
+        """Handle a ``data-policy-violation`` HTTP 422 error from the Wikibase API.
+
+        When the violation is ``item-label-description-duplicate``, the
+        conflicting existing item's ID is extracted and used as the resolved
+        QID so the export can proceed without creating a duplicate.
+
+        Args:
+            response: :class:`requests.Response` object with a 422 status and a
+                      JSON body containing ``code`` and ``context`` fields.
+            key:      Payload key that caused the violation.
+            jsons:    Full payload dict; mutated in place when a duplicate is resolved.
+
+        Returns:
+            Updated payload dict, or the original *jsons* if the violation
+            could not be resolved.
+        """
         error_json = response.json()
         if error_json.get("code") == "data-policy-violation":
             violation = error_json.get("context", {}).get("violation")
@@ -365,7 +471,16 @@ class OauthProviderMixin:
     # ------------------- HELPERS -------------------
 
     def render_error(self, request, title, message):
-        '''Function to Render Errors'''
+        '''Render the ``core/error.html`` template with *title* and *message*.
+
+        Args:
+            request: Django HTTP request.
+            title:   Short error heading (translated string).
+            message: Detailed error description (translated string or exception).
+
+        Returns:
+            :class:`~django.http.HttpResponse` (status 200) rendering the error page.
+        '''
         return render(
             request,
             'core/error.html',
@@ -377,47 +492,149 @@ class OauthProviderMixin:
         )
 
     def get_session_key(self, key):
-        '''Function to get Session Key'''
+        '''Return the namespaced session key ``"<class_name>.<key>"``.
+
+        Args:
+            key: Logical key name (e.g. ``"state"`` or ``"request"``).
+
+        Returns:
+            String combining :attr:`class_name` and *key* with a dot separator.
+        '''
         return f'{self.class_name}.{key}'
 
     def store_in_session(self, request, key, data):
-        '''Function to store in Session'''
+        '''Write *data* under the namespaced *key* into the Django session.
+
+        Args:
+            request: Django HTTP request whose session is updated.
+            key:     Logical key name passed through :meth:`get_session_key`.
+            data:    Serialisable value to store.
+        '''
         request.session[self.get_session_key(key)] = data
 
     def pop_from_session(self, request, key):
-        '''Function to pop from Session'''
+        '''Remove and return a value from the Django session.
+
+        Args:
+            request: Django HTTP request.
+            key:     Logical key name passed through :meth:`get_session_key`.
+
+        Returns:
+            The stored value, or ``None`` if the key is absent.
+        '''
         return request.session.pop(self.get_session_key(key), None)
 
     def get_from_session(self, request, key):
-        '''Function to get from Session'''
+        '''Read (without removing) a value from the Django session.
+
+        Args:
+            request: Django HTTP request.
+            key:     Logical key name passed through :meth:`get_session_key`.
+
+        Returns:
+            The stored value, or ``None`` if the key is absent.
+        '''
         session_key = self.get_session_key(key)
         return request.session.get(session_key)
 
     def get_authorization_headers(self, access_token):
-        '''Function to get Authorization Headers'''
+        '''Build the ``Authorization: Bearer …`` header dict.
+
+        Args:
+            access_token: OAuth2 access token string.
+
+        Returns:
+            Dict ``{"Authorization": "Bearer <access_token>"}``.
+        '''
         return {'Authorization': f'Bearer {access_token}'}
 
     def get_authorize_params(self, request, state):
-        '''Function to get Authorize Parameters'''
+        '''Return query parameters for the OAuth authorization redirect URL.
+
+        Must be overridden by subclasses to supply provider-specific parameters
+        such as ``client_id``, ``redirect_uri``, ``response_type``, and ``scope``.
+
+        Args:
+            request: Django HTTP request.
+            state:   CSRF state token generated by :meth:`authorize`.
+
+        Returns:
+            Dict of query-string parameters.
+
+        Raises:
+            NotImplementedError: Always — subclasses must implement this method.
+        '''
         raise NotImplementedError
 
     def get_callback_auth(self, request):
-        '''Function to get Callback Authoriaztion'''
+        '''Return the HTTP Basic-Auth credentials for the token-exchange request.
+
+        Default implementation returns ``None`` (no Basic-Auth).  Subclasses
+        may override to supply ``(client_id, client_secret)``.
+
+        Args:
+            request: Django HTTP request.
+
+        Returns:
+            ``None`` or a ``(username, password)`` tuple.
+        '''
         return None
 
     def get_callback_headers(self, request):
-        '''Function to get Callback Headers'''
+        '''Return HTTP headers for the token-exchange POST request.
+
+        Default implementation returns ``Accept: application/json`` and a
+        ``User-Agent`` identifying the MaRDMO plugin.  Subclasses may override.
+
+        Args:
+            request: Django HTTP request.
+
+        Returns:
+            Dict of HTTP header name → value pairs.
+        '''
         return {'Accept': 'application/json',
                 'User-Agent': 'MaRDMO (https://zib.de; reidelbach@zib.de)'}
 
     def get_callback_params(self, request):
-        '''Function to get Callback Parameters'''
+        '''Return URL query parameters appended to the token-exchange endpoint.
+
+        Default implementation returns an empty dict.  Subclasses may override
+        to pass provider-specific parameters (e.g. ``grant_type``).
+
+        Args:
+            request: Django HTTP request.
+
+        Returns:
+            Dict of query-string parameters.
+        '''
         return {}
 
     def get_callback_data(self, request):
-        '''Function to get Callback Data'''
+        '''Return the POST body data for the token-exchange request.
+
+        Default implementation returns an empty dict.  Subclasses may override
+        to supply ``code``, ``redirect_uri``, or other required fields.
+
+        Args:
+            request: Django HTTP request.
+
+        Returns:
+            Dict of form-body fields.
+        '''
         return {}
 
     def post_success(self, request, init, final):
-        '''Function for Post Success'''
+        '''Handle a completed upload and render the success page.
+
+        Called after all items and relations have been posted.  Must be
+        overridden by subclasses to display provider-specific results.
+
+        Args:
+            request: Django HTTP request.
+            init:    Deep copy of the original payload dict (before posting).
+            final:   Updated payload dict containing assigned Wikibase IDs.
+
+        Raises:
+            NotImplementedError: Always — subclasses must implement this method.
+        '''
         raise NotImplementedError

@@ -1,4 +1,13 @@
-'''Function that query Data'''
+'''Functions that query external data sources (Wikibase API, SPARQL endpoints, Crossref, etc.).
+
+Provides helpers for:
+
+* ``query_item`` / ``query_api`` – Wikibase ``wbsearchentities`` lookups
+* ``query_sparql`` / ``query_sparql_pool`` – SPARQL SELECT requests
+* ``query_sources`` / ``query_sources_with_user_additions`` – combined
+  MaRDI + Wikidata search with optional user-defined entries
+* ``query_api_per_class`` – class-filtered full-text search on the MaRDI portal
+'''
 import logging
 from multiprocessing.pool import ThreadPool
 from django.core.cache import cache
@@ -11,8 +20,19 @@ from .helpers import extract_parts, rank_by_search_term
 logger = logging.getLogger(__name__)
 
 def query_item(label, description, api = get_url('mardi', 'api')):
-    '''API request returning an Item whose label or alias matches,
-       and with matching description.'''
+    '''Search a Wikibase API for an item matching *label* and *description* exactly.
+
+    Skips the request if *description* is empty or the placeholder string
+    ``"No Description Provided!"``.
+
+    Args:
+        label:       Label (or alias) to search for (case-insensitive).
+        description: Exact description the matched item must have.
+        api:         Wikibase ``wbsearchentities`` API URL; defaults to MaRDI Portal.
+
+    Returns:
+        The Wikibase QID string of the first match, or ``None`` if no match.
+    '''
     # Only check Items with description
     if not description or description == 'No Description Provided!':
         return None
@@ -42,7 +62,18 @@ def query_item(label, description, api = get_url('mardi', 'api')):
     return None
 
 def query_api(api_url, search_term, timeout=5):
-    """API requests returning all Items with matching label."""
+    '''Search a Wikibase API endpoint for items whose label matches *search_term*.
+
+    Uses the ``wbsearchentities`` action with ``limit=10``.
+
+    Args:
+        api_url:     Full URL of the Wikibase API endpoint.
+        search_term: Label string to search for.
+        timeout:     Request timeout in seconds (default 5).
+
+    Returns:
+        List of raw Wikibase search-result dicts; empty list on any error.
+    '''
     try:
         response = requests.get(
             api_url,
@@ -69,7 +100,16 @@ def query_api(api_url, search_term, timeout=5):
     return []
 
 def query_sparql(query, sparql_endpoint):
-    '''SPARQL request returning all Items with matching properties.'''
+    '''Execute a SPARQL SELECT query against *sparql_endpoint* and return bindings.
+
+    Args:
+        query:           SPARQL SELECT query string (UTF-8 encoded on the wire).
+        sparql_endpoint: URL of the SPARQL endpoint (e.g. the MaRDI or Wikidata endpoint).
+
+    Returns:
+        List of result-binding dicts from ``results.bindings``; empty list on
+        any network error, HTTP error, or missing endpoint.
+    '''
     if not sparql_endpoint:
         logger.warning("SPARQL query attempted without a valid endpoint.")
         return []
@@ -110,8 +150,16 @@ def query_sparql(query, sparql_endpoint):
     return []
 
 def query_sparql_pool(query_input):
-    '''Pooled SPARQL request returning all items with matching properties 
-       from different endpoints'''
+    '''Execute multiple SPARQL queries in parallel and return a keyed result dict.
+
+    Args:
+        query_input: Dict mapping a source key to a ``(query, endpoint)`` tuple,
+                     e.g. ``{"mardi": (query_str, url), "wikidata": ...}``.
+
+    Returns:
+        Dict with the same keys as *query_input*, each mapping to the list of
+        SPARQL result bindings returned by :func:`query_sparql`.
+    '''
     pool = ThreadPool(processes = len(query_input))
     # Map each endpoint's query and store results in a dictionary
     results = pool.map(lambda args: query_sparql(*args), query_input.values())
@@ -119,13 +167,23 @@ def query_sparql_pool(query_input):
     return data
 
 def query_sources(search, item_class=None, sources=None, not_found=True):
-    '''Query specified sources for items and return sorted results.
+    '''Query one or more knowledge-graph sources for items matching *search*.
 
-    item_class – QID string or list of QID strings used for class-filtered
-                 search on MaRDI, e.g. 'Q42' or ['Q42', 'Q43'].
-                 Wikidata is always queried by label/description only
-                 (class classification on Wikidata is too inconsistent).
-    sources    – list of sources to query; defaults to ['mardi', 'wikidata'].
+    Queries the requested sources in parallel, merges the results, and sorts
+    them by relevance to *search* using :func:`~.helpers.rank_by_search_term`.
+
+    Args:
+        search:     Free-text search string.
+        item_class: QID string or list of QID strings used for class-filtered
+                    search on MaRDI (e.g. ``"Q42"`` or ``["Q42", "Q43"]``).
+                    Wikidata is always searched by label/description only.
+        sources:    List of source keys to query; defaults to
+                    ``["mardi", "wikidata"]``.
+        not_found:  If ``True`` (default), prepends a ``{"id": "not found",
+                    "text": "not found"}`` sentinel to the option list.
+
+    Returns:
+        List of ``{"id": …, "text": …}`` option dicts, sorted by relevance.
     '''
     if sources is None:
         sources = ['mardi', 'wikidata']
@@ -168,7 +226,28 @@ def query_sources(search, item_class=None, sources=None, not_found=True):
     return options
 
 def query_sources_with_user_additions(search, project, setup):
-    '''Fetch options from KG, user-defined fields, and allow creation.'''
+    '''Fetch KG options, prepend matching user-defined entries, and optionally allow creation.
+
+    Combines external source results (via :func:`query_sources`) with entries
+    the user has already added to the questionnaire (cached by project/attribute).
+    Optionally inserts a creation option for new entries.
+
+    Args:
+        search:  Free-text search string entered by the user.
+        project: RDMO project instance used to look up existing user entries.
+        setup:   Configuration dict with keys:
+
+                 * ``sources``          – list of source keys (default
+                   ``["mardi", "wikidata"]`` when ``None``)
+                 * ``item_class``       – QID or list of QIDs for class filtering
+                 * ``query_attributes`` – list of attribute URI fragments to
+                   query for user-defined entries
+                 * ``creation``         – bool; if ``True``, prepend an option
+                   that lets users create a new entry with the search text
+
+    Returns:
+        List of ``{"id": …, "text": …}`` option dicts.
+    '''
     if setup['sources'] is None:
         setup['sources'] = ['mardi', 'wikidata']
 
@@ -213,7 +292,21 @@ def query_sources_with_user_additions(search, project, setup):
     return options
 
 def query_user_entries(project, setup):
-    '''Collect user entries from database and build options dictionary.'''
+    '''Build a label→ID dict from entries the user has already added to the questionnaire.
+
+    Reads ID, Name, and Description values from the RDMO database for each
+    attribute listed in ``setup["query_attributes"]``, aligns them by
+    ``set_index``/``set_prefix``, and returns only entries whose source is not
+    in ``setup["sources"]`` (i.e. not already covered by KG results).
+
+    Args:
+        project: RDMO project instance.
+        setup:   Configuration dict (see :func:`query_sources_with_user_additions`).
+
+    Returns:
+        Dict mapping display strings (``"Label (Description)"`` or
+        ``"Label (Description) [source]"``) to ``{"id": item_id}`` dicts.
+    '''
     dic = {}
 
     for query_attribute in setup['query_attributes']:
@@ -268,11 +361,20 @@ def query_user_entries(project, setup):
     return dic
 
 def query_api_per_class(search_term: str, item_class) -> list[dict]:
-    '''Search the MaRDI portal for items belonging to one or more classes.
+    '''Search the MaRDI portal for items belonging to one or more Wikibase classes.
 
-    item_class – a single QID string or a list of QID strings.  Multiple
-                 classes are combined with OR: haswbstatement:P31=Q1|P31=Q2.
-    Returns list of dicts with id and text matching the format used by query_sources.
+    Performs a MediaWiki full-text search filtered by ``haswbstatement:P31=QID``
+    (combined with ``|`` for multiple classes), then fetches English labels and
+    descriptions for the matching QIDs via ``wbgetentities``.
+
+    Args:
+        search_term: Free-text search string (appended with ``*`` for prefix matching).
+        item_class:  QID string or list of QID strings; e.g. ``"Q42"`` or
+                     ``["Q42", "Q43"]``.
+
+    Returns:
+        List of ``{"id": "mardi:<QID>", "text": "Label (Description) [mardi]"}``
+        dicts; empty list on any network error or no hits.
     '''
     if isinstance(item_class, str):
         item_class = [item_class]

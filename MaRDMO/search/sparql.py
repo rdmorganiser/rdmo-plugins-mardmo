@@ -1,4 +1,10 @@
-#SPARQL Query Base and Components for Portal Search
+'''SPARQL query templates and filter fragments used by the MaRDMO portal search.
+
+Each ``query_base_*`` string is a parameterised SPARQL SELECT template that is
+assembled at runtime by inserting placeholder fragments (``*_sparql``).  The
+placeholder strings bind Wikibase item/property QIDs at format-time via
+:meth:`str.format`.
+'''
 
 query_base_workflow="""
 SELECT DISTINCT ?label ?qid

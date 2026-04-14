@@ -1,4 +1,12 @@
-'''Module containing Constants for the Publication Documentation'''
+'''Compile-time constants for the Publication documentation sub-package.
+
+Defines the property-to-predicate mappings (``PROPS``), item-info dicts
+(``ITEMINFOS``, ``CITATIONINFOS``), and lookup tables for journals, authors,
+and languages that the publication worker and handlers consume.
+
+These constants are imported directly; no factory functions are needed because
+the publication constants do not depend on the live RDMO database state.
+'''
 
 PROPS = {
     'P2E': ['documents','invents','studies','surveys','uses'],

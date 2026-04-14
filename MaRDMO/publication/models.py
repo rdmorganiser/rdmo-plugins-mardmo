@@ -1,4 +1,16 @@
-'''Module containing Models for the Publication Documentation'''
+'''Dataclasses that represent bibliographic entities in the Publication catalog.
+
+Each class maps to one entity type retrieved from external sources (Crossref,
+ZbMATH, Wikidata, ORCID) during publication metadata collection. Instances
+are populated from API responses and carry all fields needed to fill
+questionnaire answers and produce export entries.
+
+Provides:
+
+- :class:`Author`      — person entity with ORCID, ZbMATH, and Wikidata identifiers
+- :class:`Journal`     — publication venue with ISSN and portal identifiers
+- :class:`Publication` — central bibliographic record linking authors and journal
+'''
 
 from dataclasses import dataclass, field
 from typing import Optional, ClassVar
@@ -19,7 +31,15 @@ class Author:
 
     @classmethod
     def from_query(cls, raw: str) -> 'Author':
-        '''Generate Class Item from Query'''
+        '''Parse a ``<|>``-delimited SPARQL result string into an Author instance.
+
+        Args:
+            raw: Space-and-pipe-delimited string with six fields:
+                 identifier, label, description, orcid_id, zbmath_id, wikidata_id.
+
+        Returns:
+            Author instance populated from the parsed fields.
+        '''
         identifier, label, description, orcid_id, zbmath_id, wikidata_id = raw.split(" <|> ")
 
         if label and not identifier:
@@ -44,7 +64,16 @@ class Author:
 
     @classmethod
     def from_crossref(cls, raw: str) -> 'Author':
-        '''Generate Class Item from Crossref'''
+        '''Build an Author instance from a single Crossref contributor dict.
+
+        Args:
+            raw: Dict-like object from the Crossref ``author`` list with optional
+                 keys ``given``, ``family``, and ``ORCID``.
+
+        Returns:
+            Author instance; ``id`` is ``'no author found'`` when a name is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if raw.get('given') and raw.get('family'):
@@ -86,7 +115,16 @@ class Author:
 
     @classmethod
     def from_datacite(cls, raw: str) -> 'Author':
-        '''Generate Class Item from Datacite'''
+        '''Build an Author instance from a single DataCite creator dict.
+
+        Args:
+            raw: Dict-like object from the DataCite ``creators`` list with optional
+                 keys ``givenName``, ``familyName``, and ``nameIdentifiers``.
+
+        Returns:
+            Author instance; ``id`` is ``'no author found'`` when a name is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if raw.get('givenName') and raw.get('familyName'):
@@ -130,7 +168,16 @@ class Author:
 
     @classmethod
     def from_doi(cls, raw: str) -> 'Author':
-        '''Generate Class Item from DOI'''
+        '''Build an Author instance from a single DOI API author dict.
+
+        Args:
+            raw: Dict-like object from the DOI API ``author`` list with optional
+                 keys ``given``, ``family``, and ``ORCID``.
+
+        Returns:
+            Author instance; ``id`` is ``'no author found'`` when a name is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if raw.get('given') and raw.get('family'):
@@ -171,7 +218,16 @@ class Author:
 
     @classmethod
     def from_zbmath(cls, raw: str) -> 'Author':
-        '''Generate Class Item from zbMath'''
+        '''Build an Author instance from a single zbMath author dict.
+
+        Args:
+            raw: Dict-like object from the zbMath ``contributors.authors`` list
+                 with optional keys ``name`` and ``codes``.
+
+        Returns:
+            Author instance; ``id`` is ``'no author found'`` when a name is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if raw.get('name'):
@@ -212,7 +268,16 @@ class Author:
 
     @classmethod
     def from_orcid(cls, raw: str) -> 'Author':
-        '''Generate Class Item from ORCiD'''
+        '''Build an Author instance from an ORCID API person record.
+
+        Args:
+            raw: Dict-like object from the ORCID API with an optional ``name``
+                 sub-dict containing ``given-names``, ``family-name``, and ``path``.
+
+        Returns:
+            Author instance; ``id`` is ``'no author found'`` when a name is present
+            but no MaRDI Portal entry exists yet.
+        '''
 
         label = None
         given = family = None
@@ -261,7 +326,15 @@ class Journal:
 
     @classmethod
     def from_query(cls, raw: str) -> 'Journal':
-        '''Generate Class Item from Query'''
+        '''Parse a ``<|>``-delimited SPARQL result string into a Journal instance.
+
+        Args:
+            raw: Space-and-pipe-delimited string with three or four fields:
+                 identifier, label, description, and optionally issn.
+
+        Returns:
+            Journal instance populated from the parsed fields.
+        '''
         raw_splitted = raw.split(" <|> ")
 
         identifier = raw_splitted[0]
@@ -287,7 +360,16 @@ class Journal:
 
     @classmethod
     def from_crossref(cls, ids: list, item: list) -> 'Journal':
-        '''Generate Class Item from Crossref'''
+        '''Build a Journal instance from Crossref ISSN and title data.
+
+        Args:
+            ids:  List of ISSN strings from the Crossref response (may be empty).
+            item: List of container-title strings from the Crossref response (may be empty).
+
+        Returns:
+            Journal instance; ``id`` is ``'no journal found'`` when a title is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if item:
@@ -320,7 +402,16 @@ class Journal:
 
     @classmethod
     def from_datacite(cls, ids: list, item: list) -> 'Journal':
-        '''Generate Class Item from Datacite'''
+        '''Build a Journal instance from DataCite related-identifier and related-item data.
+
+        Args:
+            ids:  List of relatedIdentifier dicts from the DataCite response (may be empty).
+            item: List of relatedItem dicts from the DataCite response (may be empty).
+
+        Returns:
+            Journal instance; ``id`` is ``'no journal found'`` when a title is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if item:
@@ -354,7 +445,16 @@ class Journal:
 
     @classmethod
     def from_doi(cls, ids: list, item: str) -> 'Journal':
-        '''Generate Class Item from DOI'''
+        '''Build a Journal instance from DOI API ISSN and container-title data.
+
+        Args:
+            ids:  List of ISSN strings from the DOI API response (may be empty).
+            item: Container-title string from the DOI API response (may be None).
+
+        Returns:
+            Journal instance; ``id`` is ``'no journal found'`` when a title is present
+            but no MaRDI Portal entry exists yet.
+        '''
         # Get Label
         label = None
         if item:
@@ -387,7 +487,16 @@ class Journal:
 
     @classmethod
     def from_zbmath(cls, raw: dict) -> 'Journal':
-        '''Generate Class Item from zbMath'''
+        '''Build a Journal instance from a zbMath source dict.
+
+        Args:
+            raw: The ``source`` dict from a zbMath result entry, expected to contain
+                 an optional ``series`` list with ``title`` and ``issn`` entries.
+
+        Returns:
+            Journal instance; ``id`` is ``'no journal found'`` when a title is present
+            but no MaRDI Portal entry exists yet.
+        '''
         series = (raw.get('series') or [{}])[0]
 
         # Get Label
@@ -449,14 +558,30 @@ class Publication:
 
     @classmethod
     def get_options(cls) -> dict:
-        '''Get Options for Generators'''
+        '''Return the cached option-label mapping used by all class generators.
+
+        Returns:
+            Dict mapping option keys (e.g. ``'DOI'``) to their display labels,
+            loaded once and cached as a class variable.
+        '''
         if cls.options is None:
             cls.options = get_options()
         return cls.options
 
     @classmethod
     def from_query(cls, raw_data: dict) -> 'Publication':
-        '''Generate Class Item from Query'''
+        '''Build a Publication instance from a SPARQL query result list.
+
+        Args:
+            raw_data: List of SPARQL result row dicts; the first element is used.
+                      Expected keys include ``id``, ``label``, ``description``,
+                      ``entrytypelabel``, ``title``, ``date``, ``doi``,
+                      ``journalInfo``, ``authorInfos``, and relation keys such as
+                      ``applies``, ``analyzes``, ``documents``, etc.
+
+        Returns:
+            Publication instance populated from the SPARQL result.
+        '''
         options = cls.get_options()
         items = get_items()
 
@@ -568,7 +693,17 @@ class Publication:
 
     @classmethod
     def from_crossref(cls, raw_data: dict) -> 'Publication':
-        '''Generate Class Item from Crossref'''
+        '''Build a Publication instance from a Crossref API response.
+
+        Args:
+            raw_data: Response object whose ``.json()['message']`` contains
+                      Crossref metadata fields such as ``title``, ``author``,
+                      ``DOI``, ``ISSN``, ``volume``, ``issue``, ``page``,
+                      ``published``, and ``container-title``.
+
+        Returns:
+            Publication instance populated from the Crossref metadata.
+        '''
         options = cls.get_options()
         items = get_items()
 
@@ -645,7 +780,16 @@ class Publication:
 
     @classmethod
     def from_datacite(cls, raw_data: dict) -> 'Publication':
-        '''Generate Class Item from Datacite'''
+        '''Build a Publication instance from a DataCite API response.
+
+        Args:
+            raw_data: Response object whose ``.json()['data']['attributes']`` contains
+                      DataCite metadata fields such as ``titles``, ``creators``,
+                      ``doi``, ``dates``, ``relatedItems``, and ``relatedIdentifiers``.
+
+        Returns:
+            Publication instance populated from the DataCite metadata.
+        '''
         options = cls.get_options()
         items = get_items()
 
@@ -731,7 +875,17 @@ class Publication:
 
     @classmethod
     def from_doi(cls, raw_data: dict) -> 'Publication':
-        '''Generate Class Item from DOI'''
+        '''Build a Publication instance from a DOI resolution API response.
+
+        Args:
+            raw_data: Response object whose ``.json()`` contains DOI metadata
+                      fields such as ``title``, ``author``, ``DOI``, ``ISSN``,
+                      ``volume``, ``issue``, ``page``, ``published``, and
+                      ``container-title``.
+
+        Returns:
+            Publication instance populated from the DOI metadata.
+        '''
         options = cls.get_options()
         items = get_items()
 
@@ -808,7 +962,17 @@ class Publication:
 
     @classmethod
     def from_zbmath(cls, raw_data: dict) -> 'Publication':
-        '''Generate Class Item from zbMath'''
+        '''Build a Publication instance from a zbMath API response.
+
+        Args:
+            raw_data: Response object whose ``.json()['result'][0]`` contains
+                      zbMath metadata fields such as ``title``, ``year``,
+                      ``document_type``, ``language``, ``source``, ``links``,
+                      and ``contributors``.
+
+        Returns:
+            Publication instance populated from the zbMath metadata.
+        '''
         options = cls.get_options()
         items = get_items()
 

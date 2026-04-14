@@ -1,4 +1,14 @@
-'''Worker Module for Model Preview and Export'''
+'''Background worker for the Model documentation catalog.
+
+Implements the task that collects mathematical model metadata from User, MarDI Portal,
+and Wikidata, renders a preview document, and exports the result to the MaRDI
+Portal.
+
+Provides:
+
+- :class:`PrepareModel` — orchestrates data collection, preview rendering,
+  and portal export for a single model documentation project
+'''
 
 import logging
 import time
@@ -21,13 +31,31 @@ from ..queries import query_sparql
 from ..publication.worker import PublicationExport
 
 class PrepareModel(PublicationExport):
-    '''Class preparing Model Answers for Preview and Export'''
+    '''Prepare Mathematical Model answers for preview rendering and MaRDI Portal export.
+
+    Inherits publication export helpers from
+    :class:`~MaRDMO.publication.worker.PublicationExport` and extends them
+    with model-specific relation mapping, property conflict detection, and
+    Wikibase payload generation.
+    '''
     def __init__(self):
+        '''Initialise with Wikibase vocabulary and the MathModDB ontology registry.'''
         super().__init__()
         self.mathmoddb = get_mathmoddb()
 
     def preview(self, answers):
-        '''Function to establish relations between Model Documentation Data'''
+        '''Resolve entity cross-references and property checks for the preview page.
+
+        Applies general label/relation mappings, entity-relation links, and
+        data-property conflict detection so that the preview template receives
+        a fully-resolved answers dict.
+
+        Args:
+            answers: Top-level answers dict (mutated in place).
+
+        Returns:
+            The mutated *answers* dict.
+        '''
 
         # Prepare General Mappings
         for mapping in preview_map_general:
@@ -105,7 +133,21 @@ class PrepareModel(PublicationExport):
         return answers
 
     def export(self, data, url):
-        """Function to create Payload for Model Export."""
+        '''Assemble and return the complete Wikibase payload for a Model documentation export.
+
+        Creates a :class:`~MaRDMO.payload.GeneratePayload` instance, processes
+        all unique items, then delegates each entity section (fields, problems,
+        models, formulations, quantities, tasks, publications) to dedicated
+        helper methods.
+
+        Args:
+            data: Top-level answers dict produced by ``get_post_data``.
+            url:  Target Wikibase API URL for the upload.
+
+        Returns:
+            Tuple ``(payload_dict, dependency_order)`` ready for
+            :meth:`~MaRDMO.oauth2.OauthProviderMixin.post`.
+        '''
 
         items, dependency = unique_items(data)
 
@@ -211,7 +253,13 @@ class PrepareModel(PublicationExport):
     # Shared helper
     # ---------------------------
     def _add_common_metadata(self, payload, qclass, profile_type):
-        """Add metadata common to most entities (except publication)."""
+        '''Add instance-of, community, and MaRDI-profile-type statements to the current item.
+
+        Args:
+            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
+            qclass:       Wikibase QID for the ``instance of`` target class.
+            profile_type: Label key for the MaRDI profile type item.
+        '''
         payload.add_answer(
             verb = self.properties["instance of"],
             object_and_type = [qclass, "wikibase-item"],

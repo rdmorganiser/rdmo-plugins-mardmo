@@ -1,3 +1,10 @@
+'''Worker module for Interdisciplinary Workflow preview and export.
+
+Provides :class:`prepareWorkflow`, which assembles RDMO questionnaire answers
+into a :class:`~MaRDMO.payload.GeneratePayload` ready for submission to the
+MaRDI Portal Wikibase instance.
+'''
+
 from dataclasses import asdict
 
 from .models import ModelProperties, Variables, Parameters
@@ -9,13 +16,30 @@ from ..queries import query_sparql
 from ..payload import GeneratePayload
 
 class prepareWorkflow:
+    '''Prepare interdisciplinary workflow answers for preview and export.
+
+    Loads Wikibase vocabulary (items and properties) on instantiation so
+    they are available to both :meth:`preview` and :meth:`export`.
+    '''
 
     def __init__(self):
+        '''Initialise with Wikibase items and properties from MaRDMOConfig.'''
         self.items = get_items()
         self.properties = get_properties()
 
     def preview(self, data):
-        '''Function to establish relations between Workflow Documentation Data'''
+        '''Enrich workflow answers with supplemental MaRDI Portal data for preview rendering.
+
+        Fetches model properties, process-step entities, and research information
+        via SPARQL and merges them into *data* so the preview template can
+        render a complete picture.
+
+        Args:
+            data: Top-level workflow answers dict (mutated in place).
+
+        Returns:
+            The mutated *data* dict.
+        '''
         # Update Model Properties via MathModDB
         if data.get('model',{}).get('ID'):
             _, identifier = data['model']['ID'].split(':')
@@ -74,8 +98,18 @@ class prepareWorkflow:
 
         return data
 
-    def export(self,data, title, url):
-        """Function to create Payload for Workflow Export."""
+    def export(self, data, title, url):
+        '''Assemble and return the complete Wikibase payload for a Workflow documentation export.
+
+        Args:
+            data:  Top-level workflow answers dict produced by ``get_post_data``.
+            title: Workflow title string used to seed item labels.
+            url:   Target Wikibase API URL for the upload.
+
+        Returns:
+            Tuple ``(payload_dict, dependency_order)`` ready for
+            :meth:`~MaRDMO.oauth2.OauthProviderMixin.post`.
+        '''
         
         items, dependency = unique_items(data, title)
 

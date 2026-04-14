@@ -1,4 +1,20 @@
-'''General Helper Functions of MaRDMO'''
+'''General-purpose helper functions and utilities shared across all MaRDMO modules.
+
+Contains:
+
+- :class:`PropertyRegistry` — O(1) lookup for ontology properties by key, label, or URL.
+- Answer-routing utilities: :func:`extract_parts`, :func:`basic_dict`,
+  :func:`basic_list`, :func:`split_value`, :func:`nested_set`.
+- Questionnaire write helpers: :func:`value_editor`.
+- Graph utilities: :func:`topological_order`, :func:`is_cyclic`.
+- Date helpers: :func:`date_format`, :func:`date_precision`.
+- Entity-relation processing: :func:`entity_relations`, :func:`map_entity`,
+  :func:`build_new_value`, :func:`resolve_target`, :func:`label_index_map`.
+- Export helpers: :func:`unique_items`, :func:`compare_items`,
+  :func:`replace_in_dict`, :func:`inline_mathml`, :func:`clean_mathml`.
+- Questionnaire utilities: :func:`process_question_dict`,
+  :func:`define_setup`, :func:`rank_by_search_term`.
+'''
 
 from typing import Callable, Optional, Any
 from collections import defaultdict, deque
@@ -10,8 +26,19 @@ from rdmo.domain.models import Attribute
 from rdmo.options.models import Option
 
 class PropertyRegistry:
-    """Registry class to look up properties by key, label, or url."""
+    """Registry class to look up MathModDB / MathAlgoDB properties by key, label, or URL.
+
+    Each entry in *properties* must be a dict with ``key``, ``label``, and
+    ``url`` fields.  The registry builds three internal indices so that any
+    of the three identifiers can be used for O(1) lookups via :meth:`get`.
+    """
     def __init__(self, properties):
+        '''Build lookup indices from *properties*.
+
+        Args:
+            properties: Iterable of dicts, each containing ``key``,
+                        ``label``, and ``url`` string fields.
+        '''
         self._by_key = {}
         self._by_label = {}
         self._by_url = {}
@@ -37,7 +64,19 @@ class PropertyRegistry:
         raise ValueError("Provide exactly one of: key, label, url")
 
 def topological_order(direct_dependencies: dict[str, set[str]]) -> list[str]:
-    '''Generate Topological Order of Dependency Graph Nodes'''
+    '''Return nodes of a dependency graph in topological (creation) order.
+
+    Uses Kahn's algorithm.  Nodes with no dependencies come first; nodes
+    that depend on others follow after all their dependencies have been
+    emitted.
+
+    Args:
+        direct_dependencies: Mapping ``{node: set_of_nodes_it_depends_on}``.
+
+    Returns:
+        Ordered list of node names.  If the graph is acyclic the list
+        contains every node exactly once.
+    '''
     dependents = defaultdict(set)
     in_degree = {}
     for item, deps in direct_dependencies.items():
@@ -57,7 +96,14 @@ def topological_order(direct_dependencies: dict[str, set[str]]) -> list[str]:
     return order
 
 def is_cyclic(dependencies: dict[str, set[str]]) -> bool:
-    '''Kahn'algorithm to check if dependency graph is cyclic'''
+    '''Return ``True`` if the dependency graph contains a cycle (Kahn's algorithm).
+
+    Args:
+        dependencies: Mapping ``{node: set_of_nodes_it_depends_on}``.
+
+    Returns:
+        ``True`` if a cycle is detected, ``False`` if the graph is a DAG.
+    '''
     dependents = defaultdict(set)
     in_degree = {}
     # Build in-degree and reverse edges
@@ -139,18 +185,37 @@ def split_value(
     return parts
 
 def basic_dict(value):
-    '''Basic Information from ID Question as Dict'''
+    '''Build a basic entity dict from an RDMO ``Value`` object.
+
+    Extracts the label and description from the human-readable text of an
+    ID question answer and returns them together with the external ID.
+
+    Args:
+        value: An RDMO :class:`~rdmo.projects.models.Value` instance whose
+               ``text`` field follows the ``"Label (Description) [source]"``
+               convention.
+
+    Returns:
+        Dict with keys ``ID``, ``Name``, and ``Description``.
+    '''
     # Extract Label and Description from ID Question
     label, description, _ = extract_parts(value.text)
     # Return Basic Dict
     return {
-        'ID': value.external_id, 
-        'Name': label, 
+        'ID': value.external_id,
+        'Name': label,
         'Description': description
     }
 
 def basic_list(value):
-    '''Basic List with Option URI and Text'''
+    '''Build a two-element list ``[option_uri, text]`` from an RDMO ``Value``.
+
+    Args:
+        value: An RDMO :class:`~rdmo.projects.models.Value` instance.
+
+    Returns:
+        ``[value.option_uri, value.text]``
+    '''
     # Return Basic List
     return [
         value.option_uri,
@@ -158,7 +223,23 @@ def basic_list(value):
     ]
 
 def define_setup(query_attributes, creation=False, query_id='', sources=None, item_class=None):
-    """Define the setup of particular queries."""
+    """Build a query-setup dict used by provider ``get_options`` methods.
+
+    Args:
+        query_attributes: List of questionnaire attribute keys whose existing
+                          values are surfaced as user-defined options.
+        creation:         If ``True``, a "create new" option is prepended when
+                          the search term is not found.
+        query_id:         Identifier passed through to the query (optional).
+        sources:          List of external sources to search (e.g.
+                          ``['mardi', 'wikidata']``).  ``None`` defaults to
+                          both sources inside the query helper.
+        item_class:       Wikibase QID string or list of QID strings used to
+                          restrict the MaRDI class-based search.
+
+    Returns:
+        Dict consumed by :func:`~MaRDMO.queries.query_sources_with_user_additions`.
+    """
     return {
         'creation': creation,
         'query_attributes': query_attributes,
@@ -168,14 +249,33 @@ def define_setup(query_attributes, creation=False, query_id='', sources=None, it
     }
 
 def nested_set(data, path, entry):
-    """Walk a sequence of keys, creating dicts as needed, and set the final value."""
+    """Set ``data[path[0]][path[1]]…[path[-1]] = entry``, creating intermediate dicts.
+
+    Args:
+        data:  Root dict to update in place.
+        path:  Sequence of keys describing the nested location.
+        entry: Value to store at the leaf.
+    """
     d = data
     for key in path[:-1]:
         d = d.setdefault(key, {})
     d[path[-1]] = entry
 
 def extract_parts(string):
-    '''Extract Label, Description and Source from ID Question'''
+    '''Extract the label, description, and source tag from an ID question text string.
+
+    Expected format: ``"Label (Description) [source]"``.  Falls back gracefully
+    when the format is incomplete.
+
+    Args:
+        string: ID question text value, typically produced by RDMO provider
+                ``get_options`` calls (e.g. ``"Euler method (algorithm) [mardi]"``).
+
+    Returns:
+        Tuple ``(label, description, source)`` of extracted string components.
+        *source* defaults to ``"user"`` when the bracket suffix is absent but
+        the string ends with ``)``.
+    '''
     # Step 1: Split the string at the last occurrence of ') [' to isolate source
     parts = string.rsplit(') [', 1)
     if len(parts) == 2:
@@ -204,7 +304,28 @@ def extract_parts(string):
     return a, b, c
 
 def value_editor(project, uri, info):
-    '''Add values to the Questionnaire'''
+    '''Create or update a single RDMO questionnaire :class:`~rdmo.projects.models.Value`.
+
+    Looks up the :class:`~rdmo.domain.models.Attribute` for *uri* and calls
+    ``Value.objects.update_or_create`` with whichever of the optional *info*
+    keys are present.
+
+    Args:
+        project: RDMO project instance that owns the value.
+        uri:     Full attribute URI (``BASE_URI + path``).
+        info:    Dict of optional fields to write.  Recognised keys:
+
+                 * ``text``             – free-text answer
+                 * ``external_id``      – external identifier (e.g. Wikidata QID)
+                 * ``option``           – option URI string (resolved to an
+                   :class:`~rdmo.options.models.Option` instance)
+                 * ``collection_index`` – position within a collection question
+                 * ``set_index``        – page index within a repeating set
+                 * ``set_prefix``       – parent set index for nested sets
+
+    Returns:
+        Tuple ``(obj, created)`` as returned by ``update_or_create``.
+    '''
     attribute_object = Attribute.objects.get(uri=uri)
     # Prepare the defaults dictionary
     defaults = {
@@ -243,7 +364,18 @@ def value_editor(project, uri, info):
     return obj, created
 
 def check_list(list_var):
-    '''Check if List is List'''
+    '''Ensure *list_var* is a list, wrapping scalar values if necessary.
+
+    * ``None``  → ``[]``
+    * non-list  → ``[list_var]``
+    * list      → unchanged
+
+    Args:
+        list_var: Value to normalise.
+
+    Returns:
+        A list.
+    '''
     if list_var is None:
         list_var = []
     elif not isinstance(list_var, list):
@@ -251,7 +383,20 @@ def check_list(list_var):
     return list_var
 
 def label_index_map(data, data_type):
-    '''Map Label to Index'''
+    '''Build a list of label→index mappings for the given entity types.
+
+    For each type key in *data_type*, constructs a dict mapping
+    ``"Name (Description)"`` strings to their 0-based position within
+    ``data[type_key]``.  Used by :func:`entity_relations` and
+    :func:`map_entity` to resolve cross-references by human-readable label.
+
+    Args:
+        data:      Top-level answers dict.
+        data_type: List of entity-type keys (e.g. ``['formulation', 'task']``).
+
+    Returns:
+        List of dicts, one per entry in *data_type*.
+    '''
     label_to_index_maps = []
     for to_idx in data_type:
         label_to_index_maps.append(
@@ -263,14 +408,47 @@ def label_index_map(data, data_type):
     return label_to_index_maps
 
 def resolve_target(name, description, id_, entity_enc, label_map):
-    """Try to resolve name to index in label_map; fallback to id_."""
+    """Resolve an entity reference to a local index string or fall back to its external ID.
+
+    Looks up ``"name (description)"`` in *label_map*.  If found, returns the
+    prefixed index (e.g. ``"MF3"``); otherwise returns *id_* unchanged.
+
+    Args:
+        name:        Human-readable label of the target entity.
+        description: Short description of the target entity.
+        id_:         Fallback external ID string.
+        entity_enc:  Prefix string for locally indexed entities (e.g. ``"MF"``).
+        label_map:   Dict mapping ``"Name (Description)"`` to 0-based index.
+
+    Returns:
+        Local index string or *id_*.
+    """
     label_description = f"{name} ({description})"
     if label_description in label_map:
         return f"{entity_enc}{label_map[label_description] + 1}"
     return id_
 
 def build_new_value(from_entry, entity, key, resolved, order, assumption, mapping):
-    """Build the new value depending on relation and order flags."""
+    """Assemble the processed relation dict for a single relatant.
+
+    Combines the resolved relatant reference with the relation type and
+    optional order/assumption qualifiers into the dict format expected by
+    the preview templates.
+
+    Args:
+        from_entry: Source entity dict (one entry from the answers).
+        entity:     Configuration dict with keys ``relation``, ``old_name``,
+                    ``new_name``, and ``encryption``.
+        key:        Relation key within *from_entry*.
+        resolved:   Resolved relatant reference (local index or external ID).
+        order:      Dict with boolean flags ``formulation`` and ``task``
+                    controlling which order qualifier is attached.
+        assumption: Boolean; if ``True``, attach assumption qualifier.
+        mapping:    :class:`~MaRDMO.helpers.PropertyRegistry` for relation lookup.
+
+    Returns:
+        Processed relation dict, or *resolved* unchanged when no relation is set.
+    """
     if not entity['relation']:
         return resolved
 
@@ -311,7 +489,24 @@ def build_new_value(from_entry, entity, key, resolved, order, assumption, mappin
 
 
 def entity_relations(data, idx, entity, order, assumption, mapping):
-    """Process Entity Relations."""
+    """Resolve cross-entity relations and write processed entries into *data*.
+
+    For every source entity in ``data[idx['from']]``, iterates over its raw
+    relation and relatant keys, resolves each relatant against the label maps
+    built from ``data[idx['to']]``, and stores the result under
+    ``entity['new_name']``.  Handles both flat (single relatant) and nested
+    (multiple relatants per relation) structures.
+
+    Args:
+        data:       Top-level answers dict; mutated in place.
+        idx:        Dict with keys ``from`` (source type) and ``to`` (list of
+                    target types used for label resolution).
+        entity:     Dict with keys ``relation``, ``old_name``, ``new_name``,
+                    and ``encryption``.
+        order:      Dict with boolean flags ``formulation`` and ``task``.
+        assumption: Boolean controlling assumption qualifier attachment.
+        mapping:    :class:`~MaRDMO.helpers.PropertyRegistry` for relation type lookup.
+    """
     idx['to'] = check_list(idx.get('to'))
     entity['encryption'] = check_list(entity['encryption'])
     label_to_index_maps = label_index_map(data, idx['to'])
@@ -378,11 +573,29 @@ def entity_relations(data, idx, entity, order, assumption, mapping):
                     entity_values[key] = new_value
 
 def initialize_counter(counter):
-    '''Function which initializes counter.'''
+    '''Return ``max(counter) + 1``, or ``0`` when *counter* is empty.
+
+    Args:
+        counter: Iterable of numeric values (e.g. existing set-index list).
+
+    Returns:
+        Next available integer index.
+    '''
     return int(max(counter, default=-1)) + 1
 
 def map_entity(data, idx, entity):
-    '''Map Entities'''
+    '''Resolve entity references by label and store the result under a new key.
+
+    Similar to :func:`entity_relations` but for simple label-to-index
+    mappings (without relation types).  Iterates nested ``old_name`` entries
+    in every source entity and writes resolved references into ``new_name``.
+
+    Args:
+        data:   Top-level answers dict; mutated in place.
+        idx:    Dict with keys ``from`` (source type) and ``to`` (target
+                types for label resolution).
+        entity: Dict with keys ``old_name``, ``new_name``, and ``encryption``.
+    '''
     # Ensure idx['to'] and enc are lists
     idx['to'] = check_list(idx['to'])
     entity['encryption'] = check_list(entity['encryption'])
@@ -408,7 +621,17 @@ def map_entity(data, idx, entity):
                     inner[inner_key] = item['ID']
 
 def process_qualifier(value):
-    '''Process Qualifier'''
+    '''Parse a compound qualifier string into a structured dict.
+
+    The expected format is entries separated by ``' <<||>> '``, where each
+    entry has the form ``"id || label || description"``.
+
+    Args:
+        value: Raw qualifier string from the questionnaire.
+
+    Returns:
+        Dict mapping integer index to ``{id, label, description, source}``.
+    '''
     # Create Value Dictionary
     value_dict = {}
     # Get splitted Values
@@ -427,7 +650,18 @@ def process_qualifier(value):
 
 
 def reduce_prefix(prefix):
-    '''Function that takes a prefix and reduces it if |-appended.'''
+    '''Strip the ``|``-appended suffix from a set-prefix value and return the integer part.
+
+    Prefixes stored in RDMO can be either plain integers or strings of the
+    form ``"3|1"`` (parent index ``|`` child index).  This function always
+    returns the leading integer component.
+
+    Args:
+        prefix: Integer or string prefix value.
+
+    Returns:
+        Integer prefix.
+    '''
     if isinstance(prefix, int):
         prefix_reduced = prefix
     else:
@@ -435,8 +669,23 @@ def reduce_prefix(prefix):
     return prefix_reduced
 
 def relation_exists(value, set_prefix_red, info, relation_id=None):
-    '''Checks if a value–set (–relation) combination already exists in info.
-       If relation_id is provided, also checks relation existence.'''
+    '''Check whether a value–set (–relation) triple already exists in the questionnaire.
+
+    Used by :func:`~MaRDMO.adders.add_relations_static` and
+    :func:`~MaRDMO.adders.add_relations_flexible` to avoid duplicate entries.
+
+    Args:
+        value:           Relatant object with ``id``, ``label``, and
+                         ``description`` attributes.
+        set_prefix_red:  Reduced integer set-prefix of the parent entity.
+        info:            Dict of existing DB values keyed by ``value_ids``,
+                         ``set_prefix_ids``, ``texts``, and optionally ``rels``.
+        relation_id:     Option URI of the relation type; when provided the
+                         check also verifies that the relation type matches.
+
+    Returns:
+        ``True`` if the combination is already present, ``False`` otherwise.
+    '''
 
     # Case: relation check required
     if relation_id and "rels" in info:
@@ -468,7 +717,16 @@ def relation_exists(value, set_prefix_red, info, relation_id=None):
     )
 
 def relevant_set_ids(info, set_prefix_red):
-    ''''Get relevant Set IDs'''
+    '''Return all set-index values whose set-prefix matches *set_prefix_red*.
+
+    Args:
+        info:           Dict containing parallel lists ``set_index_ids`` and
+                        ``set_prefix_ids``.
+        set_prefix_red: Reduced integer set-prefix to filter by.
+
+    Returns:
+        List of matching set-index integers.
+    '''
     relevant_set_ids_list = []
     for set_index, set_prefix in zip(info['set_index_ids'], info['set_prefix_ids']):
         if set_prefix == set_prefix_red:
@@ -476,7 +734,21 @@ def relevant_set_ids(info, set_prefix_red):
     return relevant_set_ids_list
 
 def replace_in_dict(d, target, replacement):
-    '''Replace IDs in Dict'''
+    '''Recursively replace all occurrences of *target* with *replacement* in *d*.
+
+    Traverses nested dicts and lists, replacing string values that equal
+    *target*.  Used after a Wikibase item is created to substitute the
+    temporary ``Item<n>`` placeholder with the real QID.
+
+    Args:
+        d:           Dict, list, string, or scalar to process.
+        target:      String to search for.
+        replacement: Replacement string.
+
+    Returns:
+        A new structure with replacements applied (strings are new objects;
+        dicts and lists are rebuilt recursively).
+    '''
     if isinstance(d, dict):
         return {k: replace_in_dict(v, target, replacement) for k, v in d.items()}
     if isinstance(d, list):
@@ -486,7 +758,23 @@ def replace_in_dict(d, target, replacement):
     return d
 
 def unique_items(data, title = None):
-    '''Search unique Items'''
+    '''Collect all unique items referenced anywhere in *data*.
+
+    Recursively walks the nested answers dict and returns every sub-dict
+    that contains an ``ID`` key exactly once.  An optional workflow *title*
+    item is prepended as ``Item0000000000``.
+
+    Args:
+        data:  Top-level answers dict.
+        title: Optional workflow title string.  When provided, a placeholder
+               item for the workflow itself is added first.
+
+    Returns:
+        Tuple ``(items, dependency)`` where *items* maps ``"Item<n>"`` keys to
+        ``{ID, Name, Description, orcid, zbmath, issn}`` dicts and *dependency*
+        maps the same keys to empty sets (populated later by
+        :class:`~MaRDMO.payload.GeneratePayload`).
+    '''
     # Set up Item Dict and track seen Items
     items = {}
     dependency = {}
@@ -537,7 +825,14 @@ def unique_items(data, title = None):
     return items, dependency
 
 def inline_mathml(data):
-    '''Process MathML to be inline'''
+    '''Strip attribute noise from MathML strings in *data* to make them safe for inline HTML.
+
+    Recursively traverses dicts and lists, applying :func:`clean_mathml` to
+    every string value that contains a ``<math`` tag.  Mutates *data* in place.
+
+    Args:
+        data: Nested dict or list (e.g. the workflow answers dict).
+    '''
     if isinstance(data, dict):
         for key, value in data.items():
             if isinstance(value, str):
@@ -550,7 +845,17 @@ def inline_mathml(data):
             inline_mathml(item)
 
 def clean_mathml(mathml_str):
-    '''Clean MathL'''
+    '''Remove all HTML/XML attributes from MathML tags except ``xmlns`` on ``<math>``.
+
+    Keeps the structural tags intact while stripping presentation attributes
+    that can break inline rendering in browsers.
+
+    Args:
+        mathml_str: Raw MathML string (potentially with many attributes).
+
+    Returns:
+        Cleaned MathML string.
+    '''
     def clean_tag(match):
         '''Clean Tag'''
         tag = match.group(1)
@@ -573,7 +878,22 @@ def clean_mathml(mathml_str):
     return cleaned
 
 def process_question_dict(project, questions, get_answer):
-    """Iterate through nested questions dict and extract answers using provided answer function."""
+    """Iterate through the nested questions dict and collect answers via *get_answer*.
+
+    Walks every group in *questions*, skips group-level ``"uri"`` entries,
+    fills in optional config defaults, then delegates each question config to
+    *get_answer* to populate and return the answers dict.
+
+    Args:
+        project:    RDMO project instance.
+        questions:  Nested questions dict as loaded from ``questions.json``.
+        get_answer: Callable ``(project, answers, config) → answers`` that
+                    extracts a single question's answer and merges it into
+                    the running *answers* dict.
+
+    Returns:
+        Flat answers dict built by successive *get_answer* calls.
+    """
     answers = {}
 
     for group in questions.values():
@@ -607,7 +927,19 @@ def process_question_dict(project, questions, get_answer):
     return answers
 
 def compare_items(old, new):
-    """Compare Items before and after Export, to list newly created Items"""
+    """Return a label→QID mapping for items that were newly created during export.
+
+    Compares the ``id`` field of every ``Item*`` key: entries that had no id
+    before posting (``old[key]['id']`` is falsy) and have one afterwards are
+    collected.
+
+    Args:
+        old: Deep copy of the payload dict taken *before* posting.
+        new: Payload dict *after* posting (ids filled in by Wikibase).
+
+    Returns:
+        Dict mapping English label to the newly assigned QID string.
+    """
     ids = {}
     for key, value in old.items():
         if key.startswith('Item') and not value['id']:
@@ -615,7 +947,17 @@ def compare_items(old, new):
     return ids
 
 def is_flat(d):
-    """Check if dict has str or dict values."""
+    """Return ``True`` if *d* is a dict whose values are all strings (or *d* is empty).
+
+    Used by :func:`entity_relations` to distinguish single-relatant dicts
+    from nested relatant-of-relatant structures.
+
+    Args:
+        d: Value to inspect.
+
+    Returns:
+        ``True`` for flat string-valued dicts; ``False`` otherwise.
+    """
     if not isinstance(d, dict):
         return False
     if d == {}:
@@ -624,14 +966,23 @@ def is_flat(d):
 
 
 def rank_by_search_term(option, term):
-    '''Return a sort key for an option dict based on how well its label/description
-    matches term.  Lower is better.
+    '''Return a numeric sort key indicating how well *option* matches *term*.
 
-    0 – label is exact match
-    1 – label starts with term
-    2 – label contains term
-    3 – description contains term
-    4 – no match
+    Lower values sort first (better match):
+
+    * 0 – label is exact match
+    * 1 – label starts with term
+    * 2 – label contains term
+    * 3 – description contains term
+    * 4 – no match
+
+    Args:
+        option: Option dict with a ``text`` field in
+                ``"Label (Description) [source]"`` format.
+        term:   Search string entered by the user.
+
+    Returns:
+        Integer rank value 0–4.
     '''
     label, desc, _ = extract_parts(option['text'])
     label_lower = label.lower()

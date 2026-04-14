@@ -1,4 +1,19 @@
-'''Functions to create Payload for Export'''
+'''Wikibase REST API payload builder for MaRDMO exports.
+
+Provides :class:`GeneratePayload`, which transforms a prepared answers dict
+into a fully structured payload dict ready for posting to the MaRDI Portal:
+
+- Builds ``Item*`` entries for every unique entity (labels, descriptions,
+  aliases, statements, qualifiers).
+- Builds ``RELATION_*`` entries for cross-item statements that reference
+  other items by their temporary ``Item<n>`` placeholder.
+- Builds ``ALIAS_*`` entries for alias additions to existing portal items.
+
+Key methods: :meth:`~GeneratePayload.add_data_properties`,
+:meth:`~GeneratePayload.add_check_results`,
+:meth:`~GeneratePayload.add_aliases`,
+:meth:`~GeneratePayload.build_relation_check_query`.
+'''
 
 import logging
 
@@ -31,7 +46,20 @@ class GeneratePayload:
         wikibase: dict | None = None,
         dependency: dict | None = None
     ):
-        '''Instantiate Class Attributes'''
+        '''Initialise the payload builder.
+
+        Args:
+            url:         Base URL of the target Wikibase instance (e.g.
+                         ``"https://portal.mardi4nfdi.de"``).
+            user_items:  Mapping of temporary ``"Item<n>"`` keys to item
+                         dicts ``{ID, Name, Description}``.  Produced by
+                         :func:`~MaRDMO.helpers.unique_items`.
+            wikibase:    Wikibase vocabulary dicts.  Expected keys are
+                         ``items``, ``properties``, ``relations``, and
+                         optionally ``data_properties``.
+            dependency:  Dependency graph ``{item_key: set_of_dependencies}``
+                         that controls item-creation order during export.
+        '''
         # Input Attributes
         self.url: str = url
         self.user_items: dict = user_items
@@ -41,19 +69,38 @@ class GeneratePayload:
         self.state: PayloadState = PayloadState()
 
     def _items_url(self):
-        '''Get Item URL'''
+        '''Return the Wikibase REST API endpoint URL for creating new items.'''
         return f'{self.url}/w/rest.php/wikibase/v1/entities/items'
 
     def _statement_url(self, item):
-        '''Get Statement URL'''
+        '''Return the Wikibase REST API endpoint URL for adding statements to *item*.
+
+        Args:
+            item: Wikibase QID string (e.g. ``"Q42"``).
+        '''
         return f'{self.url}/w/rest.php/wikibase/v1/entities/items/{item}/statements'
 
     def _alias_url(self, item):
-        '''Get Alias URL'''
+        '''Return the Wikibase REST API endpoint URL for adding English aliases to *item*.
+
+        Args:
+            item: Wikibase QID string (e.g. ``"Q42"``).
+        '''
         return f'{self.url}/w/rest.php/wikibase/v1/entities/items/{item}/aliases/en'
 
     def _build_item(self, identifier, label, description, statements = None):
-        '''Build Item with ID, URL, Label, Description and optional Statement.'''
+        '''Build the payload dict for a new or existing Wikibase item.
+
+        Args:
+            identifier:  Existing Wikibase QID (empty string for new items).
+            label:       English label string.
+            description: English description string.
+            statements:  Optional list of statement triples; defaults to ``[]``.
+
+        Returns:
+            Dict with keys ``id``, ``url``, ``label``, ``description``,
+            and ``statements``.
+        '''
         # Empty Statements if none provided
         if statements is None:
             statements = []
@@ -66,7 +113,18 @@ class GeneratePayload:
         return item
 
     def _build_statement(self, identifier, content, data_type = "wikibase-item", qualifiers = None):
-        '''Build Statement with ID, Datatype, Content and optional Qualifiers.'''
+        '''Build the Wikibase REST API statement payload dict.
+
+        Args:
+            identifier:  Wikibase property ID string (e.g. ``"P31"``).
+            content:     Statement value (QID, string, or typed literal).
+            data_type:   Wikibase datatype string (default ``"wikibase-item"``).
+            qualifiers:  Optional list of qualifier dicts; defaults to ``[]``.
+
+        Returns:
+            Dict in the shape expected by the Wikibase REST API
+            ``POST .../statements`` endpoint.
+        '''
         # Empty Qualifiers if none provided
         if qualifiers is None:
             qualifiers = []
@@ -84,21 +142,40 @@ class GeneratePayload:
         return statement
 
     def _build_alias(self, alias):
-        '''Build Alias Dictionary'''
+        '''Wrap *alias* in the ``{"aliases": …}`` payload dict expected by the API.
+
+        Args:
+            alias: List of alias strings.
+
+        Returns:
+            Dict ``{"aliases": alias}``.
+        '''
         aliases_dict = {
           "aliases": alias
         }
         return aliases_dict
 
     def _normalize_aliases(self, aliases_dict: dict) -> list[str]:
-        '''Convert Alias Dict to List'''
+        '''Convert a ``{index: alias}`` dict to a sorted, deduplicated list of strings.
+
+        Args:
+            aliases_dict: Dict mapping integer-like keys to alias strings.
+
+        Returns:
+            List of non-blank alias strings in ascending key order.
+        '''
         return [
             a for _, a in sorted(aliases_dict.items())
             if isinstance(a, str) and a.strip()
         ]
 
     def build_relation_check_query(self):
-        '''Build SPARQL Check Query for Statement'''
+        '''Build a SPARQL SELECT query that checks whether all RELATION entries already exist.
+
+        Returns:
+            SPARQL query string that selects one boolean variable per relation
+            (``?RELATION0``, ``?RELATION1``, …).
+        '''
         relation_keys = [k for k in self.state.dictionary if k.startswith('RELATION')]
         optional_blocks, bind_blocks = [], []
 
@@ -115,7 +192,17 @@ class GeneratePayload:
         return f'\nSELECT {selectors} WHERE {{\n{query_body}\n}}'
 
     def _sparql_value(self, value, data_type):
-        '''Format Value according to Data Type'''
+        '''Format *value* as a SPARQL literal or IRI appropriate for *data_type*.
+
+        Args:
+            value:     Raw value string or QID.
+            data_type: Wikibase datatype (``"wikibase-item"``, ``"string"``,
+                       ``"quantity"``, ``"time"``, ``"monolingualtext"``,
+                       or ``"math"``).
+
+        Returns:
+            SPARQL-formatted string (e.g. ``"wd:Q42"`` or ``"'text'"``).
+        '''
         if data_type == 'wikibase-item':
             formatted_value = f'wd:{value}'
         elif data_type == 'string':
@@ -136,7 +223,17 @@ class GeneratePayload:
         return formatted_value
 
     def _build_qualifier_triples(self, qualifiers, idx):
-        '''Build Qualifier Triples'''
+        '''Build SPARQL triple patterns for a list of qualifier dicts.
+
+        Args:
+            qualifiers: List of qualifier dicts (each with ``property`` and
+                        ``value`` sub-dicts).
+            idx:        Statement index used to name the ``?statement<idx>``
+                        SPARQL variable.
+
+        Returns:
+            SPARQL triple-pattern string (may be empty when *qualifiers* is empty).
+        '''
         triples = ''
         for q in qualifiers:
             q_prop = q['property']['id']
@@ -151,7 +248,16 @@ class GeneratePayload:
         return triples
 
     def _build_relation_block(self, idx, entry):
-        '''Build Relation Blocks'''
+        '''Build the OPTIONAL and BIND SPARQL fragments for one RELATION entry.
+
+        Args:
+            idx:   Relation index used to name SPARQL variables.
+            entry: RELATION payload dict from ``self.state.dictionary``.
+
+        Returns:
+            Tuple ``(optional_block, bind_block)`` strings, or ``(None, None)``
+            when the target item is not yet in the dictionary.
+        '''
         target_item_key = entry['url'].split('/')[-2]
         target_item_data = self.state.dictionary.get(target_item_key)
         if not target_item_data:
@@ -184,7 +290,16 @@ class GeneratePayload:
         return block['optional'], block['bind']
 
     def _find_key_by_values(self, id_value, name_value, description_value):
-        '''Find Key of Item by its Value'''
+        '''Look up the ``"Item<n>"`` key matching the given ID, Name, and Description.
+
+        Args:
+            id_value:          ``ID`` field value to match.
+            name_value:        ``Name`` field value to match.
+            description_value: ``Description`` field value to match.
+
+        Returns:
+            Matching ``"Item<n>"`` key string, or ``None`` if not found.
+        '''
         for key, values in self.user_items.items():
             if (values['ID'] == id_value and
                 values['Name'] == name_value and
@@ -193,13 +308,32 @@ class GeneratePayload:
         return None
 
     def get_dictionary(self):
-        '''Get a Dictionary'''
+        '''Return the complete payload dictionary (items, relations, and aliases).
+
+        The returned dict maps ``"Item<n>"``, ``"RELATION<n>"``, and
+        ``"ALIAS<n>"`` keys to their respective payload entries.  This is the
+        top-level structure posted to the Wikibase REST API by
+        :class:`~MaRDMO.oauth2.OauthProviderMixin`.
+        '''
         # Get Target Dictionary
         target_dictionary = self.state.dictionary
         return target_dictionary
 
     def get_item_key(self, value, role='subject'):
-        """Get the Key of an Item (Subject/Object)"""
+        """Look up the ``"Item<n>"`` key for *value* and optionally set it as the current subject.
+
+        Args:
+            value: Item dict with ``ID``, ``Name``, and ``Description`` fields.
+            role:  ``'subject'`` (default) stores the item as the active
+                   subject for subsequent :meth:`add_answer` calls;
+                   ``'object'`` just returns the key without updating state.
+
+        Returns:
+            The ``"Item<n>"`` key string for *value*.
+
+        Raises:
+            ValueError: If *value* is empty or missing ``Name``/``Description``.
+        """
         if not value:
             raise ValueError("Missing Item in Statement!")
         if not value.get('Name') or not value.get('Description'):
@@ -218,7 +352,16 @@ class GeneratePayload:
         return item_key
 
     def add_qualifier(self, identifier, data_type, content):
-        '''Build Qualifier to used in Statement.'''
+        '''Build a single-qualifier list for use in :meth:`add_answer`.
+
+        Args:
+            identifier: Wikibase property ID string for the qualifier (e.g. ``"P3"``).
+            data_type:  Wikibase datatype string for the qualifier value.
+            content:    Qualifier value (QID, string, or typed literal).
+
+        Returns:
+            Single-element list containing the qualifier dict.
+        '''
         # Build Qualifer
         qualifier = [{"property":
                         {"id": identifier,
@@ -230,7 +373,16 @@ class GeneratePayload:
         return qualifier
 
     def add_data_properties(self, item_class):
-        '''Build Data Property Statements'''
+        '''Add ``instance of`` statements for each data property selected on the current subject.
+
+        Looks up the data-property URL → QID mapping for *item_class* and
+        calls :meth:`add_answer` for every property value stored in
+        ``subject["Properties"]``.
+
+        Args:
+            item_class: Entity class string passed to
+                        ``self.wikibase["data_properties"]`` (e.g. ``"model"``).
+        '''
         data_properties = self.wikibase['data_properties'](item_class)
         for prop in self.state.subject.get('Properties', {}).values():
             self.add_answer(
@@ -242,7 +394,12 @@ class GeneratePayload:
             )
 
     def add_check_results(self, check):
-        '''Add Check Status to Statements'''
+        '''Update each RELATION entry with its SPARQL existence check result.
+
+        Args:
+            check: List of SPARQL result binding dicts; the first element is
+                   used (keyed by ``"RELATION<n>"``).
+        '''
         relation_keys = [k for k in self.state.dictionary if k.startswith('RELATION')]
         for idx, key in enumerate(relation_keys):
             exists_key = f'RELATION{idx}'
@@ -337,7 +494,15 @@ class GeneratePayload:
         return result
 
     def add_aliases(self, aliases_dict):
-        '''Add Aliases to Payload'''
+        '''Add aliases for the current subject to the payload.
+
+        For existing items (with a real QID), creates ``ALIAS`` entries for
+        immediate posting.  For new items, stores the aliases on the pending
+        item entry for batch creation.
+
+        Args:
+            aliases_dict: ``{index: alias_string}`` dict; does nothing when empty.
+        '''
         if not aliases_dict:
             return
         aliases_list = self._normalize_aliases(aliases_dict)
@@ -357,7 +522,22 @@ class GeneratePayload:
 
     def add_answer(self, verb, object_and_type,
                    qualifier = None, subject = None):
-        '''Add answer to Payload'''
+        '''Add a single statement to the payload.
+
+        For items that already exist on the portal (have a real QID), a
+        ``RELATION`` entry is created.  For new items, the statement is
+        appended to the item's ``statements`` list for batch creation.
+
+        Args:
+            verb:            Wikibase property ID string (e.g. ``"P31"``).
+            object_and_type: Two-element list ``[value, datatype]`` where
+                             *datatype* is a Wikibase type string such as
+                             ``"wikibase-item"``, ``"string"``, or ``"math"``.
+            qualifier:       Optional list of qualifier dicts built by
+                             :meth:`add_qualifier`.
+            subject:         ``"Item<n>"`` key of the subject item; defaults
+                             to the current subject set by :meth:`get_item_key`.
+        '''
         if subject is None:
             subject = self.state.subject_item
         if qualifier is None:
@@ -389,7 +569,17 @@ class GeneratePayload:
             )
 
     def add_answers(self, mardmo_property, wikibase_property, datatype = 'string'):
-        '''Add answer to Payload.'''
+        '''Add one statement per entry in ``subject[mardmo_property]``.
+
+        Iterates over all values stored under *mardmo_property* in the
+        current subject dict and calls :meth:`add_answer` for each.
+
+        Args:
+            mardmo_property:  Key in the subject dict (e.g. ``"descriptionLong"``).
+            wikibase_property: Wikibase property label looked up in
+                               ``self.wikibase['properties']``.
+            datatype:          Wikibase value datatype (default ``"string"``).
+        '''
         for entry in self.state.subject.get(mardmo_property, {}).values():
             self.add_answer(
                 verb=self.wikibase['properties'][wikibase_property],
@@ -406,7 +596,21 @@ class GeneratePayload:
         qualifier = None,
         reverse = False
     ):
-        '''Add single relation to payload.'''
+        '''Add one statement per entry in ``subject[statement["relatant"]]``.
+
+        If the relatant item exists in the payload dictionary, uses
+        ``statement['relation']`` as the property; otherwise falls back to
+        *alt_statement* with a string value.
+
+        Args:
+            statement:     Dict with ``relation`` (property ID) and
+                           ``relatant`` (subject key) fields.
+            alt_statement: Fallback dict used when the relatant is not in
+                           the payload (optional).
+            qualifier:     Pre-built qualifier list (optional).
+            reverse:       If ``True``, the relatant becomes the subject and
+                           the current item becomes the object.
+        '''
         # Empty Qualifiers if none provided
         if qualifier is None:
             qualifier = []
@@ -441,7 +645,19 @@ class GeneratePayload:
                 )
 
     def add_multiple_relation(self, statement, optional_qualifier = None, reverse = False):
-        '''Add multiple relations to payload.'''
+        '''Add one statement per (relation, relatant) pair in the current subject.
+
+        Iterates over ``subject[statement["relation"]]`` and
+        ``subject[statement["relatant"]]`` simultaneously, attaching optional
+        series-ordinal, assumption, and object-role qualifiers as configured
+        by *optional_qualifier*.
+
+        Args:
+            statement:          Dict with ``relation`` and ``relatant`` keys.
+            optional_qualifier: List of qualifier type strings to attach; supported
+                                values are ``"series ordinal"``, ``"assumes"``.
+            reverse:            If ``True``, swap subject and object.
+        '''
 
         if optional_qualifier is None:
             optional_qualifier = []
@@ -512,7 +728,12 @@ class GeneratePayload:
                 )
 
     def add_in_defining_formula(self):
-        '''Add in defining formula Statement'''
+        '''Add ``in defining formula`` statements with ``symbol represents`` qualifiers.
+
+        Iterates over ``subject["element"]`` entries, looks up each quantity
+        item key, and adds a ``math``-typed statement linking the symbol LaTeX
+        to the quantity item via a qualifier.
+        '''
         for element in self.state.subject.get('element', {}).values():
             # Get Item Key
             quantity_item = self.get_item_key(
@@ -554,14 +775,29 @@ class GeneratePayload:
                     )
 
     def _add_entry(self, key, value):
-        '''Add Entry to Payload'''
+        '''Insert *value* under *key* into ``self.state.dictionary``.
+
+        Args:
+            key:   Dict key (e.g. ``"Item0000000001"``).
+            value: Payload entry dict to store.
+        '''
         self.state.dictionary[key] = value
 
     def _add_to_item_alias(self, item, aliases):
+        '''Store *aliases* list on the pending item entry for *item*.'''
         self.state.dictionary[item]['aliases'] = aliases
 
     def _add_to_item_statement(self, item, statement, qualifier=None):
-        '''Add to Statement of Item'''
+        '''Append *statement* to the pending statement list of *item*.
+
+        Used for new items that do not yet have a Wikibase QID; statements are
+        batched and created together with the item.
+
+        Args:
+            item:       ``"Item<n>"`` key of the target item.
+            statement:  Dict with ``property_id``, ``datatype``, and ``value``.
+            qualifier:  Optional qualifier list (default ``[]``).
+        '''
         if qualifier is None:
             qualifier = []
         self.state.dictionary[item]['statements'].append(
@@ -574,7 +810,13 @@ class GeneratePayload:
         )
 
     def _add_relation(self, item, statement, qualifier=None):
-        '''Add Statement to Item'''
+        '''Create a ``RELATION<n>`` entry for a statement on an existing item.
+
+        Args:
+            item:       Wikibase QID or ``"Item<n>"`` key of the target item.
+            statement:  Dict with ``property_id``, ``datatype``, and ``value``.
+            qualifier:  Optional qualifier list (default ``[]``).
+        '''
         if qualifier is None:
             qualifier = []
         key = f"RELATION{self.state.counter}"
@@ -591,7 +833,12 @@ class GeneratePayload:
         self.state.counter += 1
 
     def _add_alias(self, item, aliases):
-        '''Add Alias to Item'''
+        '''Create one ``ALIAS<n>`` entry per alias for an existing item.
+
+        Args:
+            item:    Wikibase QID or ``"Item<n>"`` key of the target item.
+            aliases: List of alias strings to register.
+        '''
         for alias in aliases:
             key = f"ALIAS{self.state.counter}"
             self.state.dictionary[key] = {
@@ -604,7 +851,14 @@ class GeneratePayload:
             self.state.counter += 1
 
     def add_item_payload(self):
-        '''Add Payload String to Item'''
+        '''Finalise the ``payload`` field for every pending ``Item*`` entry.
+
+        Converts the accumulated ``statements`` list (raw ``[pid, dtype, value,
+        qualifiers]`` tuples) into the Wikibase REST API item-creation format
+        and stores it back in the dictionary under ``item_data["payload"]``.
+        Must be called after all :meth:`add_answer` / :meth:`add_multiple_relation`
+        calls and before posting.
+        '''
         for item_id, item_data in self.state.dictionary.items():
             # Check if Item in Payload
             if not item_id.startswith('Item'):
@@ -656,7 +910,20 @@ class GeneratePayload:
         return mardi_identifier
 
     def _statement_by_id_type(self, value: dict, id_type: str):
-        """Return statements for a user-defined item based on ID type."""
+        """Build the external-identifier statements for a user-defined item.
+
+        Selects which identifier statements to add (Wikidata QID, ORCID iD,
+        zbMath ID, or ISSN) based on *id_type* and the fields present in *value*.
+
+        Args:
+            value:   Item dict with optional keys ``ID``, ``orcid``, ``zbmath``,
+                     and ``issn``.
+            id_type: Source tag string (e.g. ``'wikidata'``,
+                     ``'no author found'``, ``'no journal found'``).
+
+        Returns:
+            List of ``[property_id, datatype, value_str]`` statement triples.
+        """
         statements = []
         if id_type == 'wikidata':
             # Add Wikidata ID
@@ -723,7 +990,16 @@ class GeneratePayload:
         return statements
 
     def process_items(self):
-        """Process Items"""
+        """Populate the payload dictionary with an entry for every item in ``user_items``.
+
+        Dispatches each item to a source-specific handler based on the prefix
+        of its ``ID`` field (``mardi``, ``wikidata``, ``not found``,
+        ``no author found``, ``no journal found``).  Existing MaRDI items are
+        registered with their real QID; new items get an empty id and a
+        seed list of statements.  Raises :exc:`ValueError` for Wikidata or
+        user-created items whose label/description combination already exists
+        on the MaRDI Portal.
+        """
         handlers = {
             'mardi': lambda key, value: 
                 self._add_entry(

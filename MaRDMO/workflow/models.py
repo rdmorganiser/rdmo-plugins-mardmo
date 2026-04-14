@@ -1,4 +1,21 @@
-'''Data models for the Workflow Documentation module.'''
+'''Dataclasses that represent entities in the Interdisciplinary Workflow
+documentation catalog.
+
+Each class maps to one entity type collected from MaRDI Portal and Wikidata during
+workflow documentation. Instances are populated from SPARQL query results and
+carry the fields needed to render questionnaire answers and export entries.
+
+Provides:
+
+- :class:`ModelProperties — properties of model associated with a workflow
+- :class:`Variables — variables of model associated with a workflow
+- :class:`Parameters — parameters of model associated with a workflow
+- :class:`ProcessStep`— process steps associated with a workflow
+- :class: Method — methods associated with a workflow
+- :class: Software — software associated with a workflow
+- :class: Hardware — hardware associated with a workflow
+- :class: DataSet — data sets associated with a workflow
+'''
 
 import re
 from dataclasses import dataclass, field

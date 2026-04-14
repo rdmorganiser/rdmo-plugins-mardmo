@@ -1,4 +1,26 @@
-'''Module containing Utility Functions for the Publication Documentation'''
+'''Utility functions for fetching and normalizing publication metadata.
+
+Provides helpers that query external bibliographic APIs (Crossref, DataCite,
+ZbMATH, ORCID), parse their responses, and map the results to the internal
+:class:`~MaRDMO.publication.models.Author`, :class:`~MaRDMO.publication.models.Journal`,
+and :class:`~MaRDMO.publication.models.Publication` dataclasses.
+
+Provides:
+
+- ``get_citation``            — primary entry point: fetch full citation data for a DOI
+- ``get_crossref_data``       — query the Crossref REST API
+- ``get_datacite_data``       — query the DataCite REST API
+- ``get_doi_data``            — DOI resolver wrapper
+- ``get_zbmath_data``         — query the ZbMATH Open API
+- ``get_orcids``              — look up ORCID IDs for publication authors
+- ``get_author_by_orcid``     — fetch a single author record from the ORCID API
+- ``extract_authors``         — parse author list from API response
+- ``extract_journals``        — parse journal info from API response
+- ``assign_id``               — attach portal / ZbMATH IDs to entity dicts
+- ``assign_orcid``            — attach ORCID identifiers to author dicts
+- ``clean_background_data``   — remove stale pre-existing answers before filling new ones
+- ``additional_queries``      — run supplementary SPARQL queries for linked entities
+'''
 
 import re
 from multiprocessing.pool import ThreadPool
@@ -15,7 +37,24 @@ from ..getters import get_items, get_properties, get_sparql_query, get_url
 from ..queries import query_sparql, query_sparql_pool
 
 def additional_queries(publication, choice, key, parameter, function):
-    '''Additional MaRDI Portal and Wikidata SPARQL Queries instance like authors or journals'''
+    '''Run supplemental Wikidata and MaRDI Portal SPARQL queries for a sub-entity type.
+
+    Queries first Wikidata, then MaRDI Portal, using the results of the first
+    to refine the second.  Calls *function* to parse raw SPARQL results into
+    model instances, then calls :func:`assign_id` to back-fill any missing IDs
+    on ``publication[choice].<key>``.
+
+    Args:
+        publication: Dict mapping source keys to :class:`~.models.Publication`
+                     instances (mutated in place).
+        choice:      Active source key (e.g. ``"crossref"``).
+        key:         Sub-entity attribute name and query file stem
+                     (``"authors"`` or ``"journal"``).
+        parameter:   Dict with ``"wikidata"`` and ``"mardi"`` lists of format
+                     arguments for the SPARQL query template.
+        function:    Callable that parses raw SPARQL results into a ``{index:
+                     entity}`` dict (e.g. :func:`extract_authors`).
+    '''
 
     # Get & Extract Information from  Wikidata
     wikidata_query = get_sparql_query(
@@ -70,7 +109,17 @@ def additional_queries(publication, choice, key, parameter, function):
         )
 
 def assign_id(entities, target, prefix):
-    '''Function to assign an ID to an entity.'''
+    '''Back-fill missing or placeholder IDs on *entities* from *target*.
+
+    Matches entities by label (case-insensitive) and overwrites the ``id``,
+    ``label``, and ``description`` fields when the entity currently has no ID
+    or a placeholder such as ``"not found"``.
+
+    Args:
+        entities: Iterable of entity dataclass instances to update.
+        target:   Dict of resolved entities (from SPARQL results) to match against.
+        prefix:   Source prefix prepended to the resolved ID (e.g. ``"mardi"``).
+    '''
     for entity in entities:
         if (
             not entity.id
@@ -84,7 +133,14 @@ def assign_id(entities, target, prefix):
                     entity.description = id_entity.description
 
 def assign_orcid(publication, source, id_type = 'orcid'):
-    '''Funcion to assign an ORCiD to an Author'''
+    '''Back-fill missing ORCID iDs on authors from the *orcid* lookup result.
+
+    Args:
+        publication: Dict mapping source keys to :class:`~.models.Publication`
+                     instances (mutated in place).
+        source:      Key of the publication entry whose authors are updated.
+        id_type:     Key for the ORCID lookup result dict (default ``"orcid"``).
+    '''
     for author in publication[source].authors:
         if not author.orcid_id:
             for id_author in publication[id_type].values():
@@ -92,7 +148,15 @@ def assign_orcid(publication, source, id_type = 'orcid'):
                     author.orcid_id = id_author.orcid_id
 
 def clean_background_data(key_dict, questions, project, snapshot, set_index):
-    '''Function to clean data safed in the background'''
+    '''Delete questionnaire values that were temporarily saved during background processing.
+
+    Args:
+        key_dict:  Iterable of question-dict keys to delete.
+        questions: Questions dict mapping keys to attribute URI fragments.
+        project:   RDMO project instance.
+        snapshot:  RDMO snapshot (``None`` for the current working snapshot).
+        set_index: Set-index of the entries to delete.
+    '''
     for key in key_dict:
         Value.objects.filter(
             attribute_id = Attribute.objects.get(
@@ -104,7 +168,18 @@ def clean_background_data(key_dict, questions, project, snapshot, set_index):
         ).delete()
 
 def extract_authors(data):
-    '''Function to extract Author Information from query results'''
+    '''Parse SPARQL result rows into a dict of :class:`~.models.Author` instances.
+
+    Expects ``data[0]["author_info"]["value"]`` as a ``" || "``-delimited
+    string of author records.
+
+    Args:
+        data: Raw SPARQL result list (may be empty).
+
+    Returns:
+        Dict ``{index: Author}`` for each non-empty record; empty dict if
+        *data* is falsy.
+    '''
     authors = {}
     if data:
         for idx, entry in enumerate(data[0].get('author_info', {}).get('value', '').split(" || ")):
@@ -113,7 +188,18 @@ def extract_authors(data):
     return authors
 
 def extract_journals(data):
-    '''Function to extract Journal Information from query results'''
+    '''Parse SPARQL result rows into a dict of :class:`~.models.Journal` instances.
+
+    Expects ``data[0]["journal_info"]["value"]`` as a ``" || "``-delimited
+    string of journal records.
+
+    Args:
+        data: Raw SPARQL result list (may be empty).
+
+    Returns:
+        Dict ``{index: Journal}`` for each non-empty record; empty dict if
+        *data* is falsy.
+    '''
     journals = {}
     if data:
         for idx, entry in enumerate(data[0].get('journal_info', {}).get('value', '').split(" || ")):
@@ -122,7 +208,21 @@ def extract_journals(data):
     return journals
 
 def get_citation(doi):
-    '''Function to get citation information from DOI'''
+    '''Retrieve full citation metadata for a DOI from multiple sources.
+
+    Queries MaRDI Portal and Wikidata via SPARQL in parallel.  If neither
+    yields a result, falls back to CrossRef, DataCite, zbMath, and the DOI
+    metadata service.  Then enriches authors with ORCID iDs and runs
+    supplemental author/journal queries against MaRDI Portal and Wikidata.
+
+    Args:
+        doi: DOI string (e.g. ``"10.1000/xyz123"``).
+
+    Returns:
+        Dict mapping source keys (``"mardi"``, ``"wikidata"``, ``"crossref"``,
+        etc.) to :class:`~.models.Publication` instances or ``None``; empty
+        dict if *doi* does not match the expected format.
+    '''
     publication = {}
 
     if not re.match(r'10.\d{4,9}/[-._;()/:a-z0-9A-Z]+', doi):
@@ -284,7 +384,15 @@ def get_citation(doi):
     return publication
 
 def get_crossref_data(doi):
-    '''Function to get Citation Information from Crossref'''
+    '''Fetch citation metadata for *doi* from the CrossRef REST API.
+
+    Args:
+        doi: DOI string.
+
+    Returns:
+        :class:`requests.Response` (status 200) on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f"https://api.crossref.org/works/{doi}",
@@ -296,7 +404,15 @@ def get_crossref_data(doi):
         return error
 
 def get_datacite_data(doi):
-    '''Function to get Citation Information from Datacite'''
+    '''Fetch citation metadata for *doi* from the DataCite REST API.
+
+    Args:
+        doi: DOI string.
+
+    Returns:
+        :class:`requests.Response` (status 200) on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f"https://api.datacite.org/dois/{doi}",
@@ -308,7 +424,15 @@ def get_datacite_data(doi):
         return error
 
 def get_doi_data(doi):
-    '''Function to get Citation Information from DOI'''
+    '''Fetch citation metadata for *doi* from the DOI metadata service.
+
+    Args:
+        doi: DOI string.
+
+    Returns:
+        :class:`requests.Response` (status 200) on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f"https://citation.doi.org/metadata?doi={doi}",
@@ -321,7 +445,15 @@ def get_doi_data(doi):
         return error
 
 def get_zbmath_data(doi):
-    '''Function to get Citation Information from ZbMath'''
+    '''Fetch citation metadata for *doi* from the zbMath Open API.
+
+    Args:
+        doi: DOI string.
+
+    Returns:
+        :class:`requests.Response` (status 200) on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f"https://api.zbmath.org/v1/document/_structured_search?page=0&results_per_page=100&DOI={doi}",
@@ -333,7 +465,16 @@ def get_zbmath_data(doi):
         return error
 
 def get_orcids(doi):
-    '''Function to get ORCiD Information from ORCiD'''
+    '''Query the ORCID public API for researchers associated with *doi*.
+
+    Args:
+        doi: DOI string used as the ``doi-self`` search criterion.
+
+    Returns:
+        :class:`requests.Response` (status 200) containing a JSON payload with
+        an ``"result"`` list of ORCID records on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f'https://pub.orcid.org/v3.0/search/?q=doi-self:"{doi}"',
@@ -346,7 +487,16 @@ def get_orcids(doi):
         return error
 
 def get_author_by_orcid(orcid_id):
-    '''Function to get Author Information by ORCiD'''
+    '''Fetch personal-details for a researcher from the ORCID public API.
+
+    Args:
+        orcid_id: ORCID iD string (e.g. ``"0000-0002-1825-0097"``).
+
+    Returns:
+        :class:`requests.Response` (status 200) containing a JSON payload with
+        the researcher's personal details on success, or the caught
+        :class:`requests.exceptions.RequestException` on failure.
+    '''
     try:
         request = requests.get(
             f"https://pub.orcid.org/v3.0/{orcid_id}/personal-details",

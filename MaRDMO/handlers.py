@@ -1,4 +1,12 @@
-'''Module containing general Handlers for MaRDMO'''
+'''General cross-catalog relation handler for MaRDMO.
+
+Provides :class:`Information`, whose :meth:`~Information.relation` method is
+called whenever a relation value is saved to any MaRDMO questionnaire.  It
+dispatches to the appropriate sub-handler (:mod:`~MaRDMO.model.handlers`,
+:mod:`~MaRDMO.algorithm.handlers`, or :mod:`~MaRDMO.workflow.handlers`)
+based on the active project catalog, then registers and hydrates the related
+entity in the questionnaire section.
+'''
 
 from .adders import add_entities, add_new_entities
 from .helpers import extract_parts
@@ -14,6 +22,7 @@ _INFO_CACHE: dict = {}
 
 
 def _get_model_info():
+    '''Return the singleton :class:`~MaRDMO.model.handlers.Information` instance.'''
     if 'model' not in _INFO_CACHE:
         from .model.handlers import Information as M  # pylint: disable=import-outside-toplevel
         _INFO_CACHE['model'] = M()
@@ -21,6 +30,7 @@ def _get_model_info():
 
 
 def _get_algo_info():
+    '''Return the singleton :class:`~MaRDMO.algorithm.handlers.Information` instance.'''
     if 'algo' not in _INFO_CACHE:
         from .algorithm.handlers import Information as A  # pylint: disable=import-outside-toplevel
         _INFO_CACHE['algo'] = A()
@@ -28,6 +38,7 @@ def _get_algo_info():
 
 
 def _get_workflow_info():
+    '''Return the singleton :class:`~MaRDMO.workflow.handlers.Information` instance.'''
     if 'workflow' not in _INFO_CACHE:
         from .workflow.handlers import Information as W  # pylint: disable=import-outside-toplevel
         _INFO_CACHE['workflow'] = W()
@@ -90,11 +101,17 @@ class Information:  # pylint: disable=too-few-public-methods
         pass
 
     def relation(self, instance):
-        '''Relation Information.
+        '''Handle a saved relation value by registering and hydrating the entity.
+
+        Dispatches on the project's catalog to the appropriate sub-handler, then:
 
         1. Adds the related entity to the correct questionnaire section.
-        2. Explicitly hydrates the entity via fill_entity on the appropriate
-           Information class.
+        2. Hydrates the entity via ``fill_entity`` on the appropriate
+           :class:`~MaRDMO.handler_base.BaseInformation` subclass.
+
+        Args:
+            instance: RDMO Value instance carrying ``project``, ``text``,
+                      ``external_id``, and ``attribute`` attributes.
         '''
         catalog_key = str(instance.project.catalog).rsplit('/', maxsplit=1)[-1]
 

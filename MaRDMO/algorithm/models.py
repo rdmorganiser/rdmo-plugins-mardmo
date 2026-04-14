@@ -1,4 +1,16 @@
-'''Module containing Models for the Algorithm Documentation'''
+'''Dataclasses that represent entities in the Algorithm documentation catalog.
+
+Each class maps to one entity type collected from MaRDI Portal and Wikidata during
+algorithm documentation. Instances are populated from SPARQL query results and
+carry the fields needed to render questionnaire answers and export entries.
+
+Provides:
+
+- :class:`Benchmark`  — benchmark problem associated with an algorithm
+- :class:`Software`   — software implementation of an algorithm
+- :class:`Problem`    — algorithmic problem solved by an algorithm
+- :class:`Algorithm`  — central entity representing the documented algorithm
+'''
 
 from dataclasses import dataclass, field
 

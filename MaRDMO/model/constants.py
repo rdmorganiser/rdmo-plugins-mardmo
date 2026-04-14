@@ -1,4 +1,16 @@
-'''Module containing Constants for the Model Documentation'''
+'''Compile-time constants and configuration builders for the Model catalog.
+
+Centralises the property URIs, relation definitions, and question/item
+mappings that the model documentation sub-package needs at runtime.
+Values are loaded once from the RDMO database via the ``getters`` helpers
+and then referenced by handlers, providers, and workers.
+
+Provides:
+
+- ``get_relations()``       — returns the full relation-definition dict for mathematical models
+- ``get_uri_prefix_map()``  — returns the ``{prefix: URI}`` map used to expand compact IDs
+- Module-level constants built from the above (``RELATIONS``, ``URI_PREFIX_MAP``, etc.)
+'''
 
 from ..constants import BASE_URI, SECTION_MAP_BASE
 from ..getters import get_items, get_mathmoddb, get_properties, get_questions
@@ -256,7 +268,16 @@ relatant_uris = {
 
 # Relations
 def get_relations():
-    '''Relations for the Model Documentation'''
+    '''Build the relation mapping for the Model Documentation.
+
+    Maps each MathModDB relation URL to the corresponding Wikibase property
+    (and optional qualifier item or direction string) used when writing
+    statements to the MaRDI Portal.
+
+    Returns:
+        Dict mapping MathModDB relation URL strings to ``[property(, qualifier)]``
+        lists; qualifier is either a Wikibase item ID or ``'forward'``/``'backward'``.
+    '''
     mathmoddb = get_mathmoddb()
     items = get_items()
     properties = get_properties()
@@ -622,7 +643,17 @@ preview_map_quantity = [
 
 # URI PREFIX Map (I)
 def get_uri_prefix_map():
-    '''URI Prefixes for the Model Documentation'''
+    '''Build the attribute-URI → section config mapping for the Model Documentation.
+
+    Maps each relation attribute URI (used as a trigger in the handler map) to
+    the corresponding questionnaire section metadata needed to add or hydrate
+    the related entity.
+
+    Returns:
+        Dict mapping full RDMO attribute URI strings to dicts with keys
+        ``question_set`` (section root URI), ``question_id`` (ID field URI),
+        and ``prefix`` (label prefix string, e.g. ``"AD"``).
+    '''
     questions = get_questions('model')
     uri_prefix_map = {
         f'{BASE_URI}{questions["Task"]["QRelatant"]["uri"]}': {

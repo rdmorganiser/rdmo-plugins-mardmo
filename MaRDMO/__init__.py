@@ -1,14 +1,24 @@
-"""
-MaRDMO: A plugin for RDMO to document and search 
-mathematical models, algorithms, and interdisciplinary 
-workflows.
+"""MaRDMO — Mathematical Research Data Management Organiser plugin for RDMO.
 
-Modules:
-- models: document mathematical models
-- algorithms: document algorithms
-- workflows: document interdisciplinary workflows
-- publication: document publications for models, algorithms, and workflows
-- search: search models, algorithms, and workflows
+MaRDMO extends the Research Data Management Organiser (RDMO) with questionnaire
+catalogs and automated metadata retrieval for three research-artifact types:
+
+- **Mathematical models** (:mod:`MaRDMO.model`) — structured documentation of
+  models, formulations, tasks, and quantities linked to the MaRDI Portal.
+- **Algorithms** (:mod:`MaRDMO.algorithm`) — structured documentation of
+  algorithms, problems, software, and benchmarks linked to the MaRDI Portal.
+- **Interdisciplinary workflows** (:mod:`MaRDMO.workflow`) — documentation of
+  computational workflows including process steps, methods, software, hardware,
+  instruments, and data sets.
+- **Publications** (:mod:`MaRDMO.publication`) — automated retrieval of
+  bibliographic metadata from Crossref, DataCite, DOI, zbMath, and ORCID.
+- **Portal search** (:mod:`MaRDMO.search`) — SPARQL-based search across models,
+  algorithms, and workflows stored in the MaRDI Portal.
+
+The plugin uses Signal handlers (:mod:`MaRDMO.router`) to react to
+questionnaire saves and fills related fields automatically.  Export to the
+MaRDI Portal is handled via OAuth2 (:mod:`MaRDMO.oauth2`) with live progress
+tracking (:mod:`MaRDMO.store`, :mod:`MaRDMO.views`).
 """
 
 __title__ = 'MaRDMO'

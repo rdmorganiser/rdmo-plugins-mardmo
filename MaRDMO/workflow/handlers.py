@@ -1,4 +1,4 @@
-'''Module containing Handlers for the Workflow Documentation.
+'''Module containing Handlers for the Interdisciplinary Workflow Documentation.
 
 Information inherits _entry, _collect_existing_ids, _hydrate_relatants,
 and _fill from BaseInformation (MaRDMO/handler_base.py).
@@ -25,6 +25,7 @@ class Information(BaseInformation):
     _ENTITY_KEYS = ('Software', 'Hardware', 'Instrument', 'Data Set', 'Method', 'Process Step')
 
     def __init__(self):
+        '''Load workflow questions, base URI, and RDMO options.'''
         self.questions = get_questions('workflow')
         self.base      = BASE_URI
         self.options   = get_options()
@@ -34,27 +35,51 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def software(self, instance):
-        '''Handle Software ID save: hydrate basics and SPARQL data.'''
+        '''Handle Software ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Software', self._fill_software_batch)
 
     def hardware(self, instance):
-        '''Handle Hardware ID save: hydrate basics and SPARQL data.'''
+        '''Handle Hardware ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Hardware', self._fill_hardware_batch)
 
     def instrument(self, instance):
-        '''Handle Instrument ID save: hydrate basics only (no SPARQL).'''
+        '''Handle Instrument ID save: hydrate basics only (no SPARQL data available).
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Instrument', self._fill_instrument_batch)
 
     def data_set(self, instance):
-        '''Handle Data Set ID save: hydrate basics and SPARQL data.'''
+        '''Handle Data Set ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Data Set', self._fill_data_set_batch)
 
     def method(self, instance):
-        '''Handle Method ID save: hydrate basics and cascade to Software/Instrument.'''
+        '''Handle Method ID save: hydrate basics and cascade to Software/Instrument.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Method', self._fill_method_batch)
 
     def process_step(self, instance):
-        '''Handle Process Step ID save: hydrate basics and cascade to all related entities.'''
+        '''Handle Process Step ID save: hydrate basics and cascade to all related entities.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Process Step', self._fill_process_step_batch)
 
     # ------------------------------------------------------------------ #
@@ -62,7 +87,14 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def _fill_software_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple software items with a single SPARQL query per source.'''
+        '''Hydrate multiple Software pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -103,7 +135,14 @@ class Information(BaseInformation):
                 statement={'relatant': f'{self.base}{software["Dependency"]["uri"]}'})
 
     def _fill_hardware_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple hardware items with a single SPARQL query per source.'''
+        '''Hydrate multiple Hardware pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -144,7 +183,17 @@ class Information(BaseInformation):
                     info={'text': data.cores, 'set_prefix': set_index})
 
     def _fill_instrument_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple instruments. Instruments have no external SPARQL data.'''
+        '''Hydrate multiple Instrument pages with basic label/description only.
+
+        Instruments have no external SPARQL data; only :func:`~.adders.add_basics`
+        is called for each item.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``; unused).
+            visited:  Set of external IDs already processed (unused for instruments).
+        '''
         if not items:
             return
 
@@ -153,7 +202,14 @@ class Information(BaseInformation):
                        item_type='Instrument', index=(0, set_index))
 
     def _fill_data_set_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple data sets with a single SPARQL query per source.'''
+        '''Hydrate multiple Data Set pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
         if visited is None:
@@ -176,7 +232,14 @@ class Information(BaseInformation):
             self._write_data_set_fields(project, data_set_q, data, set_index)
 
     def _write_data_set_fields(self, project, data_set_q, data, set_index):
-        '''Write all RDMO fields for one data set item.'''
+        '''Write size, publication, archival, and reference fields for one Data Set page.
+
+        Args:
+            project:    RDMO project instance.
+            data_set_q: Questions sub-dict for the Data Set section.
+            data:       Parsed data-set dataclass instance.
+            set_index:  Set-index of the data set page to write into.
+        '''
         if data.size:
             value_editor(
                 project=project,
@@ -230,9 +293,16 @@ class Information(BaseInformation):
                       'set_prefix': set_index})
 
     def _fill_method_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple methods with a single SPARQL query per source.
+        '''Hydrate multiple Method pages with a single SPARQL query per source.
 
-        Explicitly cascades into Software and Instrument via _hydrate_relatants.
+        Explicitly cascades into Software and Instrument via
+        :meth:`_hydrate_relatants` rather than relying on signal-driven cascades.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
         '''
         if not items:
             return
@@ -295,10 +365,16 @@ class Information(BaseInformation):
                 ))
 
     def _fill_process_step_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple process steps with a single SPARQL query per source.
+        '''Hydrate multiple Process Step pages with a single SPARQL query per source.
 
-        Explicitly cascades into Data Set, Method, Software, and Instrument
-        via _hydrate_relatants instead of relying on signal-driven cascades.
+        Explicitly cascades into Data Set, Method, Software, and Instrument via
+        :meth:`_hydrate_relatants` instead of relying on signal-driven cascades.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
         '''
         if not items:
             return
@@ -331,7 +407,21 @@ class Information(BaseInformation):
         self, project, process_step, data, set_index, catalog, visited,
         section_indices=None,
     ):
-        '''Write all relation fields and cascade hydration for one process step.'''
+        '''Write all relation fields and cascade hydration for one Process Step page.
+
+        Adds Input/Output Data Set, Method, Software, and Instrument relations,
+        then cascades into related entities via :meth:`_hydrate_relatants`.
+
+        Args:
+            project:         RDMO project instance.
+            process_step:    Questions sub-dict for the Process Step section.
+            data:            Parsed process-step dataclass instance.
+            set_index:       Set-index of the process step page to write into.
+            catalog:         Active catalog URI suffix.
+            visited:         Set of external IDs already processed.
+            section_indices: Dict mapping section names to next available set
+                             indices (mutated in place for cascade writes).
+        '''
         # Input Data Sets
         add_relations_static(
             project=project, data=data,

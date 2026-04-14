@@ -1,11 +1,33 @@
-'''Module containing Utility Functions for the Model Documentation'''
+'''Utility functions for assembling model-entity data structures.
+
+Provides helpers that map raw SPARQL result fields to the structured dicts
+expected by handler and worker code when building model documentation entries.
+
+Provides:
+
+- ``get_data_properties``   — return the list of data-property keys for a given entity type
+- ``build_quantity_info``   — construct a quantity/quantity-kind info dict from raw data
+- ``map_entity_quantity``   — map an entity's quantity fields using the appropriate property list
+'''
 
 from .constants import DEPENDENT_PROPERTIES, INDEPENDENT_PROPERTIES
 
 from ..getters import get_items, get_mathmoddb
 
 def get_data_properties(item_type):
-    """Get Data Properties Mapping"""
+    """Return a URL→QID mapping of data properties for the given *item_type*.
+
+    Combines class-independent properties (the same for all entity types) with
+    class-dependent properties whose Wikibase item QID is suffixed with the
+    *item_type* string (e.g. ``"linear model"`` → ``"linear quantity"``).
+
+    Args:
+        item_type: Entity class string, e.g. ``"model"``, ``"task"``,
+                   ``"quantity"``, or ``"quantity kind"``.
+
+    Returns:
+        Dict mapping MathModDB property URL to Wikibase item QID.
+    """
 
     # Get MathModDB Mapping and Items
     mathmoddb = get_mathmoddb()
@@ -26,7 +48,18 @@ def get_data_properties(item_type):
     return properties
 
 def build_quantity_info(quantity, qtype):
-    """Build the Info dict for a Quantity or QuantityKind."""
+    '''Build the ``Info`` sub-dict for a Quantity or QuantityKind element.
+
+    Args:
+        quantity: Answer sub-dict for a single quantity/quantity-kind entry.
+        qtype:    Entity class string — ``"Quantity"`` or ``"Quantity Kind"``.
+                  Quantity entries additionally receive ``QKName`` and ``QKID``
+                  fields pointing to their associated Quantity Kind.
+
+    Returns:
+        Dict with keys ``"Type"``, ``"Name"``, ``"Description"``, ``"ID"``,
+        and (for Quantity only) ``"QKName"`` and ``"QKID"``.
+    '''
     base_info = {
         "Type": qtype,
         "Name": quantity.get("Name", ""),
@@ -42,7 +75,18 @@ def build_quantity_info(quantity, qtype):
     return base_info
 
 def map_entity_quantity(data, entity_type):
-    """Map quantities or quantity kinds to entity elements."""
+    '''Attach Quantity/QuantityKind ``Info`` dicts to matching formula elements.
+
+    For each entity of *entity_type* in *data*, matches each element's
+    ``"quantity"`` name against the top-level ``"quantity"`` section and
+    writes a ``"Info"`` key (built by :func:`build_quantity_info`) when a
+    match is found.
+
+    Args:
+        data:        Top-level answers dict (mutated in place).
+        entity_type: Key of the entity section to process (e.g.
+                     ``"formulation"`` or ``"task"``).
+    '''
     for entity in data.get(entity_type, {}).values():
         for element in entity.get("element", {}).values():
             element_quantity_name = element.get("quantity", {}).get("Name", "").lower()

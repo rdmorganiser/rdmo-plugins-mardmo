@@ -1,4 +1,20 @@
-'''Module containing Models for the Model Documentation'''
+'''Dataclasses and fetch helpers that represent entities in the Model catalog.
+
+Each class maps to one entity type collected from MaRDI Portal and Wikidata during
+model documentation. Instances are populated from SPARQL query results and
+carry the fields needed to render questionnaire answers and export entries.
+
+Provides:
+
+- :class:`RelatantWithQualifier`     — entity triple extended with a qualifier value
+- :class:`ResearchField`             — mathematical research field
+- :class:`ResearchProblem`           — research problem addressed by a model
+- :class:`MathematicalModel`         — central model entity with all related data
+- :class:`QuantityOrQuantityKind`    — scalar quantity or quantity kind used in a model
+- :class:`MathematicalFormulation`   — formula / equation belonging to a model
+- :class:`Task`                      — computational task derived from a model
+- ``fetch_formula_data``             — batch-fetch formula LaTeX and quantity info
+'''
 # pylint: disable=too-many-lines
 
 import logging
@@ -20,7 +36,18 @@ _USER_AGENT = 'MaRDMO (https://zib.de; reidelbach@zib.de)'
 
 
 def _wbgetentities_batch(api_url, qids, props, extra_params=None):
-    '''Fetch wbgetentities in batches of 50. Returns {qid: entity_data}.'''
+    '''Fetch Wikibase entities in batches of 50 via the ``wbgetentities`` API.
+
+    Args:
+        api_url:     Base URL of the Wikibase API endpoint.
+        qids:        List of QID strings to fetch (e.g. ``['Q123', 'Q456']``).
+        props:       Pipe-separated property string passed to ``wbgetentities``
+                     (e.g. ``'labels|descriptions'`` or ``'claims'``).
+        extra_params: Optional dict of additional API parameters (e.g. ``{'languages': 'en'}``).
+
+    Returns:
+        Dict mapping QID strings to their entity data dicts as returned by the API.
+    '''
     result = {}
     params_base = {
         'action': 'wbgetentities',
@@ -45,7 +72,16 @@ def _wbgetentities_batch(api_url, qids, props, extra_params=None):
 
 
 def _extract_qualifier_qid(claim, pid_sym_rep):
-    '''Return the QID of the symbol-represents qualifier, or None.'''
+    '''Return the QID of the symbol-represents qualifier on a claim, or None.
+
+    Args:
+        claim:       A single claim dict from a Wikibase ``wbgetentities`` response.
+        pid_sym_rep: Property ID string for the "symbol represents" qualifier.
+
+    Returns:
+        QID string if the qualifier is present and carries an entity value,
+        otherwise ``None``.
+    '''
     for q_claim in claim.get('qualifiers', {}).get(pid_sym_rep, []):
         val = q_claim.get('datavalue', {}).get('value', {})
         if isinstance(val, dict):
@@ -102,7 +138,18 @@ def _fetch_qty_labels(api_url, qty_qids_needed):
 
 
 def _build_formula_entry(data, qty_info):
-    '''Build the formula result dict for a single item from parsed data.'''
+    '''Build the formula result dict for a single item from parsed intermediate data.
+
+    Args:
+        data:     Intermediate dict for one QID with keys ``formulas`` (list of
+                  formula strings) and ``raw_qty`` (list of ``(symbol, qty_qid)`` tuples).
+        qty_info: Dict mapping quantity QIDs to ``(label, description)`` tuples,
+                  as returned by :func:`_fetch_qty_labels`.
+
+    Returns:
+        Dict with keys ``formulas`` (list[str]), ``symbols`` (list[str]),
+        and ``contains_quantity`` (list[Relatant]).
+    '''
     symbols           = []
     contains_quantity = []
     for symbol, qty_qid in data['raw_qty']:
@@ -121,10 +168,16 @@ def _build_formula_entry(data, qty_info):
 
 
 def fetch_formula_data(qids: list) -> dict:
-    '''Fetch defining formula and in-defining-formula data via wbgetentities API.
+    '''Fetch defining formula and in-defining-formula data via the wbgetentities API.
 
-    qids: list of raw QIDs like ['Q123', 'Q456'] (no "mardi:" prefix).
-    Returns: {qid: {'formulas': [str], 'symbols': [str], 'contains_quantity': [Relatant]}}
+    Args:
+        qids: List of raw QIDs such as ``['Q123', 'Q456']`` (without ``mardi:`` prefix).
+
+    Returns:
+        Dict mapping each QID to a result dict with keys:
+        ``formulas`` (list[str]), ``symbols`` (list[str]),
+        and ``contains_quantity`` (list[Relatant]).
+        Returns an empty dict if *qids* is empty.
     '''
     if not qids:
         return {}
@@ -157,7 +210,16 @@ class RelatantWithQualifier:
 
     @classmethod
     def from_query(cls, raw: str) -> 'RelatantWithQualifier':
-        '''Generate Class Item From Query'''
+        '''Parse a delimited SPARQL result string into a RelatantWithQualifier instance.
+
+        Args:
+            raw: Delimited string with four ``||``-separated fields (identifier,
+                 label, description, qualifier) and an optional ``>|<``-separated
+                 order suffix.
+
+        Returns:
+            RelatantWithQualifier instance populated from the parsed fields.
+        '''
         if ">|<" in raw:
             raw, order = raw.split(" >|< ")
         else:
@@ -368,7 +430,7 @@ class MathematicalModel:
 
     @classmethod
     def from_query_single(cls, data: dict) -> 'MathematicalModel':
-        '''Generate Class Item From Query'''
+        '''Parse one SPARQL result row into a MathematicalModel instance.'''
 
         mathmoddb = get_mathmoddb()
         items = get_items()

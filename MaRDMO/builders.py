@@ -1,4 +1,15 @@
-'''Module building handler maps for post_save and post_delete routing.'''
+'''Factory function that builds the attribute-URI-to-handler dispatch map.
+
+The router (``router.py``) needs to know which handler method to call for each
+RDMO attribute URI that arrives in a signal. This module assembles that map once
+at startup by resolving question URIs from the RDMO database and pairing them
+with the appropriate ``Information`` handler methods from each sub-package.
+
+Provides:
+
+- ``build_handler_map`` — construct and return the ``{catalog: {uri: handler}}``
+  dispatch dict covering the model, algorithm, workflow, and publication catalogs
+'''
 
 from .constants import BASE_URI
 from .getters import get_questions
@@ -9,7 +20,20 @@ from .publication.handlers import Information as PublicationInformation
 from .handlers import Information as GeneralInformation
 
 def build_handler_map():
-    """Build a global mapping of attribute URIs to handler functions."""
+    """Build and return the global attribute-URI-to-handler dispatch map.
+
+    Loads question URI configurations from the RDMO database for all four
+    catalogs (model, algorithm, workflow, publication), instantiates the
+    corresponding ``Information`` handler objects, and maps each relevant
+    attribute URI to the correct handler method.
+
+    Returns:
+        dict: Nested mapping of the form
+        ``{catalog_slug: {absolute_attribute_uri: handler_method}}``.
+        Each inner dict is passed to the router so that incoming
+        ``post_save`` signals can be dispatched without any per-signal
+        lookups.
+    """
 
     base = BASE_URI
     handler_map = {}

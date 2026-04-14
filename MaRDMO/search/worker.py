@@ -1,4 +1,14 @@
-'''Worker Module to search Models, Workflows, and Algorithms'''
+'''Background worker for the cross-catalog MaRDI search questionnaire.
+
+Runs a SPARQL search against the MaRDI Portal to find mathematical models,
+workflows, and algorithms that match user-supplied criteria. Results are
+rendered as an HTML table.
+
+Provides:
+
+- ``search`` — entry point that executes the portal query, formats the result
+  table, and stores it for the view layer to retrieve
+'''
 
 import html
 
@@ -25,7 +35,23 @@ from .sparql import (
 )
 
 def search(answers, options):
-    '''Function to build queries, get results and add to answers'''
+    '''Build SPARQL queries from user search criteria, execute them, and store results.
+
+    Dispatches on ``answers["search"]["options"]`` to one of three search
+    modes: Interdisciplinary Workflow, Mathematical Model, or Algorithm.
+    For each mode, constructs a SPARQL query from the selected filter criteria,
+    executes it against the appropriate endpoint (MaRDI Portal or MathAlgoDB),
+    and writes the escaped query string, result count, and link list back into
+    *answers*.
+
+    Args:
+        answers: Top-level answers dict (mutated in place with ``"query"``,
+                 ``"no_results"``, and ``"links"`` keys).
+        options: Global RDMO options dict used for option-value comparisons.
+
+    Returns:
+        The mutated *answers* dict.
+    '''
     if answers['search'].get('options') == options['InterdisciplinaryWorkflow']:
 
         # SPARQL via Research Objectives

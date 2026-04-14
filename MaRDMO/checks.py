@@ -1,4 +1,10 @@
-'''Module containing Checks for Model and Algorithm Documentation'''
+'''Validation checks for Model and Algorithm Documentation questionnaire data.
+
+Provides :class:`MaRDMOCheck`, which inspects a submitted answers dict for
+logical inconsistencies — such as conflicting data-property flags or missing
+required fields — and collects structured error messages that are returned to
+the user before an export is attempted.
+'''
 
 from rdmo.domain.models import Attribute
 
@@ -10,8 +16,14 @@ from .constants import BASE_URI, CATALOG_ALGORITHM, CATALOG_MODEL, CATALOG_MODEL
 from .getters import get_mathmoddb, get_mathalgodb
 
 class Checks:
-    '''Check Class checks User Answers upon Transfer to MaRDI Portal'''
+    '''Validate user answers before transferring documentation to the MaRDI Portal.
+
+    Runs catalog-specific consistency checks (mandatory fields, "not found"
+    placeholders, conflicting data properties) and collects human-readable
+    error messages for display.
+    '''
     def __init__(self):
+        '''Initialise with ontology registries and an empty error list.'''
         self.mathmoddb = get_mathmoddb()
         self.mathalgodb = get_mathalgodb()
         self.err = []
@@ -22,10 +34,19 @@ class Checks:
 
     @staticmethod
     def _error(section, page, message):
+        '''Format an error string ``"Section (Page X): message"``.'''
         return f"{section} (Page {page}): {message}"
 
     def _check_static(self, data, page_name, relation, from_class, to_class):
-        '''Append errors for a mandatory 1-value relation (must exist, must be found)'''
+        '''Append an error if a mandatory single-value relation is missing or ``"not found"``.
+
+        Args:
+            data:       Entity answer dict.
+            page_name:  Human-readable page label used in the error message.
+            relation:   Key in *data* for the relation (e.g. ``"RelationRP"``).
+            from_class: Display name of the source entity (for the error message).
+            to_class:   Display name of the expected target entity.
+        '''
         if not data.get(relation):
             self.err.append(
                 self._error(
@@ -44,7 +65,21 @@ class Checks:
             )
 
     def _check_flexible(self, data, page_name, relation, from_class, to_class=None, optional=True):
-        '''Append errors for a multi-value relation block'''
+        '''Append errors for a typed multi-value relation block.
+
+        Checks for: missing block (when *optional* is ``False``), entries
+        with no relation type, entries pointing to ``"MISSING OBJECT ITEM"``,
+        and entries pointing to ``"not found"`` items.
+
+        Args:
+            data:       Entity answer dict.
+            page_name:  Human-readable page label for error messages.
+            relation:   Key in *data* for the relation block.
+            from_class: Display name of the source entity.
+            to_class:   Display name of the target entity; defaults to
+                        *from_class* when omitted.
+            optional:   If ``False``, an empty relation block is also an error.
+        '''
         to_class = to_class or from_class
         entries = data.get(relation, {})
 
@@ -79,7 +114,16 @@ class Checks:
             )
 
     def id_name_description(self, project, data, catalog):
-        '''Perform ID, Name and Description Checks'''
+        '''Check that every entity page has a non-empty ID, Name, and Description.
+
+        Also flags equal Name/Description pairs and descriptions exceeding
+        250 characters.  Skips entity types not relevant to *catalog*.
+
+        Args:
+            project: RDMO project instance (used to look up page labels).
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
 
         if catalog == CATALOG_ALGORITHM:
             section_map = SECTION_MAP_ALGO
@@ -141,6 +185,7 @@ class Checks:
                     )
 
     def _pairs(self, mapping, url_0, url_1):
+        '''Return a set of the two URL strings for the given MathModDB/MathAlgoDB keys.'''
         return {
             mapping.get(key = url_0)["url"],
             mapping.get(key = url_1)["url"],
@@ -151,7 +196,16 @@ class Checks:
     # -------------------------------------------------------------------------
 
     def properties(self, project, data, catalog):
-        '''Perform Property Checks'''
+        '''Check for mutually exclusive (conflicting) data-property combinations.
+
+        Uses ``data_properties_check`` pairs to detect invalid co-occurrences
+        (e.g. *linear* and *nonlinear* both selected for the same entity).
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
 
         section_map = SECTION_MAP_MODEL
 
@@ -187,7 +241,17 @@ class Checks:
                     )
 
     def model(self, project, data, catalog):
-        '''Perform Model Checks'''
+        '''Check Mathematical Model documentation completeness and consistency.
+
+        Verifies that each model page has mandatory Research Problem and Task
+        links, valid Mathematical Expression relations, and (for the full
+        catalog) consistent specialisation assumptions and expression ordering.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/model')
@@ -276,7 +340,17 @@ class Checks:
                             )
 
     def task(self, project, data, catalog):
-        '''Perform Task Checks'''
+        '''Check Computational Task documentation completeness and consistency.
+
+        Verifies that each task page has mandatory Mathematical Expression links,
+        valid task–task relations, and (for the full catalog) specialisation
+        assumptions, containment order numbers, and Quantity links.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/task')
@@ -350,7 +424,17 @@ class Checks:
             )
 
     def formulation(self, project, data, catalog):
-        '''Perform Formulation Checks'''
+        '''Check Mathematical Expression documentation completeness and consistency.
+
+        For the basics catalog, flags missing references on user-defined entries.
+        For the full catalog, also verifies specialisation assumptions, the
+        presence of a formula, and that every element has a symbol and quantity.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/formulation')
@@ -444,7 +528,17 @@ class Checks:
             )
 
     def quantity(self, project, data, catalog):
-        '''Perform Quantity Checks'''
+        '''Check Quantity [Kind] documentation completeness and consistency.
+
+        Skipped entirely for the basics catalog.  Validates the Quantity/QuantityKind
+        class selection, QUDT reference ID presence, formula ``\\equiv`` sign, formula
+        element completeness, and relation blocks for Quantity and QuantityKind pages.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         if catalog == CATALOG_MODEL_BASICS:
             return
         values = project.values.filter(
@@ -562,7 +656,16 @@ class Checks:
                 )
 
     def model_problem(self, project, data, catalog):
-        '''Perform Research Problem Checks'''
+        '''Check Research Problem documentation completeness.
+
+        Verifies that each problem page has valid Research Problem relations and,
+        for the full catalog, a mandatory Academic Discipline link.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/problem')
@@ -586,7 +689,16 @@ class Checks:
             )
 
     def field(self, project, data, catalog):
-        '''Perform Academic Discipline Checks'''
+        '''Check Academic Discipline relation completeness.
+
+        Skipped for the basics catalog.  Verifies that each discipline page
+        has valid Academic Discipline–to–discipline relations.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         if catalog == CATALOG_MODEL_BASICS:
             return
         values = project.values.filter(
@@ -607,7 +719,15 @@ class Checks:
     # -------------------------------------------------------------------------
 
     def algorithm(self, project, data):
-        '''Perform Algorithm Checks'''
+        '''Check Algorithm documentation completeness.
+
+        Verifies that each algorithm page has mandatory Algorithmic Task and
+        Software links, and valid Algorithm–to–Algorithm relations.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
         values = project.values.filter(
             snapshot=None,
             attribute=Attribute.objects.get(uri=f'{BASE_URI}domain/algorithm')
@@ -635,7 +755,15 @@ class Checks:
                 from_class = 'Algorithm')
 
     def algo_problem(self, project, data):
-        '''Perform Algorithmic Task Checks'''
+        '''Check Algorithmic Task documentation completeness.
+
+        Verifies that each problem page has a mandatory Benchmark link and
+        valid Algorithmic Task–to–Task relations.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/problem')
@@ -657,7 +785,16 @@ class Checks:
             )
 
     def software(self, project, data):
-        '''Perform Software Checks'''
+        '''Check Software documentation completeness.
+
+        Verifies that each software page has a mandatory Benchmark link, and
+        that any reference entries (DOI, swMath ID, URL fields) have a
+        corresponding value when their option is selected.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/software')
@@ -690,7 +827,15 @@ class Checks:
                         )
 
     def benchmark(self, project, data):
-        '''Perform Benchmark Checks'''
+        '''Check Benchmark documentation completeness.
+
+        Verifies that any reference entries (DOI, MORwiki ID, URL fields) have
+        a corresponding value when their option is selected.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/benchmark')
@@ -720,7 +865,17 @@ class Checks:
     # -------------------------------------------------------------------------
 
     def publication(self, project, data, catalog):
-        '''Perform Publication Checks'''
+        '''Check Publication documentation completeness.
+
+        Flags user-defined publications that have no DOI reference.  In
+        algorithm mode, at least one Algorithm or Benchmark/Software link is
+        required; in model mode, a Mathematical Model Entity link is mandatory.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+        '''
         values = project.values.filter(
             snapshot  = None,
             attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/publication')
@@ -779,7 +934,21 @@ class Checks:
     # -------------------------------------------------------------------------
 
     def run_model(self, project, data, catalog):
-        '''Run all Model Documentation Checks'''
+        '''Run all model-catalog checks and return the collected error list.
+
+        Executes, in order: ID/Name/Description, data properties, model, task,
+        formulation, quantity, research problem, academic discipline, and
+        publication checks.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+            catalog: Active catalog URI suffix.
+
+        Returns:
+            List of human-readable error strings, or an empty list when all
+            checks pass.
+        '''
         self.id_name_description(project, data, catalog)
         self.properties(project, data, catalog)
         self.model(project, data, catalog)
@@ -792,7 +961,19 @@ class Checks:
         return self._finalise()
 
     def run_algorithm(self, project, data):
-        '''Run all Algorithm Documentation Checks'''
+        '''Run all algorithm-catalog checks and return the collected error list.
+
+        Executes, in order: ID/Name/Description, algorithm, algorithmic task,
+        software, benchmark, and publication checks.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+
+        Returns:
+            List of human-readable error strings, or an empty list when all
+            checks pass.
+        '''
         catalog = CATALOG_ALGORITHM
         self.id_name_description(project, data, catalog)
         self.algorithm(project, data)
@@ -803,6 +984,12 @@ class Checks:
         return self._finalise()
 
     def _finalise(self):
+        '''Sort errors, prepend a header, and return the list.
+
+        Returns:
+            ``self.err`` — sorted and with a leading header string when errors
+            are present, or an empty list when no issues were found.
+        '''
         if self.err:
             self.err.sort()
             self.err.insert(0, "Following aspects prevented the export:")

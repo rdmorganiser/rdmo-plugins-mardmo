@@ -55,6 +55,7 @@ class Information(BaseInformation):
     )
 
     def __init__(self):
+        '''Load model and publication questions, MathModDB registry, and base URI.'''
         self.questions = get_questions('model') | get_questions('publication')
         self.mathmoddb = get_mathmoddb()
         self.base      = BASE_URI
@@ -64,27 +65,51 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def field(self, instance):
-        '''Handle Research Field ID save: hydrate basics and SPARQL data.'''
+        '''Handle Research Field ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Research Field', self._fill_field_batch)
 
     def problem(self, instance):
-        '''Handle Research Problem ID save: hydrate basics and SPARQL data.'''
+        '''Handle Research Problem ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Research Problem', self._fill_problem_batch)
 
     def quantity(self, instance):
-        '''Handle Quantity ID save: hydrate basics and SPARQL data.'''
+        '''Handle Quantity ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Quantity', self._fill_quantity_batch)
 
     def formulation(self, instance):
-        '''Handle Formulation ID save: hydrate basics and SPARQL data.'''
+        '''Handle Mathematical Formulation ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Mathematical Formulation', self._fill_formulation_batch)
 
     def task(self, instance):
-        '''Handle Task ID save: hydrate basics and SPARQL data.'''
+        '''Handle Computational Task ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Task', self._fill_task_batch)
 
     def model(self, instance):
-        '''Handle Model ID save: hydrate basics and SPARQL data.'''
+        '''Handle Mathematical Model ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
         self._entry(instance, 'Mathematical Model', self._fill_model_batch)
 
     # ------------------------------------------------------------------ #
@@ -92,7 +117,21 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def _hydrate_assumptions(self, project, data, prop_keys, catalog, visited):
-        '''Hydrate formulation IDs embedded as assumption qualifiers.'''
+        '''Hydrate Mathematical Formulation pages referenced as assumption qualifiers.
+
+        Parses assumption qualifier strings from relation relatants, resolves
+        the embedded formulation external IDs, and calls :meth:`_fill_formulation_batch`
+        for any IDs not yet in the questionnaire.
+
+        Args:
+            project:   RDMO project instance.
+            data:      Dataclass instance whose relation attributes may carry
+                       qualifier strings.
+            prop_keys: Iterable of attribute names on *data* to inspect for
+                       assumption qualifiers.
+            catalog:   Active catalog URI suffix.
+            visited:   Set of external IDs already processed (mutated in place).
+        '''
         from ..helpers import process_qualifier  # noqa: PLC0415
 
         mf_id_uri  = f'{self.base}{self.questions["Mathematical Formulation"]["ID"]["uri"]}'
@@ -134,7 +173,14 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
 
     def _fill_field_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple research fields with a single SPARQL query per source.'''
+        '''Hydrate multiple Research Field pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 
@@ -180,7 +226,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_problem_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple research problems with a single SPARQL query per source.'''
+        '''Hydrate multiple Research Problem pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 
@@ -246,7 +299,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_quantity_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple quantities with a single SPARQL query per source.'''
+        '''Hydrate multiple Quantity [Kind] pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 
@@ -346,7 +406,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_formulation_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple formulations with a single SPARQL query per source.'''
+        '''Hydrate multiple Mathematical Formulation pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 
@@ -470,7 +537,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_task_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple tasks with a single SPARQL query per source.'''
+        '''Hydrate multiple Computational Task pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 
@@ -570,7 +644,14 @@ class Information(BaseInformation):
                                        catalog, visited)
 
     def _fill_model_batch(self, project, items, catalog, visited):
-        '''Hydrate multiple mathematical models with a single SPARQL query per source.'''
+        '''Hydrate multiple Mathematical Model pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix.
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
         if not items:
             return
 

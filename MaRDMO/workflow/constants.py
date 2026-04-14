@@ -1,4 +1,16 @@
-'''Module containing Constants for the Workflow Documentation'''
+'''Compile-time constants and configuration builders for the Workflow catalog.
+
+Centralises the property URIs, question/item mappings, and publication-order
+definitions used by the workflow documentation sub-package at runtime.
+Values are loaded once from the RDMO database via the ``getters`` helpers
+and then referenced by handlers, providers, and workers.
+
+Provides:
+
+- ``get_uri_prefix_map()`` — returns the ``{prefix: URI}`` map used to expand compact IDs
+- ``order_to_publish()``   — returns the ordered list of workflow attributes for portal export
+- Module-level constants built from the above
+'''
 
 from ..constants import BASE_URI
 from ..getters import get_options, get_questions
@@ -19,7 +31,15 @@ data_set_reference_ids = [
 
 # URI PREFIX Map
 def get_uri_prefix_map():
-    '''URI Prefixes for the Workflow Documentation'''
+    '''Build the attribute-URI → section config mapping for the Workflow Documentation.
+
+    Maps each relation attribute URI to the corresponding questionnaire section
+    metadata needed to add or hydrate the related entity.
+
+    Returns:
+        Dict mapping full RDMO attribute URI strings to dicts with keys
+        ``question_set``, ``question_id``, and ``prefix``.
+    '''
     questions = get_questions('workflow')
     uri_prefix_map = {
         f'{BASE_URI}{questions["Process Step"]["Input"]["uri"]}': {
@@ -91,7 +111,12 @@ PROPS = {
 
 # Order of toPublish Answers
 def order_to_publish():
-    '''Function to order publishing options.'''
+    '''Build an ordered mapping of publishing option keys to ``(rank, option_value)`` tuples.
+
+    Returns:
+        Dict ``{"Yes": (0, …), "doi": (1, …), "url": (2, …), "No": (3, …)}``
+        where values are resolved RDMO option strings.
+    '''
     options = get_options()
     order = {
         'Yes': (0, options['Yes']),
