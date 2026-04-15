@@ -1,5 +1,7 @@
 # Algorithm
 
+::: MaRDMO.algorithm
+
 ## Handlers
 ::: MaRDMO.algorithm.handlers
 
