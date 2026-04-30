@@ -12,7 +12,11 @@ Provides:
 # pylint: disable=too-few-public-methods  # Provider subclasses only need get_options
 
 from rdmo.options.providers import Provider
+
+from ..getters import get_items
 from ..queries import query_sources
+
+_ITEMS = get_items()
 
 class MaRDISearch(Provider):
     '''General Provider (MaRDI Portal),
@@ -40,5 +44,9 @@ class MaRDISearch(Provider):
         # Define the query sources
         sources = ['mardi']
 
-        return query_sources(search, sources)
+        return query_sources(
+            search = search,
+            item_class = _ITEMS['academic discipline'],
+            sources = sources
+        )
     
