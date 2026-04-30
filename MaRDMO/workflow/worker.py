@@ -5,13 +5,17 @@ into a :class:`~MaRDMO.payload.GeneratePayload` ready for submission to the
 MaRDI Portal Wikibase instance.
 '''
 
-from dataclasses import asdict
+from .constants import preview_relations, REPRODUCIBILITY
 
-from .models import ModelProperties, Variables, Parameters
-from .constants import REPRODUCIBILITY
-
-from ..getters import get_items, get_options, get_properties, get_sparql_query, get_url
-from ..helpers import unique_items
+from ..getters import (
+    get_items,
+    get_mathalgodb,
+    get_mathmoddb,
+    get_options,
+    get_properties,
+    get_url
+)
+from ..helpers import entity_relations, entity_relations_grouped, unique_items
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
@@ -26,77 +30,123 @@ class prepareWorkflow:
         '''Initialise with Wikibase items and properties from MaRDMOConfig.'''
         self.items = get_items()
         self.properties = get_properties()
+        self.mathmoddb = get_mathmoddb()
+        self.mathalgodb = get_mathalgodb()
 
-    def preview(self, data):
-        '''Enrich workflow answers with supplemental MaRDI Portal data for preview rendering.
+    def preview(self, answers):
+        '''Enrich the answers dict with derived display structures for the preview template.
 
-        Fetches model properties, process-step entities, and research information
-        via SPARQL and merges them into *data* so the preview template can
-        render a complete picture.
+        First iterates over :data:`~MaRDMO.workflow.constants.preview_relations` and calls
+        :func:`~MaRDMO.helpers.entity_relations` for each entry to resolve cross-entity
+        relation labels (e.g. Workflow → Process Step) into the ``answers`` dict — the same
+        pattern used by the model and algorithm preview workers.
+
+        Then builds ``model_task_pairs`` — an ordered list of dicts with keys ``model``,
+        ``tasks``, ``has_model``, and ``has_tasks`` — for every workflow in the project
+        and stores it directly on each workflow's sub-dict
+        (``answers['workflow'][i]['model_task_pairs']``) so the template can access it as
+        ``values.model_task_pairs`` inside the ``{% for values in answers.workflow.values %}``
+        loop without integer-key lookups.  Indices from both models *and* tasks are unioned
+        so that a task with no matching model (or vice versa) still produces a row with the
+        appropriate validation flags set.
+
+        Similarly builds ``algorithm_software_pairs`` and ``method_instrument_pairs`` —
+        ordered lists of dicts with generic keys ``primary``, ``qualifier``,
+        ``has_primary``, and ``has_qualifier`` — for every process step.  Index *i*
+        pairs algorithm *i* with software *i* (and method *i* with instrument *i*);
+        a missing partner raises a validation flag rendered as a red warning via the
+        ``_relation_block_single_with_qualifier.html`` include.
 
         Args:
-            data: Top-level workflow answers dict (mutated in place).
+            answers: Top-level answers dict produced by ``get_post_data``.
 
         Returns:
-            The mutated *data* dict.
+            The same *answers* dict with relation labels and ``model_task_pairs`` added.
         '''
-        # Update Model Properties via MathModDB
-        if data.get('model',{}).get('ID'):
-            _, identifier = data['model']['ID'].split(':')
 
-            query = get_sparql_query(
-                f'workflow/queries/preview_basic.sparql'
-            ).format(
-                identifier,
-                **self.items,
-                **self.properties
+        # Prepare Relations for Preview
+        for relation in preview_relations:
+            fn = entity_relations_grouped if relation.get('grouped') else entity_relations
+            fn(
+                data = answers,
+                idx = {
+                    'from': relation['from_idx'],
+                    'to': relation['to_idx']
+                },
+                entity = {
+                    'relation': relation['relation'],
+                    'old_name': relation['old_name'],
+                    'new_name': relation['new_name'],
+                    'encryption': relation['encryption']
+                },
+                order = {
+                    'formulation': relation['formulation'],
+                    'task': relation['task']
+                },
+                assumption = relation['assumption'],
+                mapping = self.mathmoddb
             )
 
-            basic = query_sparql(query, get_url('mardi', 'sparql'))
+        for wf_data in answers.get('workflow', {}).values():
+            models = wf_data.get('model', {})
+            tasks  = wf_data.get('task', {})
+            all_indices = sorted(set(models) | set(tasks))
+            wf_data['model_task_pairs'] = [
+                {
+                    'model':     models.get(idx),
+                    'tasks':     list(tasks.get(idx, {}).values()),
+                    'has_model': bool(models.get(idx)),
+                    'has_tasks': bool(tasks.get(idx)),
+                }
+                for idx in all_indices
+            ]
+        print(answers)
+        for ps_data in answers.get('processstep', {}).values():
+            # RelationA keys are 'set_index|collection_index' strings;
+            # group all algorithms sharing the same set_index into one list.
+            algo_by_set = {}
+            for key, val in ps_data.get('RelationA', {}).items():
+                set_idx = int(str(key).split('|')[0])
+                algo_by_set.setdefault(set_idx, []).append(val)
+            software = ps_data.get('RelationS', {})
+            all_indices = sorted(set(algo_by_set) | set(software))
+            algo_params = ps_data.get('algorithm-parameter', {})
+            ps_data['algorithm_software_pairs'] = [
+                {
+                    'primary':       algo_by_set.get(idx, []),
+                    'qualifier':     software.get(idx),
+                    'has_primary':   bool(algo_by_set.get(idx)),
+                    'has_qualifier': bool(software.get(idx)),
+                    'parameters':    ', '.join(
+                        v[1][1] for v in sorted(algo_params.get(idx, {}).items())
+                        if v[1][1]
+                    ),
+                }
+                for idx in all_indices
+            ]
 
-            if basic:
-                data.get('model', {}).update(asdict(ModelProperties.from_query(basic)))
+            meth_by_set = {}
+            for key, val in ps_data.get('RelationM', {}).items():
+                set_idx = int(str(key).split('|')[0])
+                meth_by_set.setdefault(set_idx, []).append(val)
+            instruments = ps_data.get('RelationI', {})
+            meth_params = ps_data.get('method-parameter', {})
+            all_indices = sorted(set(meth_by_set) | set(instruments))
+            ps_data['method_instrument_pairs'] = [
+                {
+                    'primary':       meth_by_set.get(idx, []),
+                    'qualifier':     instruments.get(idx),
+                    'has_primary':   bool(meth_by_set.get(idx)),
+                    'has_qualifier': bool(instruments.get(idx)),
+                    'parameters':    ', '.join(
+                        v[1][1] for v in sorted(meth_params.get(idx, {}).items())
+                        if v[1][1]
+                    ),
+                }
+                for idx in all_indices
+            ]
 
-        # Update Model Variables and Parameters via MathModDB
-        if data.get('model', {}).get('task'):
-
-            query = get_sparql_query(
-                f'workflow/queries/preview_variable.sparql'
-            ).format(
-                ' '.join(f"wd:{value.get('ID', '').split(':')[1]}"
-                for _, value in data['model']['task'].items()),
-                **self.items,
-                **self.properties
-            )
-
-            variables = query_sparql(query, get_url('mardi', 'sparql'))
-            if variables:
-                for idx, variable in enumerate(variables):
-                    data.setdefault('variables', {}).update(
-                        {
-                            idx: asdict(Variables.from_query(variable))
-                        }
-                    )
-
-            query = get_sparql_query(
-                f'workflow/queries/preview_parameter.sparql'
-            ).format(
-                ' '.join(f"wd:{value.get('ID', '').split(':')[1]}"
-                for _, value in data['model']['task'].items()),
-                **self.items,
-                **self.properties
-            )
-
-            parameters = query_sparql(query, get_url('mardi', 'sparql'))
-            if parameters:
-                for idx, parameter in enumerate(parameters):
-                    data.setdefault('parameters', {}).update(
-                        {
-                            idx: asdict(Parameters.from_query(parameter))
-                        }
-                    )
-
-        return data
+        return answers
 
     def export(self, data, title, url):
         '''Assemble and return the complete Wikibase payload for a Workflow documentation export.
@@ -112,7 +162,8 @@ class prepareWorkflow:
         '''
         
         items, dependency = unique_items(data, title)
-
+        for key, value in items.items():
+            print(key, value)
         payload = GeneratePayload(
             dependency = dependency,
             user_items = items,
@@ -128,34 +179,6 @@ class prepareWorkflow:
 
         # Add / Retrieve Components of Interdisciplinary Workflow Item
         payload.process_items()
-
-        ### Add additional Algorithms / Methods Information
-        for method in data.get('method', {}).values():
-
-            # Continue if no ID exists
-            if not method.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(method)
-
-            # Add Class
-            if 'mathalgodb' in method['ID']:
-                payload.add_answer(
-                    verb=self.properties['instance of'],
-                    object_and_type=[
-                        self.items['algorithm'],
-                        'wikibase-item',
-                    ]
-                )
-            else:
-                payload.add_answer(
-                    verb=self.properties['instance of'],
-                    object_and_type=[
-                        self.items['method'],
-                        'wikibase-item',
-                    ]
-                )
 
         ### Add additional Software Information
         for software in data.get('software', {}).values():
@@ -311,27 +334,6 @@ class prepareWorkflow:
                     ]
                 )
 
-        ### Add additional Instrument Information
-        for instrument in data.get('instrument', {}).values():
-
-            # Continue if no ID exists
-            if not instrument.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(instrument)
-
-            # Add Class
-            payload.add_answer(
-                verb=self.properties['instance of'],
-                object_and_type=[
-                    self.items['research tool'],
-                    'wikibase-item',
-                ]
-            )
-
-            ### MORE INSTRUMENT INFORMATION TO ADD ###
-
         ### Add additional Dataset Information
         for dataset in data.get('dataset', {}).values():
 
@@ -390,32 +392,6 @@ class prepareWorkflow:
                         'quantity',
                     ]
                 )
-
-            # Add Data Type
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['uses'], 
-                    'relatant': 'datatype'
-                },
-                qualifier = payload.add_qualifier(
-                    self.properties['object has role'],
-                    'wikibase-item',
-                    self.items['data type']
-                )
-            )
-
-            # Add Representation Format
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['uses'], 
-                    'relatant': 'representationformat'
-                },
-                qualifier = payload.add_qualifier(
-                    self.properties['object has role'],
-                    'wikibase-item',
-                    self.items['representation format']
-                )
-            )
 
             # Add File Format
             if dataset.get('FileFormat'):
@@ -757,7 +733,7 @@ class prepareWorkflow:
         workflow = {
             'ID': 'not found',
             'Name': title,
-            'Description': data.get('general', {}).get('objective')
+            'Description': data.get('workflow', {}).get('objective')
         }
 
         # Get Item Key
@@ -773,11 +749,11 @@ class prepareWorkflow:
         )
 
         # Procedure Description to Workflow
-        if data.get('general', {}).get('procedure'):
+        if data.get('workflow', {}).get('descriptionLong'):
             payload.add_answer(
                 verb=self.properties['description'],
                 object_and_type=[
-                    data['general']['procedure'],
+                    data['workflow']['descriptionLong'],
                     'string',
                 ]
             )
@@ -848,46 +824,6 @@ class prepareWorkflow:
                     qualifier=qualifier
                 )
 
-        # Add Methods the Workflow Uses
-        for value in data.get('method', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            method_item = payload.get_item_key(value, 'object')
-            # Add Statement with Qualifier
-            qualifier = []
-            for parameter in value.get('Parameter', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['comment'],
-                        'string',
-                        parameter
-                    )
-                )
-            for software in value.get('software', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['implemented by'],
-                        payload.get_item_key(software, 'object')
-                    )
-                )
-            for instrument in value.get('instrument', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['implemented by'],
-                        payload.get_item_key(instrument, 'object')
-                    )
-                )
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    method_item,
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
         # Add Software the Workflow uses
         for value in data.get('software', {}).values():
             # Continue if no ID exists
@@ -938,56 +874,6 @@ class prepareWorkflow:
                 verb=self.properties['uses'],
                 object_and_type=[
                     hardware_item,
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
-        # Add instruments the workflow Uses
-        for value in data.get('instrument', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            instrument_item = payload.get_item_key(value, 'object')
-            # Add Statement with Qualifer
-            qualifier = []
-            if value.get('Version'):
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['edition number'],
-                        'string',
-                        value['Version']
-                    )
-                )
-            if value.get('SerialNumber'):
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['serial number'],
-                        'string',
-                        value['SerialNumber']
-                    )
-                )
-            for location in value.get('location', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['location'],
-                        'wikibase-item',
-                        payload.get_item_key(location, 'object')
-                    )
-                )
-            for software in value.get('software', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['uses'],
-                        'wikibase-item',
-                        payload.get_item_key(software, 'object')
-                    )
-                )
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    instrument_item,
                     'wikibase-item',
                 ],
                 qualifier=qualifier
