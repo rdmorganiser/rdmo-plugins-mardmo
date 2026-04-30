@@ -21,7 +21,6 @@ from .queries import query_sources, query_sources_with_user_additions
 
 _ITEMS = get_items()
 
-
 class Software(Provider):
     '''Software Provider (MaRDI Portal / Wikidata),
        No User Creation, Refresh Upon Selection
