@@ -7,7 +7,7 @@ via a lookup table (``RULES`` dict) in the caller.
 
 Provides:
 
-- ``rule_0`` … ``rule_16`` — individual rule implementations
+- ``rule_0`` … ``rule_17`` — individual rule implementations
 - ``RULES`` — ``{int: callable}`` dispatch table used by the handler layer
 '''
 
@@ -312,4 +312,22 @@ def rule_16(value, _attribute, config, prefix_idx):
     '''
     entry = basic_dict(value)
     path = [config["key1"], prefix_idx, config["key2"], value.set_index, value.collection_index]
+    return entry, path
+
+def rule_17(value, attribute, config, prefix_idx):
+    '''Handle flag-combo 3: ``[key1, prefix_idx, key2, set_index(, key3)]`` path.
+
+    Args:
+        value:      RDMO :class:`~rdmo.projects.models.Value` instance.
+        attribute:  Attribute name to read from *value*.
+        config:     Question config dict with ``key1``, ``key2``, and optional ``key3``.
+        prefix_idx: Current set-prefix index.
+
+    Returns:
+        Tuple ``(entry, path)`` where *path* includes an optional ``key3`` tail.
+    '''
+    entry = basic_list(value)
+    path = [config["key1"], prefix_idx, config["key2"]]
+    if config["key3"]:
+        path.append(config["key3"])
     return entry, path
