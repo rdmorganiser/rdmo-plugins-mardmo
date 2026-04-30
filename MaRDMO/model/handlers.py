@@ -17,7 +17,6 @@ from .constants import props, relatant_uris, relation_uris, index_counters
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
 from ..getters import (
-    get_id,
     get_mathmoddb,
     get_questions,
 )
@@ -115,58 +114,6 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
     #  Model-specific cascade helpers                                      #
     # ------------------------------------------------------------------ #
-
-    def _hydrate_assumptions(self, project, data, prop_keys, catalog, visited):
-        '''Hydrate Mathematical Formulation pages referenced as assumption qualifiers.
-
-        Parses assumption qualifier strings from relation relatants, resolves
-        the embedded formulation external IDs, and calls :meth:`_fill_formulation_batch`
-        for any IDs not yet in the questionnaire.
-
-        Args:
-            project:   RDMO project instance.
-            data:      Dataclass instance whose relation attributes may carry
-                       qualifier strings.
-            prop_keys: Iterable of attribute names on *data* to inspect for
-                       assumption qualifiers.
-            catalog:   Active catalog URI suffix.
-            visited:   Set of external IDs already processed (mutated in place).
-        '''
-        from ..helpers import process_qualifier  # noqa: PLC0415
-
-        mf_id_uri  = f'{self.base}{self.questions["Mathematical Formulation"]["ID"]["uri"]}'
-        mf_set_uri = f'{self.base}{self.questions["Mathematical Formulation"]["uri"]}'
-
-        existing = get_id(project, mf_set_uri, ['set_index'])
-        next_idx = max((e for e in existing if e is not None), default=-1) + 1
-
-        for prop in prop_keys:
-            for relatant in getattr(data, prop, []):
-                qualifier = getattr(relatant, 'qualifier', None)
-                if not qualifier:
-                    continue
-                for assumption in process_qualifier(qualifier).values():
-                    ext_id = assumption['id']
-                    if ext_id in visited:
-                        continue
-                    visited.add(ext_id)
-                    source = ext_id.split(':')[0]
-                    text   = (f'{assumption["label"]} '
-                              f'({assumption["description"]}) [{source}]')
-
-                    value_editor(project=project, uri=mf_set_uri,
-                                 info={'text': f'ME{next_idx + 1}',
-                                       'set_index': next_idx})
-                    value_editor(project=project, uri=mf_id_uri,
-                                 info={'text': text, 'external_id': ext_id,
-                                       'set_index': next_idx})
-
-                    self._fill(project=project, text=text, external_id=ext_id,
-                               set_index=next_idx,
-                               item_type='Mathematical Formulation',
-                               batch_fill_method=self._fill_formulation_batch,
-                               catalog=catalog, visited=visited)
-                    next_idx += 1
 
     # ------------------------------------------------------------------ #
     #  Batch _fill_* methods (one SPARQL query for N entities)            #
@@ -531,8 +478,20 @@ class Information(BaseInformation):
                     'assumption': f'{self.base}{formulation["Assumption"]["uri"]}',
                 })
 
-            self._hydrate_assumptions(project, data, props['Formulation'],
-                                      catalog, visited)
+            self._hydrate_qualifier_entities(
+                project=project, data=data, prop_keys=props['Formulation'],
+                spec=_RelatantSpec(
+                    question_id_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["ID"]["uri"]}'),
+                    question_set_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["uri"]}'),
+                    prefix='ME',
+                    fill_method=partial(self._fill, item_type='Mathematical Formulation',
+                                        batch_fill_method=self._fill_formulation_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_formulation_batch,
+                    section_indices=section_indices,
+                ))
             self._hydrate_publications(project, data.publications,
                                        catalog, visited)
 
@@ -639,7 +598,20 @@ class Information(BaseInformation):
                     'order':      f'{self.base}{task["Order Number"]["uri"]}',
                 })
 
-            self._hydrate_assumptions(project, data, props['Task'], catalog, visited)
+            self._hydrate_qualifier_entities(
+                project=project, data=data, prop_keys=props['Task'],
+                spec=_RelatantSpec(
+                    question_id_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["ID"]["uri"]}'),
+                    question_set_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["uri"]}'),
+                    prefix='ME',
+                    fill_method=partial(self._fill, item_type='Mathematical Formulation',
+                                        batch_fill_method=self._fill_formulation_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_formulation_batch,
+                    section_indices=section_indices,
+                ))
             self._hydrate_publications(project, data.publications,
                                        catalog, visited)
 
@@ -762,6 +734,19 @@ class Information(BaseInformation):
                     'assumption': f'{self.base}{model_q["Assumption"]["uri"]}',
                 })
 
-            self._hydrate_assumptions(project, data, props['Model'], catalog, visited)
+            self._hydrate_qualifier_entities(
+                project=project, data=data, prop_keys=props['Model'],
+                spec=_RelatantSpec(
+                    question_id_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["ID"]["uri"]}'),
+                    question_set_uri=(
+                        f'{self.base}{self.questions["Mathematical Formulation"]["uri"]}'),
+                    prefix='ME',
+                    fill_method=partial(self._fill, item_type='Mathematical Formulation',
+                                        batch_fill_method=self._fill_formulation_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_formulation_batch,
+                    section_indices=section_indices,
+                ))
             self._hydrate_publications(project, data.publications,
                                        catalog, visited)

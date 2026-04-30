@@ -6,7 +6,6 @@ carry the fields needed to render questionnaire answers and export entries.
 
 Provides:
 
-- :class:`RelatantWithQualifier`     — entity triple extended with a qualifier value
 - :class:`ResearchField`             — mathematical research field
 - :class:`ResearchProblem`           — research problem addressed by a model
 - :class:`MathematicalModel`         — central model entity with all related data
@@ -28,7 +27,7 @@ from .constants import data_properties_per_class, qudt_reference_ids
 
 from ..getters import get_items, get_mathmoddb, get_options, get_properties, get_url
 from ..helpers import split_value
-from ..models import Relatant, RelatantWithClass
+from ..models import Relatant, RelatantWithClass, RelatantWithQualifier
 
 logger = logging.getLogger(__name__)
 
@@ -198,40 +197,6 @@ def fetch_formula_data(qids: list) -> dict:
         qid: _build_formula_entry(data, qty_info)
         for qid, data in intermediate.items()
     }
-
-@dataclass
-class RelatantWithQualifier:
-    '''Data Class For Relatant Items With Qualifier'''
-    id: Optional[str]
-    label: Optional[str]
-    description: Optional[str]
-    qualifier: Optional[str]
-    order: Optional[str]
-
-    @classmethod
-    def from_query(cls, raw: str) -> 'RelatantWithQualifier':
-        '''Parse a delimited SPARQL result string into a RelatantWithQualifier instance.
-
-        Args:
-            raw: Delimited string with four ``||``-separated fields (identifier,
-                 label, description, qualifier) and an optional ``>|<``-separated
-                 order suffix.
-
-        Returns:
-            RelatantWithQualifier instance populated from the parsed fields.
-        '''
-        if ">|<" in raw:
-            raw, order = raw.split(" >|< ")
-        else:
-            order = None
-        identifier, label, description, qualifier = raw.split(" || ", 3)
-        return cls(
-            id = identifier,
-            label = label,
-            description = description,
-            qualifier = qualifier,
-            order = order
-        )
 
 @dataclass
 class ResearchField:
