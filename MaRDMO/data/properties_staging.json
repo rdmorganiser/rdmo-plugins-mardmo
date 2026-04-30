@@ -38,6 +38,7 @@
 "MORwiki ID":                       "P1208",
 "MSC ID":                           "P349",
 "nondimensionalized by":            "P1068",
+"number of compute nodes":          "P1359",
 "number of processor cores":        "P588",
 "number of records":                "P328",
 "object has role":                  "P293",
