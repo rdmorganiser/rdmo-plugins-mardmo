@@ -6,5 +6,7 @@
         {{ relation }}: {{ relatant.ID }} <br>
     {% endif %}
 {% empty %}
-    <strong style="color:red;">MISSING {{ class }}</strong>
+    {% if class %}
+        <strong style="color:red;">MISSING {{ class }}</strong>
+    {% endif %}
 {% endfor %}
