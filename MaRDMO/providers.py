@@ -56,6 +56,7 @@ class RelatedSoftwareWithCreation(Provider):
     '''
 
     search = True
+    refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
         '''Query external knowledge-graph source(s) and return matching options.
