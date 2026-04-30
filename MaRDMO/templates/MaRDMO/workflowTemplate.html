@@ -33,267 +33,88 @@
 </head>
 
 <body>
-
 <h1 id="title"> {{ title }} </h1>
 
-<h2 id="problem-statement">Problem Statement</h2>
-
-<p> {{ answers.general.problem }}</p>    
-
-<h3 id="object-of-research-and-objective">Object of Research and Objective</h3>
-
-<p> {{ answers.general.objective }} </p>    
-
-<h3 id="procedure">Procedure</h3>
-
-<p> {{ answers.general.procedure }} </p>    
-
-<h3 id="involved-disciplines">Involved Disciplines</h3>    
-
-    <p><b>Mathematical Subjects:</b></p>
-
-        {% for values in answers.mathsubject.values %} 
-            {{ forloop.counter }} - {{ values.Name }} [{{ values.ID }}] <br>
-        {% endfor %}
+<h1 id="Interdisciplinary Workflow"> Interdisciplinary Workflow </h1>
+{% for values in answers.workflow.values %}
     
-    <br>        
+    {# Include Interdisciplinary Workflow Name #}
+    {% include "MaRDMO/partials/_name.html" with class="INTERDISCIPLINARY WORKFLOW" counter=forloop.counter name=values.Name prefix="IW" %}
+
+    {# Include Interdisciplinary Workflow Short Description #}
+    {% include "MaRDMO/partials/_short_description.html" with class="INTERDISCIPLINARY WORKFLOW" description=values.Description name=values.Name %}
+
+    {# Include Interdisciplinary Workflow Detailed Description #}
+    {% include "MaRDMO/partials/_detailed_description.html" with detailed_descriptions=values.descriptionLong %}
+
+    {# Include Interdisciplinary Workflow ID #}
+    {% include "MaRDMO/partials/_id.html" with class="INTERDISCIPLINARY WORKFLOW" id=values.ID %}
+
+    {# Include Interdisciplinary Workflow research Objective #}
+    {% include "MaRDMO/partials/_research_objective.html" with objective=values.objective %}
+
+    {% if values.model_task_pairs %}
+        {# Include Mathematical Models and Tasks #}
+        {% include "MaRDMO/partials/_model_and_task.html" with pairs=values.model_task_pairs %}
+    {% endif %}
+
+    {# Include Block for single Relation between Workflow and Step #}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="IW2PS" title="Process Steps" relation="contains" relatants=values.RelationPS class="PROCESS STEP" %}
+
+    {# Include Mathematical Reproducibility #}
+    {% include "MaRDMO/partials/_reproducibility.html" with anchor="mathematical-reproducibility" title="Mathematical Reproducibility" value=values.mathematical %}
+
+    {# Include Runtime Reproducibility #}
+    {% include "MaRDMO/partials/_reproducibility.html" with anchor="runtime-reproducibility" title="Runtime Reproducibility" value=values.runtime %}
+
+    {# Include Reproducibility of Results #}
+    {% include "MaRDMO/partials/_reproducibility.html" with anchor="reproducibility-of-results" title="Reproducibility of Results" value=values.result %}
+
+    {# Include Reproducibility on original Platform #}
+    {% include "MaRDMO/partials/_reproducibility.html" with anchor="reproducibility-on-original-platform" title="Reproducibility on original Hardware or Instrument" value=values.originalplatform %}
+
+    {# Include Reproducibility on other Platform #}
+    {% include "MaRDMO/partials/_reproducibility.html" with anchor="reproducibility-on-other-platform" title="Reproducibility on other Hardware or Instrument" value=values.otherplatform %}
+
+    {# Include Transferability Statements #}
+    {% include "MaRDMO/partials/_transferability.html" with transferability=values.transferability.values %}
+
+{% empty %}
+    <strong style="color:black;">NO WORKFLOW DOCUMENTED</strong>
+{% endfor %}
+
+<h1 id="Process Steps"> Process Step </h1>
+{% for values in answers.processstep.values %}
     
-    <p><b>Non-Mathematical Disciplines:</b></p>
+    {# Include Process Step Name #}
+    {% include "MaRDMO/partials/_name.html" with class="PROCESS STEP" counter=forloop.counter name=values.Name prefix="PS" %}
 
-        {% for values in answers.nonmathdiscipline.values %}
-            {% if 'mardi' in values.ID %}
-                {{ forloop.counter }} - <a href="{{ mardiURI }}{{ values.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ values.Name }}</a>
-            {% elif 'wikidata' in values.ID %}
-                {{ forloop.counter }} - <a href="{{ wikidataURI }}{{ values.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ values.Name }}</a>
-            {% endif %}
-        {% endfor %}
+    {# Include Process Step Short Description #}
+    {% include "MaRDMO/partials/_short_description.html" with class="PROCESS STEP" description=values.Description name=values.Name %}
 
-<h3 id="data-streams">Data Streams</h3>        
+    {# Include Process Step ID #}
+    {% include "MaRDMO/partials/_id.html" with class="PROCESS STEP" id=values.ID %}
 
-{% for value in answers.general.streams.values %}
-{{ forloop.counter }} - {{ value }} <br>
-{% endfor %}    
+    {# Include Block for single Relation between Process Step and Input Data Set #}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="PS2IDS" title="Input Data Sets" relation="input data set" relatants=values.RelationIDS class="INPUT DATA SET" %}
 
-{% if answers.model.values %}
-    <h2 id="model">Model</h2>   
-        <table border="1">
-            <colgroup>
-                <col style="width: 30%" />
-                <col style="width: 40%" />
-                <col style="width: 15%" />
-                <col style="width: 15%" />
-            </colgroup>
-            <thead>
-                <tr class="header">
-                    <th style="text-align: center; vertical-align: middle;">Name</th>
-                    <th style="text-align: center; vertical-align: middle;">Description</th>
-                    <th style="text-align: center; vertical-align: middle;">Time</th>
-                    <th style="text-align: center; vertical-align: middle;">Space</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="text-align: center; vertical-align: middle;">
-                        <a href="{{ mardiURI }}{{ model.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ answers.model.Name }}</a>
-                    </td>
-                    <td style="text-align: center; vertical-align: middle;">{{ answers.model.Description }}</td>
-                    <td style="text-align: center; vertical-align: middle;">{{ answers.model.time }}</td>
-                    <td style="text-align: center; vertical-align: middle;">{{ answers.model.space }}</td>
-                </tr>
-            </tbody>
-        </table>
-{% endif %}
+    {# Include Block for single Relation between Process Step and Output Data Set #}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="PS2ODS" title="Output Data Sets" relation="output data set" relatants=values.RelationODS class="OUTPUT DATA SET" %}
 
-{% if answers.variables.values %}
-    <h3 id="variables">Variables</h3>
+    {# Include Algorithms and Software Environment #}
+    {% include "MaRDMO/partials/_relation_block_single_with_qualifier.html" with anchor="PS2A" primary_class="ALGORITHM" qualifier_class="SOFTWARE" pairs=values.algorithm_software_pairs title="Algorithms" primary_label="uses" primary_missing="MISSING ALGORITHM" qualifier_label="platform" qualifier_missing="MISSING PLATFORM" %}
 
-        <table border="1">
-            <colgroup>
-                <col style="width: 20%" />
-                <col style="width: 10%" />
-                <col style="width: 10%" />
-                <col style="width: 30%" />
-                <col style="width: 30%" />
-            </colgroup>
-            <thead>
-                <tr class="header">
-                    <th style="text-align: center; vertical-align: middle;">Name</th>
-                    <th style="text-align: center; vertical-align: middle;">Unit</th>
-                    <th style="text-align: center; vertical-align: middle;">Symbol</th>
-                    <th style="text-align: center; vertical-align: middle;">Task</th>
-                    <th style="text-align: center; vertical-align: middle;">Dependency Type</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for values in answers.variables.values %}
-                    <tr>
-                        <td style="text-align: center; vertical-align: middle;">
-                            <a href="{{ mardiURI }}{{ values.identifier|cut:"mardi:"}}"" style="color:dodgerblue;">{{ values.name }}</a>
-                        </td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.unit }}</td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.symbol|safe }}</td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.task }}</td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.type }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-{% endif %}
+    {# Include Methods and Instruments #}
+    {% include "MaRDMO/partials/_relation_block_single_with_qualifier.html" with anchor="PS2M" primary_class="EXPERIMENTAL METHOD" qualifier_class="EXPERIMENTAL EQUIPMENT" pairs=values.method_instrument_pairs title="Methods" primary_label="uses" primary_missing="MISSING METHOD" qualifier_label="instrument" qualifier_missing="MISSING INSTRUMENT" %}
 
-{% if answers.parameters.values %}
-    <h3 id="parameters">Parameters</h3>
+    {# Include Academic Disciplines #}
+    {% include "MaRDMO/partials/_relation_block_single_without_section.html" with anchor="PS2AD" title="Academic Disciplines" relation="field of work" relatants=values.RFRelatant class="Academic Discipline" %}    
 
-        <table border="1">
-            <colgroup>
-                <col style="width: 30%" />
-                <col style="width: 15%" />
-                <col style="width: 15%" />
-                <col style="width: 40%" />
-            </colgroup>
-            <thead>
-                <tr class="header">
-                    <th style="text-align: center; vertical-align: middle;">Name</th>
-                    <th style="text-align: center; vertical-align: middle;">Unit</th>
-                    <th style="text-align: center; vertical-align: middle;">Symbol</th>
-                    <th style="text-align: center; vertical-align: middle;">Task</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for values in answers.parameters.values %}
-                    <tr>
-                        <td style="text-align: center; vertical-align: middle;">
-                            <a href="{{ mardiURI }}{{ values.identifier|cut:"mardi:"}}"" style="color:dodgerblue;">{{ values.name }}</a>
-                        </td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.unit }}</td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.symbol|safe }}</td>
-                        <td style="text-align: center; vertical-align: middle;">{{ values.task }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-{% endif %}
+{% empty %}
+    <strong style="color:black;">NO STEP DOCUMENTED</strong>
+{% endfor %}
 
     <h2 id="process-information">Process Information</h2>
-
-        <h3 id="process-steps">Process Steps</h3>
-        {% if answers.processstep.values %}
-
-                <table border="1">
-                    <colgroup>
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                        <col style="width: 12%" />
-                    </colgroup>
-                    <thead>
-                        <tr class="header">
-                            <th style="text-align: center; vertical-align: middle;">Name</th>
-                            <th style="text-align: center; vertical-align: middle;">Description</th>
-                            <th style="text-align: center; vertical-align: middle;">Input</th>
-                            <th style="text-align: center; vertical-align: middle;">Output</th>
-                            <th style="text-align: center; vertical-align: middle;">Method</th>
-                            <th style="text-align: center; vertical-align: middle;">Parameter</th>
-                            <th style="text-align: center; vertical-align: middle;">Environment</th>
-                            <th style="text-align: center; vertical-align: middle;">Discipline</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for values in answers.processstep.values %}
-                            <tr>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% if 'mardi' in values.ID %}
-                                        <a href="{{ mardiURI }}{{ values.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ values.Name }}</a>
-                                    {% elif 'wikidata' in values.ID %}
-                                        <a href="{{ wikidataURI }}{{ values.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ values.Name }}</a>
-                                    {% elif values.ID == 'not found' %}
-                                        {{ values.Name }}
-                                    {% endif %}
-                                <td style="text-align: center; vertical-align: middle;">{{ values.Description }}</td>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for input in values.input.values %}
-                                        {% if 'mardi' in input.ID %}
-                                            <a href="{{ mardiURI }}{{ input.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ input.Name }}</a>
-                                        {% elif 'wikidata' in input.ID %}
-                                            <a href="{{ wikidataURI }}{{ input.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ input.Name }}</a>
-                                        {% else %}
-                                            {{ input.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>   
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for output in values.output.values %}
-                                        {% if 'mardi' in output.ID %}
-                                            <a href="{{ mardiURI }}{{ output.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ output.Name }}</a>
-                                        {% elif 'wikidata' in output.ID %}
-                                            <a href="{{ wikidataURI }}{{ output.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ output.Name }}</a>
-                                        {% else %}
-                                            {{ output.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for method in values.method.values %}
-                                        {% if 'mardi' in method.ID %}
-                                            <a href="{{ mardiURI }}{{ method.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ method.Name }}</a>
-                                        {% elif 'wikidata' in method.ID %}
-                                            <a href="{{ wikidataURI }}{{ method.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ method.Name }}</a>
-                                        {% else %}
-                                            {{ method.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for parameter in values.parameter.values %}
-                                        {{ parameter }}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for environment in values.environmentSoftware.values %}
-                                        {% if 'mardi' in environment.ID %}
-                                            <a href="{{ mardiURI }}{{ environment.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ environment.Name }}</a>
-                                        {% elif 'wikidata' in environment.ID %}
-                                            <a href="{{ wikidataURI }}{{ environment.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ environment.Name }}</a>
-                                        {% else %}
-                                            {{ environment.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                    {% for environment in values.environmentInstrument.values %}
-                                        {% if 'mardi' in environment.ID %}
-                                            <a href="{{ mardiURI }}{{ environment.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ environment.Name }}</a>
-                                        {% elif 'wikidata' in environment.ID %}
-                                            <a href="{{ wikidataURI }}{{ environment.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ environment.Name }}</a>
-                                        {% else %}
-                                            {{ environment.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td style="text-align: center; vertical-align: middle;">
-                                    {% for discipline in values.discipline.values %}
-                                        {% if 'mardi' in discipline.ID %}
-                                            <a href="{{ mardiURI }}{{ discipline.ID|cut:"mardi:"}}"" style="color:dodgerblue;">{{ discipline.Name }}</a>
-                                        {% elif 'wikidata' in discipline.ID %}
-                                            <a href="{{ wikidataURI }}{{ discipline.ID|cut:"wikidata:"}}"" style="color:dodgerblue;">{{ discipline.Name }}</a>
-                                        {% elif 'msc' in discipline.ID %}
-                                            {{ discipline.Name }}
-                                        {% endif %}
-                                        {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-        {% endif %}
 
     <h3 id="methods">Methods</h3>
     {% if answers.method.values %}
@@ -724,54 +545,6 @@
             </tbody>
         </table>
     {% endif %}
-
-    <h2 id="reproducibility">Reproducibility</h2>
-
-        <h3 id="mathematical-reproducibility">Mathematical Reproducibility</h3>
-            {% if answers.reproducibility.mathematical == option.Yes %}
-                <p>Yes: {{ answers.reproducibility.mathematicalcondition }}</p>
-            {% elif answers.reproducibility.mathematical == option.No %}
-                <p>No</p>
-            {% elif answers.reproducibility.mathematical == option.NotRelevant %}
-                <p>Not relevant</p>                    
-            {% endif %}
-        <h3 id="runtime-reproducibility">Runtime Reproducibility</h3>
-            {% if answers.reproducibility.runtime == option.Yes %}
-                <p>Yes: {{ answers.reproducibility.runtimecondition }}</p>
-            {% elif answers.reproducibility.runtime == option.No %}
-                <p>No</p>
-            {% elif answers.reproducibility.runtime == option.NotRelevant %}
-                <p>Not relevant</p>
-            {% endif %}
-        <h3 id="reproducibility-of-results">Reproducibility of Results</h3>
-            {% if answers.reproducibility.result == option.Yes %}
-                <p>Yes: {{ answers.reproducibility.resultcondition }}</p>
-            {% elif answers.reproducibility.result == option.No %}
-                <p>No</p>
-            {% elif answers.reproducibility.result == option.NotRelevant %}
-                <p>Not relevant</p>
-            {% endif %}
-        <h3 id="reproducibility-on-original-platform">Reproducibility on original Platform (i.e. Hardware or Instrument)</h3>
-            {% if answers.reproducibility.originalplatform == option.Yes %}
-                <p>Yes: {{ answers.reproducibility.originalplatformcondition }}</p>
-            {% elif answers.reproducibility.originalplatform == option.No %}
-                <p>No</p>
-            {% elif answers.reproducibility.originalplatform == option.NotRelevant %}
-                <p>Not relevant</p>
-            {% endif %}
-        <h3 id="reproducibility-on-other-platform">Reproducibility on other Platform (i.e. Hardware or Instrument)</h3>
-            {% if answers.reproducibility.otherplatform == option.Yes %}
-                    <p>Yes: {{ answers.reproducibility.otherplatformcondition }}</p>
-            {% elif answers.reproducibility.otherplatform == option.No %}
-                    <p>No</p>
-            {% elif answers.reproducibility.otherplatform == option.NotRelevant %}
-                <p>Not relevant</p>
-            {% endif %}
-        <h3 id="transferability-to">Transferability to</h3>
-            {% for value in answers.reproducibility.transferability.values %}
-                {{ value }}
-                {% if not forloop.last %}<br>{% endif %}
-            {% endfor %}
     
 <h2 id="related-publications">Workflow Published In</h2>
 {% for values in answers.publication.values %}
