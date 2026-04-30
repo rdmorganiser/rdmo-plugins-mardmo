@@ -327,7 +327,8 @@ def rule_17(value, attribute, config, prefix_idx):
         Tuple ``(entry, path)`` where *path* includes an optional ``key3`` tail.
     '''
     entry = basic_list(value)
-    path = [config["key1"], prefix_idx, config["key2"]]
+    path = [config["key1"], prefix_idx, config["key2"], value.set_index]
     if config["key3"]:
         path.append(config["key3"])
+    print(entry, path)
     return entry, path
