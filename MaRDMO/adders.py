@@ -29,6 +29,7 @@ from .helpers import (
     relevant_set_ids,
     value_editor,
 )
+from .models import ProcessStepUsage
 
 def add_basics(project, text, questions, item_type, index = (None, None)):
     '''Parse the ID-question text and write label/description into the questionnaire.
@@ -228,6 +229,17 @@ def add_relations_static(project, data, props, index, statement):
     relatant not already present (checked by external ID and text), adds a
     new collection entry to ``statement['relatant']``.
 
+    When ``statement`` contains a ``'platform'`` key and a relatant carries a
+    ``qualifier`` attribute, platform values are written first and the relatant
+    is grouped under the corresponding platform set-index with ``inner_idx``
+    as its collection-index.  The grouping key is ``(qualifier, other)`` so
+    that two relatants with the same platform but different ``other`` payloads
+    land in separate sets.  When ``statement`` also contains a ``'parameter'``
+    key and the relatant has a non-empty ``other`` field, each ``' || '``-split
+    segment of ``other`` is written as a separate parameter entry.
+    Without a qualifier the original behaviour is preserved:
+    ``set_index=0``, ``collection_index=index['idx']``.
+
     Args:
         project:   RDMO project instance.
         data:      Dataclass instance whose attributes hold lists of relatants.
@@ -235,7 +247,9 @@ def add_relations_static(project, data, props, index, statement):
         index:     Dict containing ``'set_prefix'``; ``'set_prefix_reduced'``
                    and ``'idx'`` are computed and written back into this dict.
         statement: Dict with key ``'relatant'`` (attribute URI of the
-                   collection question).
+                   collection question) and optional keys ``'platform'``
+                   (attribute URI of the platform question) and
+                   ``'parameter'`` (attribute URI of the parameter question).
     '''
 
     # Get existing Set and Item Information
@@ -253,7 +267,9 @@ def add_relations_static(project, data, props, index, statement):
 
     # Add Relations and Relatants
     for prop in props['keys']:
+        inner_idx = 0
         for value in getattr(data, prop):
+            assumption_index = None
 
             # Get Source and Label Description String
             source, _ = value.id.split(':')
@@ -268,6 +284,70 @@ def add_relations_static(project, data, props, index, statement):
                 # Continue if existing
                 continue
 
+            # Add Assumption
+            if statement.get('platform') and isinstance(value, ProcessStepUsage):
+                index['idx'] += 1
+                inner_idx = 0
+                assumption_index = index['idx']
+
+                if value.qualifier:
+                    qual_source, _ = value.qualifier.split(':')
+                    value_editor(
+                        project = project,
+                        uri = statement['platform'],
+                        info = {
+                            'text': f"{value.qualifier_label} ({value.qualifier_description}) [{qual_source}]",
+                            'external_id': value.qualifier,
+                            'collection_index': 0,
+                            'set_index': assumption_index,
+                            'set_prefix': index['set_prefix']
+                        }
+                    )
+
+                if statement.get('hardware') and value.hardware:
+                    hw_source, _ = value.hardware.split(':')
+                    value_editor(
+                        project = project,
+                        uri = statement['hardware'],
+                        info = {
+                            'text': f"{value.hardware_label} ({value.hardware_description}) [{hw_source}]",
+                            'external_id': value.hardware,
+                            'collection_index': 0,
+                            'set_index': assumption_index,
+                            'set_prefix': index['set_prefix']
+                        }
+                    )
+
+                if statement.get('documentation'):
+                    doc_idx = 0
+                    for doc_val in (value.doi, value.url):
+                        if doc_val:
+                            value_editor(
+                                project = project,
+                                uri = statement['documentation'],
+                                info = {
+                                    'text': doc_val[1],
+                                    'option': Option.objects.get(uri=doc_val[0]),
+                                    'collection_index': doc_idx,
+                                    'set_index': assumption_index,
+                                    'set_prefix': index['set_prefix']
+                                }
+                            )
+                            doc_idx += 1
+
+                if statement.get('parameter') and value.parameters:
+                    for i, param in enumerate(value.parameters.split(' || ')):
+                        value_editor(
+                            project = project,
+                            uri = statement['parameter'],
+                            info = {
+                                'text': param,
+                                'collection_index': i,
+                                'set_index': assumption_index,
+                                'set_prefix': index['set_prefix']
+                            }
+                        )
+
             # Add Relatant to Questionnaire
             value_editor(
                 project = project,
@@ -275,14 +355,17 @@ def add_relations_static(project, data, props, index, statement):
                 info = {
                     'text': f"{value.label} ({value.description}) [{source}]",
                     'external_id': value.id,
-                    'collection_index': index['idx'],
-                    'set_index': 0,
+                    'collection_index': inner_idx if assumption_index is not None else index['idx'],
+                    'set_index': assumption_index or 0,
                     'set_prefix': index['set_prefix']
                 }
             )
 
-            #Update Index
-            index['idx'] += 1
+            # Update Index
+            if assumption_index is not None:
+                inner_idx += 1
+            else:
+                index['idx'] += 1
 
             # Update existing IDs, Texts, and Relations
             info['value_ids'].append(value.id)
@@ -350,18 +433,18 @@ def add_relations_flexible(project, data, props, index, statement):
                 continue
 
             # Add Order Number
-            if statement.get('order') and hasattr(value, 'order') and value.order:
-                if value.order not in order_number_store:
+            if statement.get('order') and hasattr(value, 'other') and value.other:
+                if value.other not in order_number_store:
                     index['idx'] +=1
                     inner_idx = 0
-                    order_number_store.update({value.order: index['idx']})
-                order_number_index = order_number_store.get(value.order)
+                    order_number_store.update({value.other: index['idx']})
+                order_number_index = order_number_store.get(value.other)
                 # Add Order Number to Questionnaire
                 value_editor(
                     project = project,
                     uri = statement['order'],
                     info = {
-                        'text': value.order,
+                        'text': value.other,
                         'set_index': order_number_index,
                         'set_prefix': index['set_prefix']
                     }
