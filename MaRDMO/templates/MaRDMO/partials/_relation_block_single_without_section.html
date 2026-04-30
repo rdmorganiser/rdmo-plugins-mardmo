@@ -1,0 +1,10 @@
+<h3 id="{{ anchor }}">Relations to {{ title }}</h3>
+{% for relatant in relatants.values %}
+    {% if relatant.ID == 'not found' %}
+        {{ relation }}: {{ relatant.Name }} ({{ relatant.Description }}) <br>
+    {% else %}
+        {{ relation }}: {{ relatant.ID }} <br>
+    {% endif %}
+{% empty %}
+    <strong style="color:red;">MISSING {{ class }}</strong>
+{% endfor %}

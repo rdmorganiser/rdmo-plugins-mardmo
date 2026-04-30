@@ -1,0 +1,39 @@
+{% if pairs %}
+    <h3 id="{{ anchor }}">Relations to {{ title }}</h3>
+    <ul style="list-style-type: none; padding-left: 1em;">
+        {% for pair in pairs %}
+        <li style="margin-bottom: 0.5em;">
+            {% if pair.has_primary %}
+                {% for item in pair.primary %}
+                    {% if item == 'not found' %}
+                        {{ primary_label }}: <strong style="color:red;">SELECTED {{ primary_class }} NOT FOUND IN {{ primary_class }} SECTION</strong> {% if not forloop.last %}<br>{% endif %}
+                    {% else %}
+                        {{ primary_label }}: {{ item }}{% if not forloop.last %}<br>{% endif %}
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <strong style="color:red;">{{ primary_missing }}</strong>
+            {% endif %}
+            <ul style="margin-top: 0.3em; list-style-type: none; padding-left: 1em;">
+                <li>&#8594; {{ qualifier_label }}:
+                    {% if pair.has_qualifier %}
+                        {% if pair.qualifier == 'not found' %}
+                            <strong style="color:red;">SELECTED {{ qualifier_class }} NOT FOUND IN {{ qualifier_class }} SECTION</strong>
+                        {% else %}
+                            {{ pair.qualifier }}
+                        {% endif %}
+                    {% else %}
+                        <strong style="color:red;">{{ qualifier_missing }}</strong>
+                    {% endif %}
+                    {% if pair.parameters %}
+                        with parameters: {{ pair.parameters }}
+                    {% endif %}
+                </li>
+            </ul>
+        </li>
+        {% if not forloop.last %}
+            <br><br>        
+        {% endif %}
+        {% endfor %}
+    </ul>
+{% endif %}

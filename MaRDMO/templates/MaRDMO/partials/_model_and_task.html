@@ -1,0 +1,25 @@
+<h3 id="{{ anchor }}">Relevant Mathematical Models and Computational Tasks</h3>
+<ol style="margin-left: 1.5em;">
+    {% for pair in pairs %}
+        <li style="margin-bottom: 0.5em;">
+            {% if pair.has_model %}
+                {{ pair.model.Name }}
+            {% else %}
+                <strong style="color:red;">MISSING MATHEMATICAL MODEL</strong>
+            {% endif %}
+            {% if pair.has_tasks %}
+            <ul style="margin-top: 0.3em; list-style-type: none; padding-left: 1em;">
+                {% for task in pair.tasks %}
+                <li>&#8594; {{ task.Name }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+                <ul style="margin-top: 0.3em; list-style-type: none; padding-left: 1em;">
+                    <li>&#8594; <strong style="color:red;">MISSING COMPUTATIONAL TASK</strong> </li>
+                </ul>
+            {% endif %}
+        </li>
+    {% empty %}
+        -
+    {% endfor %}
+</ol>
