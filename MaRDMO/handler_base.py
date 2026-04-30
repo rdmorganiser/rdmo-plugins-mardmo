@@ -15,6 +15,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from .constants import ALGORITHM_PROPS
+from .models import Algorithm
 from .getters import (
     get_id,
     get_items,
@@ -23,8 +25,9 @@ from .getters import (
     get_sparql_query_optional,
     get_url,
 )
-from .helpers import value_editor
-from .adders import add_basics
+from .helpers import process_qualifier, value_editor
+from .adders import add_basics, add_relations_flexible, add_relations_static
+from .models import ProcessStepUsage
 from .queries import query_sparql
 
 logger = logging.getLogger(__name__)
@@ -111,6 +114,7 @@ def _fetch_by_source(items, mardi_file, wikidata_file, model_class):
         query   = get_sparql_query(mardi_file).format(
             _values_clause(mardi_items), **get_items(), **get_properties()
         )
+        print(query)
         results = query_sparql(query, get_url('mardi', 'sparql'))
         if results:
             data_by_id.update(model_class.from_query_batch(results))
@@ -247,6 +251,89 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
             spec.batch_fill_method(project=project, items=batch_items,
                                    catalog=spec.catalog, visited=spec.visited)
 
+    def _hydrate_qualifier_entities(self, project, data, prop_keys, spec, attr='qualifier'):
+        '''Register and hydrate entities embedded as qualifier values on relatants.
+
+        Iterates over the relatant lists named by *prop_keys*, inspects the
+        ``qualifier`` attribute of each :class:`~MaRDMO.models.RelatantWithQualifier`,
+        and for every qualifier item that has not yet been visited, creates a
+        new set entry and calls the appropriate fill method.
+
+        The ``qualifier`` string is parsed by
+        :func:`~MaRDMO.helpers.process_qualifier` and must follow the
+        ``"id || label || description"`` format (``' <<||>> '``-separated for
+        multiple entries).  Entities already in ``spec.visited`` are skipped.
+
+        When ``spec.batch_fill_method`` is set, MaRDI and Wikidata items are
+        collected and dispatched as a single batch query after the loop;
+        otherwise ``spec.fill_method`` is called per item.
+
+        Args:
+            project:   RDMO project instance.
+            data:      Dataclass instance whose attributes are iterated over
+                       *prop_keys* to yield relatant objects.
+            prop_keys: Sequence of attribute names on *data* to inspect for
+                       qualifier values.
+            spec:      :class:`_RelatantSpec` instance bundling the target
+                       question URIs, prefix, fill methods, ``catalog``,
+                       ``visited``, and optional ``section_indices``.
+        '''
+        if spec.section_indices is not None and spec.question_set_uri in spec.section_indices:
+            next_idx = spec.section_indices[spec.question_set_uri]
+        else:
+            existing = get_id(project, spec.question_set_uri, ['set_index'])
+            next_idx = max((e for e in existing if e is not None), default=-1) + 1
+
+        batch_items = []
+
+        for prop in prop_keys:
+            for relatant in getattr(data, prop, []):
+                qualifier = getattr(relatant, attr, None)
+                if not qualifier:
+                    continue
+
+                if isinstance(relatant, ProcessStepUsage):
+                    source = qualifier.split(':')[0]
+                    qualifier_items = [{
+                        'id': qualifier,
+                        'label': getattr(relatant, f'{attr}_label', '') or '',
+                        'description': getattr(relatant, f'{attr}_description', '') or '',
+                        'source': source,
+                    }]
+                else:
+                    qualifier_items = process_qualifier(qualifier).values()
+
+                for item in qualifier_items:
+                    ext_id = item['id']
+                    if ext_id in spec.visited:
+                        continue
+                    spec.visited.add(ext_id)
+                    source = ext_id.split(':')[0]
+                    text   = f'{item["label"]} ({item["description"]}) [{source}]'
+
+                    value_editor(project=project, uri=spec.question_set_uri,
+                                 info={'text': f'{spec.prefix}{next_idx + 1}',
+                                       'set_index': next_idx})
+                    value_editor(project=project, uri=spec.question_id_uri,
+                                 info={'text': text, 'external_id': ext_id,
+                                       'set_index': next_idx})
+
+                    if spec.batch_fill_method and source in ('mardi', 'wikidata'):
+                        batch_items.append((text, ext_id, next_idx))
+                    else:
+                        spec.fill_method(project=project, text=text,
+                                         external_id=ext_id, set_index=next_idx,
+                                         catalog=spec.catalog, visited=spec.visited)
+
+                    next_idx += 1
+
+        if spec.section_indices is not None:
+            spec.section_indices[spec.question_set_uri] = next_idx
+
+        if batch_items and spec.batch_fill_method:
+            spec.batch_fill_method(project=project, items=batch_items,
+                                   catalog=spec.catalog, visited=spec.visited)
+
     def _hydrate_publications(self, project, publications, catalog, visited):
         '''Register and hydrate related publications via the publication handler.
 
@@ -283,6 +370,96 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
                                    external_id=pub.id, set_index=next_idx,
                                    catalog=catalog)
             next_idx += 1
+
+    def _fill_algorithm_batch(self, project, items, catalog='', visited=None):
+        '''Hydrate multiple Algorithm pages with a single SPARQL query per source.
+
+        Available in both the Algorithm and Workflow catalogs.  The Problem
+        cascade and intra-class relations are skipped when the catalog does
+        not have a Problem section or ``mathalgodb`` is not initialised.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
+        from functools import partial  # pylint: disable=import-outside-toplevel
+
+        if not items:
+            return
+        if visited is None:
+            visited = set()
+
+        algorithm  = self.questions['Algorithm']
+        data_by_id = _fetch_by_source(
+            items,
+            'queries/algorithm_mardi.sparql',
+            'queries/algorithm_wikidata.sparql',
+            Algorithm,
+        )
+        if not data_by_id:
+            return
+
+        section_indices = {}
+        for text, external_id, set_index in items:
+            data = data_by_id.get(external_id)
+            if not data:
+                continue
+
+            add_basics(project=project, text=text, questions=self.questions,
+                       item_type='Algorithm', index=(0, set_index))
+
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': ALGORITHM_PROPS['A2P']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{algorithm["PRelatant"]["uri"]}'})
+
+            if 'Problem' in self.questions:
+                self._hydrate_relatants(
+                    project=project, data=data, prop_keys=ALGORITHM_PROPS['A2P'],
+                    spec=_RelatantSpec(
+                        question_id_uri=f'{self.base}{self.questions["Problem"]["ID"]["uri"]}',
+                        question_set_uri=f'{self.base}{self.questions["Problem"]["uri"]}',
+                        prefix='AT',
+                        fill_method=partial(self._fill, item_type='Problem',
+                                            batch_fill_method=self._fill_problem_batch),
+                        catalog=catalog, visited=visited,
+                        batch_fill_method=self._fill_problem_batch,
+                        section_indices=section_indices,
+                    ))
+
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': ALGORITHM_PROPS['A2S']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{algorithm["SRelatant"]["uri"]}'})
+
+            self._hydrate_relatants(
+                project=project, data=data, prop_keys=ALGORITHM_PROPS['A2S'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
+                    prefix='S',
+                    fill_method=partial(self._fill, item_type='Software',
+                                        batch_fill_method=self._fill_software_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_software_batch,
+                    section_indices=section_indices,
+                ))
+
+            if hasattr(self, 'mathalgodb') and 'IntraClassRelation' in algorithm:
+                add_relations_flexible(
+                    project=project, data=data,
+                    props={'keys': ALGORITHM_PROPS['Algorithm'], 'mapping': self.mathalgodb},
+                    index={'set_prefix': set_index},
+                    statement={
+                        'relation': f'{self.base}{algorithm["IntraClassRelation"]["uri"]}',
+                        'relatant': f'{self.base}{algorithm["IntraClassElement"]["uri"]}',
+                    })
+
+            self._hydrate_publications(project, data.publications, catalog, visited)
 
     def fill_entity(self, project, text, external_id, question_id,
                     item_type, batch_fill_method, catalog):

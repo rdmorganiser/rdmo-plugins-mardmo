@@ -61,10 +61,11 @@ _ALGO_PREFIX_TO_FILL = {
 }
 
 _WORKFLOW_PREFIX_TO_FILL = {
-    'DS': ('Data Set',   '_fill_data_set_batch'),
-    'M':  ('Method',     '_fill_method_batch'),
-    'S':  ('Software',   '_fill_software_batch'),
-    'I':  ('Instrument', '_fill_instrument_batch'),
+    'A':  ('Algorithm',    '_fill_algorithm_batch'),
+    'DS': ('Data Set',     '_fill_data_set_batch'),
+    'S':  ('Software',     '_fill_software_batch'),
+    'HW': ('Hardware',     '_fill_hardware_batch'),
+    'PS': ('Process Step', '_fill_process_step_batch'),
 }
 
 # Dispatch table: catalog suffix → (get_uri_prefix_map_fn, prefix_map, get_info_fn)

@@ -30,6 +30,12 @@ SECTION_MAP_BASE = {
     'publication': 'Publication',
 }
 
+ALGORITHM_PROPS = {
+    'A2P':       ['solves'],
+    'A2S':       ['implemented_by'],
+    'Algorithm': ['has_component', 'component_of', 'has_subclass', 'subclass_of', 'related_to'],
+}
+
 flag_dict = {
     (False, False, False, False, False): rules.rule_0,
     (True, False, False, False, False): rules.rule_1,
@@ -48,4 +54,5 @@ flag_dict = {
     (True, True, False, True, False): rules.rule_14,
     (True, False, True, True, False): rules.rule_15,
     (True, True, True, True, False): rules.rule_16,
+    (True, True, False, False, True): rules.rule_17
 }

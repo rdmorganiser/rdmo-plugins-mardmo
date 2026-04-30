@@ -11,7 +11,7 @@ import logging
 from functools import partial
 
 from .constants import PROPS
-from .models import Benchmark, Software, Problem, Algorithm
+from .models import Benchmark, Software, Problem
 
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
@@ -241,85 +241,4 @@ class Information(BaseInformation):
 
             # IntraClass relations are not cascade-hydrated
 
-    def _fill_algorithm_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple Algorithm pages with a single SPARQL query per source.
-
-        Args:
-            project:  RDMO project instance.
-            items:    List of ``(text, external_id, set_index)`` tuples to process.
-            catalog:  Active catalog URI suffix (default ``""``).
-            visited:  Set of external IDs already processed (mutated to avoid cycles).
-        '''
-        if not items:
-            return
-        if visited is None:
-            visited = set()
-
-        algorithm  = self.questions['Algorithm']
-        data_by_id = _fetch_by_source(
-            items,
-            'algorithm/queries/algorithm_mardi.sparql',
-            'algorithm/queries/algorithm_wikidata.sparql',
-            Algorithm,
-        )
-        if not data_by_id:
-            return
-
-        section_indices = {}
-        for text, external_id, set_index in items:
-            data = data_by_id.get(external_id)
-            if not data:
-                continue
-
-            add_basics(project=project, text=text, questions=self.questions,
-                       item_type='Algorithm', index=(0, set_index))
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['A2P']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{algorithm["PRelatant"]["uri"]}'})
-
-            self._hydrate_relatants(
-                project=project, data=data, prop_keys=PROPS['A2P'],
-                spec=_RelatantSpec(
-                    question_id_uri=f'{self.base}{self.questions["Problem"]["ID"]["uri"]}',
-                    question_set_uri=f'{self.base}{self.questions["Problem"]["uri"]}',
-                    prefix='AT',
-                    fill_method=partial(self._fill, item_type='Problem',
-                                        batch_fill_method=self._fill_problem_batch),
-                    catalog=catalog, visited=visited,
-                    batch_fill_method=self._fill_problem_batch,
-                    section_indices=section_indices,
-                ))
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['A2S']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{algorithm["SRelatant"]["uri"]}'})
-
-            self._hydrate_relatants(
-                project=project, data=data, prop_keys=PROPS['A2S'],
-                spec=_RelatantSpec(
-                    question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
-                    question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
-                    prefix='S',
-                    fill_method=partial(self._fill, item_type='Software',
-                                        batch_fill_method=self._fill_software_batch),
-                    catalog=catalog, visited=visited,
-                    batch_fill_method=self._fill_software_batch,
-                    section_indices=section_indices,
-                ))
-
-            add_relations_flexible(
-                project=project, data=data,
-                props={'keys': PROPS['Algorithm'], 'mapping': self.mathalgodb},
-                index={'set_prefix': set_index},
-                statement={
-                    'relation': f'{self.base}{algorithm["IntraClassRelation"]["uri"]}',
-                    'relatant': f'{self.base}{algorithm["IntraClassElement"]["uri"]}',
-                })
-
-            self._hydrate_publications(project, data.publications,
-                                       catalog, visited)
+    # _fill_algorithm_batch is inherited from BaseInformation

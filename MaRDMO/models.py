@@ -11,10 +11,18 @@ Provides:
 Both classes expose ``from_query``, ``from_triple``, and (for
 :class:`Relatant`) ``from_msc`` class methods for constructing instances
 from different data sources.
+
+- :class:`RelatantWithQualifier` — entity triple extended with a qualifier
+  value and an optional free-form ``other`` field (e.g. parameters).
+- :class:`Algorithm` — algorithm entity with relation lists populated from
+  SPARQL results (problems solved, implementations, intra-class relations).
 '''
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
+
+from .getters import get_options
+from .helpers import split_value
 
 @dataclass
 class Relatant:
@@ -58,25 +66,6 @@ class Relatant:
             description = description,
         )
 
-    @classmethod
-    def from_msc(cls, identifier: str, label: str, description: str) -> 'Relatant':
-        '''Construct a :class:`Relatant` from an MSC 2020 subject classification entry.
-
-        Args:
-            identifier:  MSC subject ID string (without ``msc:`` prefix); the
-                         prefix is added automatically.
-            label:       Human-readable subject label.
-            description: Short description or scope note for the MSC entry.
-
-        Returns:
-            New :class:`Relatant` instance with ``id`` set to ``"msc:{identifier}"``.
-        '''
-        return cls(
-            id = f"msc:{identifier}",
-            label = label,
-            description = description,
-        )
-
 @dataclass
 class RelatantWithClass:
     '''Data Class For Relatant Items With Class'''
@@ -107,4 +96,133 @@ class RelatantWithClass:
             label = raw_split[1],
             description = raw_split[2],
             item_class = item_class
+        )
+
+@dataclass
+class RelatantWithQualifier:
+    '''Entity triple extended with a qualifier value and an optional free-form field.
+
+    The ``qualifier`` field holds the ID of a qualifier entity (e.g. a platform
+    or formulation type).  The ``other`` field carries any additional free-form
+    payload encoded after a ``" >|< "`` separator in the SPARQL result string
+    (e.g. a ``" || "``-joined list of parameters).
+    '''
+    id: Optional[str]
+    label: Optional[str]
+    description: Optional[str]
+    qualifier: Optional[str]
+    other: Optional[str]
+
+    @classmethod
+    def from_query(cls, raw: str) -> 'RelatantWithQualifier':
+        '''Parse a delimited SPARQL result string into a RelatantWithQualifier instance.
+
+        Args:
+            raw: Delimited string with four ``||``-separated fields (identifier,
+                 label, description, qualifier) and an optional ``>|<``-separated
+                 other suffix.
+
+        Returns:
+            RelatantWithQualifier instance populated from the parsed fields.
+        '''
+        if ">|<" in raw:
+            raw, other = raw.split(" >|< ")
+        else:
+            other = None
+        identifier, label, description, qualifier = raw.split(" || ", 3)
+        return cls(
+            id = identifier,
+            label = label,
+            description = description,
+            qualifier = qualifier,
+            other = other
+        )
+
+@dataclass
+class ProcessStepUsage:
+    '''Usage of an algorithm or method in a process step.
+
+    Covers both algorithm-in-process-step (qualifier=software, hardware=hardware)
+    and method-in-process-step (qualifier=instrument, hardware always empty).
+    Parsed from a fixed-position 11-field ``||``-delimited main block followed
+    by an optional ``>|<``-separated parameters section.
+    '''
+    id: Optional[str]
+    label: Optional[str]
+    description: Optional[str]
+    qualifier: Optional[str]
+    qualifier_label: Optional[str]
+    qualifier_description: Optional[str]
+    hardware: Optional[str]
+    hardware_label: Optional[str]
+    hardware_description: Optional[str]
+    parameters: Optional[str]
+    doi: list[str,str] 
+    url: list[str,str] 
+
+    @classmethod
+    def from_query(cls, raw: str) -> 'ProcessStepUsage':
+        options = get_options()
+        '''Parse ``id||label||desc||q||ql||qd||hw||hwl||hwd||doi||url >|< params``.'''
+        if ' >|< ' in raw:
+            main, parameters = raw.split(' >|< ', 1)
+        else:
+            main, parameters = raw, None
+        parts = main.split(' || ')
+        while len(parts) < 11:
+            parts.append('')
+        return cls(
+            id=parts[0] or None,
+            label=parts[1] or None,
+            description=parts[2] or None,
+            qualifier=parts[3] or None,
+            qualifier_label=parts[4] or None,
+            qualifier_description=parts[5] or None,
+            hardware=parts[6] or None,
+            hardware_label=parts[7] or None,
+            hardware_description=parts[8] or None,
+            doi=[options['DOI'], parts[9]] if parts[9] else None,
+            url=[options['URL'], parts[10]] if parts[10] else None,
+            parameters=parameters or None,
+        )
+
+
+@dataclass
+class Algorithm:
+    '''Algorithm entity with relation lists populated from SPARQL results.'''
+    component_of: list[Relatant] = field(default_factory=list)
+    has_component: list[Relatant] = field(default_factory=list)
+    subclass_of: list[Relatant] = field(default_factory=list)
+    has_subclass: list[Relatant] = field(default_factory=list)
+    related_to: list[Relatant] = field(default_factory=list)
+    solves: list[Relatant] = field(default_factory=list)
+    implemented_by: list[Relatant] = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
+
+    @classmethod
+    def from_query(cls, raw_data: dict) -> 'Algorithm':
+        '''Generate Class Item From Query (single-item, backward-compatible).'''
+        return cls.from_query_single(raw_data[0])
+
+    @classmethod
+    def from_query_batch(cls, raw_data: list) -> 'dict[str, Algorithm]':
+        '''Parse a batch SPARQL result into {external_id: instance} dict.'''
+        return {
+            row['qid']['value']: cls.from_query_single(row)
+            for row in raw_data
+            if row.get('qid', {}).get('value')
+        }
+
+    @classmethod
+    def from_query_single(cls, data: dict) -> 'Algorithm':
+        '''Parse one SPARQL result row into an Algorithm instance.'''
+        return cls(
+            solves=split_value(data=data, key='solved_by', transform=Relatant.from_query),
+            implemented_by=split_value(data=data, key='implementation_by', transform=Relatant.from_query),
+            has_component=split_value(data=data, key='has_parts', transform=Relatant.from_query),
+            component_of=split_value(data=data, key='part_of', transform=Relatant.from_query),
+            has_subclass=split_value(data=data, key='has_subclass', transform=Relatant.from_query),
+            subclass_of=split_value(data=data, key='subclass_of', transform=Relatant.from_query),
+            related_to=split_value(data=data, key='similar_to', transform=Relatant.from_query),
+            publications=split_value(data=data, key='publication', transform=Relatant.from_query),
         )

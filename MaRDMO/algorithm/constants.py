@@ -12,7 +12,7 @@ Provides:
 - Module-level constants built from the above (``RELATIONS``, ``URI_PREFIX_MAP``, etc.)
 '''
 
-from ..constants import BASE_URI, SECTION_MAP_BASE
+from ..constants import ALGORITHM_PROPS, BASE_URI, SECTION_MAP_BASE
 from ..getters import get_items, get_mathalgodb, get_properties, get_questions
 
 #Dictionary for internal / external section names
@@ -20,12 +20,10 @@ SECTION_MAP = {**SECTION_MAP_BASE, 'problem': 'Algorithmic Task'}
 
 # Dictionary with list of property names
 PROPS = {
-    'A2P': ['solves'],
-    'A2S': ['implemented_by'],
-    'P2B': ['manifests'],
-    'S2B': ['tested_by'],
-    'Algorithm': ['has_component', 'component_of', 'has_subclass', 'subclass_of', 'related_to'],
-    'Problem': ['specializes', 'specialized_by']
+    **ALGORITHM_PROPS,
+    'P2B':     ['manifests'],
+    'S2B':     ['tested_by'],
+    'Problem': ['specializes', 'specialized_by'],
 }
 
 software_reference_ids = [
