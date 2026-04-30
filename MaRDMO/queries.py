@@ -259,29 +259,34 @@ def query_sources_with_user_additions(search, project, setup):
             sources=setup['sources'],
             not_found=False,
         )
-    except (requests.exceptions.RequestException, KeyError, ValueError) as e:
+    except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
         logger.error("Query sources failed: %s", e)
         options = []
 
-    # Get or build user entries dictionary
-    cache_key = f"user_entries_{project.id}_{','.join(setup['query_attributes'])}"
-    dic = cache.get(cache_key)
+    if setup.get('query_attributes'):
+        # Get or build user entries dictionary
+        cache_key = f"user_entries_{project.id}_{','.join(setup['query_attributes'])}"
+        dic = cache.get(cache_key)
 
-    if dic is None:
-        logger.debug("Cache miss for %s, querying database", cache_key)
-        dic = query_user_entries(project, setup)
-        cache.set(cache_key, dic, timeout=180)
-        logger.debug("Cached user entries for %s", cache_key)
-    else:
-        logger.debug("Cache hit for %s", cache_key)
+        if dic is None:
+            logger.debug("Cache miss for %s, querying database", cache_key)
+            try:
+                dic = query_user_entries(project, setup)
+            except Exception as e:
+                logger.error("User entries query failed: %s", e)
+                dic = {}
+            cache.set(cache_key, dic, timeout=180)
+            logger.debug("Cached user entries for %s", cache_key)
+        else:
+            logger.debug("Cache hit for %s", cache_key)
 
-    # Filter and merge options
-    options_user = [
-        {'id': value['id'], 'text': key}
-        for key, value in dic.items()
-        if search.lower() in key.lower()
-    ]
-    options = options_user + options
+        # Filter and merge options
+        options_user = [
+            {'id': value['id'], 'text': key}
+            for key, value in dic.items()
+            if search.lower() in key.lower()
+        ]
+        options = options_user + options
 
     # Add creation option if needed
     if setup['creation']:
