@@ -319,15 +319,18 @@ class Information(BaseInformation):
                 uri=f'{self.base}{data_set_q["Proprietary"]["uri"]}',
                 info={'option': data.proprietary, 'set_prefix': set_index})
 
-        add_references(project=project, data=data,
-                       uri=f'{self.base}{data_set_q["To Publish"]["uri"]}',
-                       set_prefix=set_index)
+        if data.to_publish:
+            value_editor(
+                project=project,
+                uri=f'{self.base}{data_set_q["To Publish"]["uri"]}',
+                info={'text': data.to_publish[1], 'option': data.to_publish[0],
+                      'set_prefix': set_index})
 
         if data.to_archive:
             value_editor(
                 project=project,
                 uri=f'{self.base}{data_set_q["To Archive"]["uri"]}',
-                info={'text': data.to_archive[1], 'option': data.to_archive[0],
+                info={'text': data.to_archive[1][:4], 'option': data.to_archive[0],
                       'set_prefix': set_index})
 
     def _fill_process_step_batch(self, project, items, catalog='', visited=None):

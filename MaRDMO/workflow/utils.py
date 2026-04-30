@@ -6,9 +6,8 @@ the workflow worker and handler layers.
 
 Provides:
 
-- ``get_size``      — extract the data-set size value from answer options
-- ``get_reference`` — extract a data-set or instrument reference identifier
-- ``get_archive``   — extract the data-archive URL or identifier
+- ``get_size``             — extract the data-set size value from answer options
+- ``get_option_text_pair`` — resolve an option label and paired text value from a SPARQL result
 '''
 
 def get_size(data, options):
@@ -33,37 +32,22 @@ def get_size(data, options):
 
     return [unit, value] if unit and value else []
 
-def get_reference(data, options):
-    '''Build the reference dict for a data-set answer dict.
-
-    Iterates over the predefined ``data_set_reference_ids`` keys and maps
-    each present value to ``[option_uri, value]`` at a numeric index.
+def get_option_text_pair(data, options, option_key, *value_keys):
+    '''Resolve an option label and the first available text value from a SPARQL result dict.
 
     Args:
-        data:    Answer sub-dict for the data-set reference questions.
-        options: Options dict mapping RDMO option URIs to string values.
+        data:       SPARQL result row dict with nested ``{"value": ...}`` entries.
+        options:    Options dict mapping RDMO option URIs to string values.
+        option_key: Key whose resolved option URI is looked up in *options*.
+        *value_keys: One or more keys tried left-to-right for the text value;
+                    the first non-empty one is used.
 
     Returns:
-        Dict ``{index: [option_uri, value]}`` for all present references;
-        empty dict if none are set.
+        ``[option_label, text]`` if the option is set; ``[]`` otherwise.
     '''
-
-    publish = options[data['publish']['value']] if data.get('publish', {}).get('value') else ''
-    doi_url = data.get('DOI', {}).get('value', '') or data.get('URL', {}).get('value', '')
-    return [publish, doi_url] if publish else []
-
-def get_archive(data, options):
-    '''Extract archival intent and optional end-year from a data-set answer dict.
-
-    Args:
-        data:    Answer sub-dict for the data-set archival questions.
-        options: Options dict mapping RDMO option URIs to string values.
-
-    Returns:
-        ``[archive_option, year]`` if archival is set; ``[]`` otherwise.
-        *year* is the first four characters of the ``end_time`` value, or
-        an empty string if no date was given.
-    '''
-    archive = options[data['archive']['value']] if data.get('archive', {}).get('value') else ''
-    year = data.get('end_time', {}).get('value', '')[:4]
-    return [archive, year] if archive else []
+    option_label = options[data[option_key]['value']] if data.get(option_key, {}).get('value') else ''
+    text = next(
+        (data.get(k, {}).get('value', '') for k in value_keys if data.get(k, {}).get('value')),
+        ''
+    )
+    return [option_label, text] if option_label else []

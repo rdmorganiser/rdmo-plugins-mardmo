@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .constants import software_reference_ids
-from .utils import get_archive, get_reference, get_size
+from .utils import get_option_text_pair, get_size
 
 from ..getters import get_options
 from ..helpers import split_value
@@ -224,7 +224,7 @@ class DataSet:
     file_format: Optional[str] = None
     binary_or_text: Optional[str] = None
     proprietary: Optional[str] = None
-    reference: list = field(default_factory=list)
+    to_publish: list = field(default_factory=list)
     to_archive: list = field(default_factory=list)
 
     @classmethod
@@ -257,6 +257,6 @@ class DataSet:
                 options[data['proprietary']['value']]
                 if data.get('proprietary', {}).get('value') else ''
             ),
-            reference=get_reference(data, options),
-            to_archive=get_archive(data, options),
+            to_publish=get_option_text_pair(data, options, 'publish', 'DOI', 'URL'),
+            to_archive=get_option_text_pair(data, options, 'archive', 'end_time'),
         )
