@@ -7,6 +7,7 @@ carry the fields needed to render questionnaire answers and export entries.
 
 Provides:
 
+- :class:`ProcessStepUsage` — algorithm/method usage within a process step
 - :class:`ProcessStep` — process steps associated with a workflow
 - :class:`Software`    — software associated with a workflow
 - :class:`Hardware`    — hardware associated with a workflow
@@ -21,7 +22,57 @@ from .utils import get_archive, get_reference, get_size
 
 from ..getters import get_options
 from ..helpers import split_value
-from ..models import Relatant, ProcessStepUsage
+from ..models import Relatant
+
+
+@dataclass
+class ProcessStepUsage:
+    '''Usage of an algorithm or method in a process step.
+
+    Covers both algorithm-in-process-step (qualifier=software, hardware=hardware)
+    and method-in-process-step (qualifier=instrument, hardware always empty).
+    Parsed from a fixed-position 11-field ``||``-delimited main block followed
+    by an optional ``>|<``-separated parameters section.
+    '''
+    id: Optional[str]
+    label: Optional[str]
+    description: Optional[str]
+    qualifier: Optional[str]
+    qualifier_label: Optional[str]
+    qualifier_description: Optional[str]
+    hardware: Optional[str]
+    hardware_label: Optional[str]
+    hardware_description: Optional[str]
+    parameters: Optional[str]
+    doi: list
+    url: list
+
+    @classmethod
+    def from_query(cls, raw: str) -> 'ProcessStepUsage':
+        '''Parse ``id||label||desc||q||ql||qd||hw||hwl||hwd||doi||url >|< params``.'''
+        options = get_options()
+        if ' >|< ' in raw:
+            main, parameters = raw.split(' >|< ', 1)
+        else:
+            main, parameters = raw, None
+        parts = main.split(' || ')
+        while len(parts) < 11:
+            parts.append('')
+        return cls(
+            id=parts[0] or None,
+            label=parts[1] or None,
+            description=parts[2] or None,
+            qualifier=parts[3] or None,
+            qualifier_label=parts[4] or None,
+            qualifier_description=parts[5] or None,
+            hardware=parts[6] or None,
+            hardware_label=parts[7] or None,
+            hardware_description=parts[8] or None,
+            doi=[options['DOI'], parts[9]] if parts[9] else None,
+            url=[options['URL'], parts[10]] if parts[10] else None,
+            parameters=parameters or None,
+        )
+
 
 @dataclass
 class ProcessStep:

@@ -29,7 +29,7 @@ from .helpers import (
     relevant_set_ids,
     value_editor,
 )
-from .models import ProcessStepUsage
+from .workflow.models import ProcessStepUsage
 
 def add_basics(project, text, questions, item_type, index = (None, None)):
     '''Parse the ID-question text and write label/description into the questionnaire.

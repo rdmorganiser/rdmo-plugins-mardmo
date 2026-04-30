@@ -27,7 +27,7 @@ from .getters import (
 )
 from .helpers import process_qualifier, value_editor
 from .adders import add_basics, add_relations_flexible, add_relations_static
-from .models import ProcessStepUsage
+from .workflow.models import ProcessStepUsage
 from .queries import query_sparql
 
 logger = logging.getLogger(__name__)

@@ -16,12 +16,12 @@ from different data sources.
   value and an optional free-form ``other`` field (e.g. parameters).
 - :class:`Algorithm` — algorithm entity with relation lists populated from
   SPARQL results (problems solved, implementations, intra-class relations).
+
 '''
 
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .getters import get_options
 from .helpers import split_value
 
 @dataclass
@@ -137,55 +137,6 @@ class RelatantWithQualifier:
             qualifier = qualifier,
             other = other
         )
-
-@dataclass
-class ProcessStepUsage:
-    '''Usage of an algorithm or method in a process step.
-
-    Covers both algorithm-in-process-step (qualifier=software, hardware=hardware)
-    and method-in-process-step (qualifier=instrument, hardware always empty).
-    Parsed from a fixed-position 11-field ``||``-delimited main block followed
-    by an optional ``>|<``-separated parameters section.
-    '''
-    id: Optional[str]
-    label: Optional[str]
-    description: Optional[str]
-    qualifier: Optional[str]
-    qualifier_label: Optional[str]
-    qualifier_description: Optional[str]
-    hardware: Optional[str]
-    hardware_label: Optional[str]
-    hardware_description: Optional[str]
-    parameters: Optional[str]
-    doi: list[str,str] 
-    url: list[str,str] 
-
-    @classmethod
-    def from_query(cls, raw: str) -> 'ProcessStepUsage':
-        options = get_options()
-        '''Parse ``id||label||desc||q||ql||qd||hw||hwl||hwd||doi||url >|< params``.'''
-        if ' >|< ' in raw:
-            main, parameters = raw.split(' >|< ', 1)
-        else:
-            main, parameters = raw, None
-        parts = main.split(' || ')
-        while len(parts) < 11:
-            parts.append('')
-        return cls(
-            id=parts[0] or None,
-            label=parts[1] or None,
-            description=parts[2] or None,
-            qualifier=parts[3] or None,
-            qualifier_label=parts[4] or None,
-            qualifier_description=parts[5] or None,
-            hardware=parts[6] or None,
-            hardware_label=parts[7] or None,
-            hardware_description=parts[8] or None,
-            doi=[options['DOI'], parts[9]] if parts[9] else None,
-            url=[options['URL'], parts[10]] if parts[10] else None,
-            parameters=parameters or None,
-        )
-
 
 @dataclass
 class Algorithm:
