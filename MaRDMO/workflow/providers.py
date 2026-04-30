@@ -90,13 +90,12 @@ class MathematicalModel(Provider):
             not_found = False
         )
 
-class Method(Provider):
+class RelatedProgrammingLanguageWithCreation(Provider):
     '''Method Provider (MaRDI Portal / Wikidata),
-       No User Creation, Refresh Upon Selection
+       User Creation, No Refresh Upon Selection
     '''
 
     search = True
-    refresh = True
 
     def get_options(self, project, search=None, user=None, site=None):
         '''Query external knowledge-graph source(s) and return matching options.
@@ -111,15 +110,21 @@ class Method(Provider):
         Returns:
             List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
         '''
-        if not search or len(search) < 3:
+        if not search:
             return []
 
-        return query_sources(
-            search = search,
+        setup = define_setup(
+            creation = True,
+            query_attributes = None,
             item_class = [
-                _ITEMS['method'],
-                _ITEMS['algorithm']
+                _ITEMS['programming language'],
             ]
+        )
+
+        return query_sources_with_user_additions(
+            search = search,
+            project = project,
+            setup = setup
         )
 
 class RelatedMethodWithCreation(Provider):
