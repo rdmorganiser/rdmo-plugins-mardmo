@@ -134,6 +134,24 @@
             "set_prefix": true,
             "collection_index": true,
             "external_id": true
+        },
+        "Programming Language": {
+            "key1": "software",
+            "key2": "programminglanguage",
+            "key3": "ID",
+            "uri": "domain/software/programming-language-relatant",
+            "set_prefix": true,
+            "collection_index": true,
+            "external_id": true
+        },
+        "Dependency": {
+            "key1": "software",
+            "key2": "dependency",
+            "key3": "ID",
+            "uri": "domain/software/dependency-relatant",
+            "set_prefix": true,
+            "collection_index": true,
+            "external_id": true
         }
     },
     "Benchmark": {
