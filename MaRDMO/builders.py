@@ -144,6 +144,8 @@ def build_post_save_handler_set():
                 general.relation,
             f'{base}{questions_algorithm["Algorithm"]["SRelatant"]["uri"]}':
                 general.relation,
+            f'{base}{questions_algorithm["Software"]["Dependency"]["uri"]}':
+                general.relation,
             f"{base}{questions_publication['Publication']['ID']['uri']}":
                 publication.citation,
         }
@@ -177,6 +179,8 @@ def build_post_save_handler_set():
             f'{base}{questions_workflow["Process Step"]["Software"]["uri"]}':
                 general.relation,
             f'{base}{questions_workflow["Algorithm"]["SRelatant"]["uri"]}':
+                general.relation,
+            f'{base}{questions_workflow["Software"]["Dependency"]["uri"]}':
                 general.relation,
             f"{base}{questions_publication['Publication']['ID']['uri']}":
                 publication.citation,

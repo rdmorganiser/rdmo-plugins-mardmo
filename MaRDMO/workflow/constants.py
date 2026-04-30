@@ -70,6 +70,11 @@ def get_uri_prefix_map():
             "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
             "prefix": "S"
         },
+        f'{BASE_URI}{questions["Software"]["Dependency"]["uri"]}': {
+            "question_set": f'{BASE_URI}{questions["Software"]["uri"]}',
+            "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
+            "prefix": "S"
+        },
     }
     return uri_prefix_map
 
