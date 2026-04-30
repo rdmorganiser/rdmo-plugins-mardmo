@@ -1,12 +1,24 @@
 SELECT DISTINCT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
-(GROUP_CONCAT(DISTINCT(?msc); separator=" <|> ") AS ?msc_id)
 (GROUP_CONCAT(DISTINCT CONCAT(?input, " || ", ?inputl, " || ", ?inputd); separator=" <|> ") AS ?input_data_set)
 (GROUP_CONCAT(DISTINCT CONCAT(?output, " || ", ?outputl, " || ", ?outputd); separator=" <|> ") AS ?output_data_set)
-(GROUP_CONCAT(DISTINCT CONCAT(?method, " || ", ?methodl, " || ", ?methodd); separator=" <|> ") AS ?uses)
-(GROUP_CONCAT(DISTINCT CONCAT(?platformsoftware, " || ", ?platformsoftwarel, " || ", ?platformsoftwared); separator=" <|> ") AS ?platform_software)
-(GROUP_CONCAT(DISTINCT CONCAT(?platforminstrument, " || ", ?platforminstrumentl, " || ", ?platforminstrumentd); separator=" <|> ") AS ?platform_instrument)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?method, " || ", ?methodl, " || ", ?methodd,
+    " || ", COALESCE(?instrument, ""), " || ", COALESCE(?instrumentl, ""), " || ", COALESCE(?instrumentd, ""),
+    " || ", COALESCE(?hardware_meth, ""), " || ", COALESCE(?hardwarel_meth, ""), " || ", COALESCE(?hardwared_meth, ""),
+    " || ", COALESCE(?doi_method, ""),
+    " || ", COALESCE(?url_method, ""),
+    " >|< ", COALESCE(?parameters_method, "")
+); separator=" <|> ") AS ?uses_method)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?algorithm, " || ", ?algorithml, " || ", ?algorithmd,
+    " || ", COALESCE(?software, ""), " || ", COALESCE(?softwarel, ""), " || ", COALESCE(?softwared, ""),
+    " || ", COALESCE(?hardware_alg, ""), " || ", COALESCE(?hardwarel_alg, ""), " || ", COALESCE(?hardwared_alg, ""),
+    " || ", COALESCE(?doi_algorithm, ""),
+    " || ", COALESCE(?url_algorithm, ""),
+    " >|< ", COALESCE(?parameters_algorithm, "")
+); separator=" <|> ") AS ?uses_algorithm)
 (GROUP_CONCAT(DISTINCT CONCAT(?field, " || ", ?fieldl, " || ", ?fieldd); separator=" <|> ") AS ?field_of_work)
 
 WHERE {{
@@ -52,8 +64,11 @@ WHERE {{
     }}
 
     OPTIONAL {{
-        ?id wdt:{uses} ?methodraw
+        ?id p:{uses} ?statement_method.
+        ?statement_method ps:{uses} ?methodraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?methodraw), STR(wd:))) AS ?method)
+
+        ?methodraw wdt:{instance of} wd:{method}
 
         OPTIONAL {{
             ?methodraw rdfs:label ?methodlraw
@@ -68,56 +83,161 @@ WHERE {{
         }}
 
         BIND(COALESCE(?methoddraw, "No Description Provided!") AS ?methodd)
+
+        OPTIONAL {{
+            ?statement_method pq:{platform} ?instrumentraw.
+            BIND(CONCAT("mardi:", STRAFTER(STR(?instrumentraw), STR(wd:))) AS ?instrument)
+
+            OPTIONAL {{
+                ?instrumentraw rdfs:label ?instrumentlraw
+                FILTER (lang(?instrumentlraw) = 'en')
+            }}
+
+            BIND(COALESCE(?instrumentlraw, "No Label Provided!") AS ?instrumentl)
+
+            OPTIONAL {{
+                ?instrumentraw schema:description ?instrumentdraw
+                FILTER (lang(?instrumentdraw) = 'en')
+            }}
+
+            BIND(COALESCE(?instrumentdraw, "No Description Provided!") AS ?instrumentd)
+        }}
+
+        OPTIONAL {{
+            ?statement_method pq:{platform} ?hw_methraw.
+            ?hw_methraw wdt:{instance of} wd:{computer hardware}
+            BIND(CONCAT("mardi:", STRAFTER(STR(?hw_methraw), STR(wd:))) AS ?hardware_meth)
+
+            OPTIONAL {{
+                ?hw_methraw rdfs:label ?hw_methlraw
+                FILTER (lang(?hw_methlraw) = 'en')
+            }}
+
+            BIND(COALESCE(?hw_methlraw, "No Label Provided!") AS ?hardwarel_meth)
+
+            OPTIONAL {{
+                ?hw_methraw schema:description ?hw_methdraw
+                FILTER (lang(?hw_methdraw) = 'en')
+            }}
+
+            BIND(COALESCE(?hw_methdraw, "No Description Provided!") AS ?hardwared_meth)
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?doi_m; SEPARATOR="; ") AS ?doi_method) WHERE {{
+                    ?statement_method pq:{DOI} ?doi_m.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?url_m; SEPARATOR="; ") AS ?url_method) WHERE {{
+                    ?statement_method pq:{URL} ?url_m.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?param_method; SEPARATOR=" || ") AS ?parameters_method) WHERE {{
+                    ?statement_method pq:{comment} ?param_method.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
     }}
 
     OPTIONAL {{
-        ?id p:{platform} ?statement0.
-        ?statement0 ps:{platform} ?platformsoftwareraw.
+        ?id p:{uses} ?statement_algorithm.
+        ?statement_algorithm ps:{uses} ?algorithmraw.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?algorithmraw), STR(wd:))) AS ?algorithm)
 
-        ?statement pq:{object has role} ?platformsoftwaretyperaw.
-        BIND(CONCAT("", STRAFTER(STR(?platformsoftwaretyperaw), STR(wd:))) AS ?platformsoftwaretype)
-        FILTER (?platformsoftwaretype = "{software}")
-
-        BIND(CONCAT("mardi:", STRAFTER(STR(?platformsoftwareraw), STR(wd:))) AS ?platformsoftware)
+        ?algorithmraw wdt:{instance of} wd:{algorithm}
 
         OPTIONAL {{
-            ?platformsoftwareraw rdfs:label ?platformsoftwarelraw
-            FILTER (lang(?platformsoftwarelraw) = 'en')
+            ?algorithmraw rdfs:label ?algorithmlraw
+            FILTER (lang(?algorithmlraw) = 'en')
         }}
 
-        BIND(COALESCE(?platformsoftwarelraw, "No Label Provided!") AS ?platformsoftwarel)
+        BIND(COALESCE(?algorithmlraw, "No Label Provided!") AS ?algorithml)
 
         OPTIONAL {{
-            ?platformsoftwareraw schema:description ?platformsoftwaredraw
-            FILTER (lang(?platformsoftwaredraw) = 'en')
+            ?algorithmraw schema:description ?algorithmdraw
+            FILTER (lang(?algorithmdraw) = 'en')
         }}
 
-        BIND(COALESCE(?platformsoftwaredraw, "No Description Provided!") AS ?platformsoftwared)
-    }}
-
-    OPTIONAL {{
-        ?id p:{platform} ?statement1.
-        ?statement1 ps:{platform} ?platforminstrumentraw.
-
-        ?statement pq:{object has role} ?platforminstrumenttyperaw.
-        BIND(CONCAT("", STRAFTER(STR(?platforminstrumenttyperaw), STR(wd:))) AS ?platforminstrumenttype)
-        FILTER (?platforminstrumenttype = "{research tool}")
-
-        BIND(CONCAT("mardi:", STRAFTER(STR(?platforminstrumentraw), STR(wd:))) AS ?platforminstrument)
+        BIND(COALESCE(?algorithmdraw, "No Description Provided!") AS ?algorithmd)
 
         OPTIONAL {{
-            ?platforminstrumentraw rdfs:label ?platforminstrumentlraw
-            FILTER (lang(?platforminstrumentlraw) = 'en')
-        }}
+            ?statement_algorithm pq:{platform} ?softwareraw.
+            ?softwareraw wdt:{instance of} wd:{software}
+            BIND(CONCAT("mardi:", STRAFTER(STR(?softwareraw), STR(wd:))) AS ?software)
 
-        BIND(COALESCE(?platforminstrumentlraw, "No Label Provided!") AS ?platforminstrumentl)
+            OPTIONAL {{
+                ?softwareraw rdfs:label ?softwarelraw
+                FILTER (lang(?softwarelraw) = 'en')
+            }}
+
+            BIND(COALESCE(?softwarelraw, "No Label Provided!") AS ?softwarel)
+
+            OPTIONAL {{
+                ?softwareraw schema:description ?softwaredraw
+                FILTER (lang(?softwaredraw) = 'en')
+            }}
+
+            BIND(COALESCE(?softwaredraw, "No Description Provided!") AS ?softwared)
+        }}
 
         OPTIONAL {{
-            ?platforminstrumentraw schema:description ?platforminstrumentdraw
-            FILTER (lang(?platforminstrumentdraw) = 'en')
+            ?statement_algorithm pq:{platform} ?hw_algraw.
+            ?hw_algraw wdt:{instance of} wd:{computer hardware}
+            BIND(CONCAT("mardi:", STRAFTER(STR(?hw_algraw), STR(wd:))) AS ?hardware_alg)
+
+            OPTIONAL {{
+                ?hw_algraw rdfs:label ?hw_alglraw
+                FILTER (lang(?hw_alglraw) = 'en')
+            }}
+
+            BIND(COALESCE(?hw_alglraw, "No Label Provided!") AS ?hardwarel_alg)
+
+            OPTIONAL {{
+                ?hw_algraw schema:description ?hw_algdraw
+                FILTER (lang(?hw_algdraw) = 'en')
+            }}
+
+            BIND(COALESCE(?hw_algdraw, "No Description Provided!") AS ?hardwared_alg)
         }}
 
-        BIND(COALESCE(?platforminstrumentdraw, "No Description Provided!") AS ?platforminstrumentd)
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?doi_a; SEPARATOR="; ") AS ?doi_algorithm) WHERE {{
+                    ?statement_algorithm pq:{DOI} ?doi_a.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?url_a; SEPARATOR="; ") AS ?url_algorithm) WHERE {{
+                    ?statement_algorithm pq:{URL} ?url_a.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?param_alg; SEPARATOR=" || ") AS ?parameters_algorithm) WHERE {{
+                    ?statement_algorithm pq:{comment} ?param_alg.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
     }}
 
     OPTIONAL {{
@@ -140,9 +260,6 @@ WHERE {{
         BIND(COALESCE(?fielddraw, "No Description Provided!") AS ?fieldd)
     }}
 
-    OPTIONAL {{
-        ?id wdt:{MSC ID} ?msc.
-    }}
 }}
 
 GROUP BY ?id

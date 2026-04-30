@@ -3,8 +3,6 @@ SELECT DISTINCT
 (REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
 ?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary
 ?DOI ?URL ?publish ?archive ?end_time
-(GROUP_CONCAT(DISTINCT CONCAT(?datatype, " || ", ?datatypel, " || ", ?datatyped); separator=" <|> ") AS ?data_type)
-(GROUP_CONCAT(DISTINCT CONCAT(?representationformat, " || ", ?representationformatl, " || ", ?representationformatd); separator=" <|> ") AS ?representation_format)
 
 WHERE {{
 
@@ -21,40 +19,6 @@ WHERE {{
 
     OPTIONAL {{
         ?id wdt:P4876 ?size_record
-    }}
-
-    OPTIONAL {{
-        ?id p:P2283 ?statement_dt.
-        ?statement_dt ps:P2283 ?datatyperaw.
-        ?statement_dt pq:P3831 ?qualifier.
-        FILTER (?qualifier = wd:Q190087)
-        BIND(replace( xsd:string(?datatyperaw),'http://www.wikidata.org/entity/','wikidata:') as ?datatype)
-
-        SERVICE wikibase:label {{
-            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?datatyperaw rdfs:label ?datatypelraw .
-            ?datatyperaw schema:description ?datatypedraw .
-        }}
-
-        BIND(COALESCE(?datatypelraw, "No Label Provided!") AS ?datatypel)
-        BIND(COALESCE(?datatypedraw, "No Description Provided!") AS ?datatyped)
-    }}
-
-    OPTIONAL {{
-        ?id p:P2283 ?statement_dt2.
-        ?statement_dt2 ps:P2283 ?representationformatraw.
-        ?statement_dt2 pq:P3831 ?qualifier2.
-        FILTER (?qualifier2 = wd:)
-        BIND(replace( xsd:string(?representationformatraw),'http://www.wikidata.org/entity/','wikidata:') as ?representationformat)
-
-        SERVICE wikibase:label {{
-            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?representationformatraw rdfs:label ?representationformatlraw .
-            ?representationformatraw schema:description ?representationformatdraw .
-        }}
-
-        BIND(COALESCE(?representationformatlraw, "No Label Provided!") AS ?representationformatl)
-        BIND(COALESCE(?representationformatdraw, "No Description Provided!") AS ?representationformatd)
     }}
 
     OPTIONAL {{

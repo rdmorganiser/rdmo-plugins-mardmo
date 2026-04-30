@@ -4,9 +4,22 @@ SELECT DISTINCT
 (GROUP_CONCAT(DISTINCT(?msc); separator=" <|> ") AS ?msc_id)
 (GROUP_CONCAT(DISTINCT CONCAT(?input, " || ", ?inputl, " || ", ?inputd); separator=" <|> ") AS ?input_data_set)
 (GROUP_CONCAT(DISTINCT CONCAT(?output, " || ", ?outputl, " || ", ?outputd); separator=" <|> ") AS ?output_data_set)
-(GROUP_CONCAT(DISTINCT CONCAT(?method, " || ", ?methodl, " || ", ?methodd); separator=" <|> ") AS ?uses)
-(GROUP_CONCAT(DISTINCT CONCAT(?platformsoftware, " || ", ?platformsoftwarel, " || ", ?platformsoftwared); separator=" <|> ") AS ?platform_software)
-(GROUP_CONCAT(DISTINCT CONCAT(?platforminstrument, " || ", ?platforminstrumentl, " || ", ?platforminstrumentd); separator=" <|> ") AS ?platform_instrument)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?method, " || ", ?methodl, " || ", ?methodd,
+    " || ", COALESCE(?instrument, ""), " || ", COALESCE(?instrumentl, ""), " || ", COALESCE(?instrumentd, ""),
+    " || ", COALESCE(?hardware_meth, ""), " || ", COALESCE(?hardwarel_meth, ""), " || ", COALESCE(?hardwared_meth, ""),
+    " || ", COALESCE(?doi_method, ""),
+    " || ", COALESCE(?url_method, ""),
+    " >|< ", COALESCE(?parameters_method, "")
+); separator=" <|> ") AS ?uses_method)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?algorithm, " || ", ?algorithml, " || ", ?algorithmd,
+    " || ", COALESCE(?software, ""), " || ", COALESCE(?softwarel, ""), " || ", COALESCE(?softwared, ""),
+    " || ", COALESCE(?hardware_alg, ""), " || ", COALESCE(?hardwarel_alg, ""), " || ", COALESCE(?hardwared_alg, ""),
+    " || ", COALESCE(?doi_algorithm, ""),
+    " || ", COALESCE(?url_algorithm, ""),
+    " >|< ", COALESCE(?parameters_algorithm, "")
+); separator=" <|> ") AS ?uses_algorithm)
 (GROUP_CONCAT(DISTINCT CONCAT(?field, " || ", ?fieldl, " || ", ?fieldd); separator=" <|> ") AS ?field_of_work)
 
 WHERE {{
@@ -15,7 +28,7 @@ WHERE {{
 
     OPTIONAL {{
         ?id wdt:P ?inputraw
-        BIND(replace( xsd:string(?inputraw),'http://www.wikidata.org/entity/','wikidata:') as ?input)
+        BIND(replace(xsd:string(?inputraw),'http://www.wikidata.org/entity/','wikidata:') as ?input)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
@@ -29,7 +42,7 @@ WHERE {{
 
     OPTIONAL {{
         ?id wdt:P ?outputraw
-        BIND(replace( xsd:string(?outputraw),'http://www.wikidata.org/entity/','wikidata:') as ?output)
+        BIND(replace(xsd:string(?outputraw),'http://www.wikidata.org/entity/','wikidata:') as ?output)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
@@ -42,8 +55,10 @@ WHERE {{
     }}
 
     OPTIONAL {{
-        ?id wdt:P2283 ?methodraw
-        BIND(replace( xsd:string(?methodraw),'http://www.wikidata.org/entity/','wikidata:') as ?method)
+        ?id p:P2283 ?statement_method.
+        ?statement_method ps:P2283 ?methodraw.
+        FILTER NOT EXISTS {{ ?statement_method pq:P400 ?sw. ?sw wdt:P31 wd:Q7397 }}
+        BIND(replace(xsd:string(?methodraw),'http://www.wikidata.org/entity/','wikidata:') as ?method)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
@@ -53,51 +68,138 @@ WHERE {{
 
         BIND(COALESCE(?methodlraw, "No Label Provided!") AS ?methodl)
         BIND(COALESCE(?methoddraw, "No Description Provided!") AS ?methodd)
+
+        OPTIONAL {{
+            ?statement_method pq:P400 ?instrumentraw.
+            FILTER NOT EXISTS {{ ?instrumentraw wdt:P31 wd:Q17110744 }}
+            BIND(replace(xsd:string(?instrumentraw),'http://www.wikidata.org/entity/','wikidata:') as ?instrument)
+
+            SERVICE wikibase:label {{
+                bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+                ?instrumentraw rdfs:label ?instrumentlraw .
+                ?instrumentraw schema:description ?instrumentdraw .
+            }}
+
+            BIND(COALESCE(?instrumentlraw, "No Label Provided!") AS ?instrumentl)
+            BIND(COALESCE(?instrumentdraw, "No Description Provided!") AS ?instrumentd)
+        }}
+
+        OPTIONAL {{
+            ?statement_method pq:P400 ?hw_methraw.
+            ?hw_methraw wdt:P31 wd:Q17110744.
+            BIND(replace(xsd:string(?hw_methraw),'http://www.wikidata.org/entity/','wikidata:') as ?hardware_meth)
+
+            SERVICE wikibase:label {{
+                bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+                ?hw_methraw rdfs:label ?hw_methlraw .
+                ?hw_methraw schema:description ?hw_methdraw .
+            }}
+
+            BIND(COALESCE(?hw_methlraw, "No Label Provided!") AS ?hardwarel_meth)
+            BIND(COALESCE(?hw_methdraw, "No Description Provided!") AS ?hardwared_meth)
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?doi_m; SEPARATOR="; ") AS ?doi_method) WHERE {{
+                    ?statement_method pq:P356 ?doi_m.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?url_m; SEPARATOR="; ") AS ?url_method) WHERE {{
+                    ?statement_method pq:P2699 ?url_m.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_method (GROUP_CONCAT(?param_method; SEPARATOR=" || ") AS ?parameters_method) WHERE {{
+                    ?statement_method pq:P1013 ?param_method.
+                }}
+                GROUP BY ?statement_method
+            }}
+        }}
     }}
 
     OPTIONAL {{
-        ?id p:P400 ?statement0.
-        ?statement0 ps:P400 ?platformsoftwareraw.
-
-        ?statement pq:P3831 ?platformsoftwaretyperaw.
-        BIND(replace( xsd:string(?platformsoftwaretyperaw),'http://www.wikidata.org/entity/','') as ?platformsoftwaretype)
-        FILTER (?platformsoftwaretype = "Q7397")
-
-        BIND(replace( xsd:string(?platformsoftwareraw),'http://www.wikidata.org/entity/','wikidata:') as ?platformsoftware)
+        ?id p:P2283 ?statement_algorithm.
+        ?statement_algorithm ps:P2283 ?algorithmraw.
+        ?statement_algorithm pq:P400 ?softwareraw.
+        ?softwareraw wdt:P31 wd:Q7397.
+        BIND(replace(xsd:string(?algorithmraw),'http://www.wikidata.org/entity/','wikidata:') as ?algorithm)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?platformsoftwareraw rdfs:label ?platformsoftwarelraw .
-            ?platformsoftwareraw schema:description ?platformsoftwaredraw .
+            ?algorithmraw rdfs:label ?algorithmlraw .
+            ?algorithmraw schema:description ?algorithmdraw .
         }}
 
-        BIND(COALESCE(?platformsoftwarelraw, "No Label Provided!") AS ?platformsoftwarel)
-        BIND(COALESCE(?platformsoftwaredraw, "No Description Provided!") AS ?platformsoftwared)
-    }}
+        BIND(COALESCE(?algorithmlraw, "No Label Provided!") AS ?algorithml)
+        BIND(COALESCE(?algorithmdraw, "No Description Provided!") AS ?algorithmd)
 
-    OPTIONAL {{
-        ?id p:P400 ?statement1.
-        ?statement1 ps:P400 ?platforminstrumentraw.
-
-        ?statement pq:P3831 ?platforminstrumenttyperaw.
-        BIND(replace( xsd:string(?platforminstrumenttyperaw),'http://www.wikidata.org/entity/','') as ?platforminstrumenttype)
-        FILTER (?platforminstrumenttype = "")
-
-        BIND(replace( xsd:string(?platforminstrumentraw),'http://www.wikidata.org/entity/','wikidata:') as ?platforminstrument)
+        BIND(replace(xsd:string(?softwareraw),'http://www.wikidata.org/entity/','wikidata:') as ?software)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?platforminstrumentraw rdfs:label ?platforminstrumentlraw .
-            ?platformsoftwareraw schema:description ?platforminstrumentdraw .
+            ?softwareraw rdfs:label ?softwarelraw .
+            ?softwareraw schema:description ?softwaredraw .
         }}
 
-        BIND(COALESCE(?platforminstrumentlraw, "No Label Provided!") AS ?platforminstrumentl)
-        BIND(COALESCE(?platforminstrumentdraw, "No Description Provided!") AS ?platforminstrumentd)
+        BIND(COALESCE(?softwarelraw, "No Label Provided!") AS ?softwarel)
+        BIND(COALESCE(?softwaredraw, "No Description Provided!") AS ?softwared)
+
+        OPTIONAL {{
+            ?statement_algorithm pq:P400 ?hw_algraw.
+            ?hw_algraw wdt:P31 wd:Q17110744.
+            BIND(replace(xsd:string(?hw_algraw),'http://www.wikidata.org/entity/','wikidata:') as ?hardware_alg)
+
+            SERVICE wikibase:label {{
+                bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+                ?hw_algraw rdfs:label ?hw_alglraw .
+                ?hw_algraw schema:description ?hw_algdraw .
+            }}
+
+            BIND(COALESCE(?hw_alglraw, "No Label Provided!") AS ?hardwarel_alg)
+            BIND(COALESCE(?hw_algdraw, "No Description Provided!") AS ?hardwared_alg)
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?doi_a; SEPARATOR="; ") AS ?doi_algorithm) WHERE {{
+                    ?statement_algorithm pq:P356 ?doi_a.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?url_a; SEPARATOR="; ") AS ?url_algorithm) WHERE {{
+                    ?statement_algorithm pq:P2699 ?url_a.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
+
+        OPTIONAL {{
+            {{
+                SELECT ?statement_algorithm (GROUP_CONCAT(?param_alg; SEPARATOR=" || ") AS ?parameters_algorithm) WHERE {{
+                    ?statement_algorithm pq:P1013 ?param_alg.
+                }}
+                GROUP BY ?statement_algorithm
+            }}
+        }}
     }}
 
     OPTIONAL {{
         ?id wdt:P101 ?fieldraw.
-        BIND(replace( xsd:string(?fieldraw),'http://www.wikidata.org/entity/','wikidata:') as ?field)
+        BIND(replace(xsd:string(?fieldraw),'http://www.wikidata.org/entity/','wikidata:') as ?field)
 
         SERVICE wikibase:label {{
             bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .

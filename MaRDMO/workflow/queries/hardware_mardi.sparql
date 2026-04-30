@@ -1,12 +1,20 @@
 SELECT DISTINCT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
-?nodes ?cores
-(GROUP_CONCAT(DISTINCT CONCAT(?cpu_id, " || ", ?cpul, " || ", ?cpud); separator=" <|> ") AS ?cpu)
+?number_of_nodes
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?cpu_id, " || ", ?cpul, " || ", ?cpud,
+    " || ", COALESCE(STR(?cpu_count), ""),
+    " || ", COALESCE(STR(?number_of_cores), "")
+); separator=" <|> ") AS ?cpu)
 
 WHERE {{
 
     VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:{number of compute nodes} ?number_of_nodes.
+    }}
 
     OPTIONAL {{
         ?id p:{CPU} ?statement.
@@ -28,13 +36,13 @@ WHERE {{
         BIND(COALESCE(?cpudraw, "No Description Provided!") AS ?cpud)
 
         OPTIONAL {{
-            ?cpuraw wdt:{number of processor cores} ?cores.
+            ?statement pq:{quantity_property} ?cpu_count.
         }}
 
         OPTIONAL {{
-            ?statement pq:{quantity_property} ?nodes.
+            ?cpuraw wdt:{number of processor cores} ?number_of_cores.
         }}
     }}
 }}
 
-GROUP BY ?id ?nodes ?cores
+GROUP BY ?id ?number_of_nodes

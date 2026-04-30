@@ -3,8 +3,6 @@ SELECT DISTINCT
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary
 ?DOI ?URL ?publish ?archive ?end_time
-(GROUP_CONCAT(DISTINCT CONCAT(?datatype, " || ", ?datatypel, " || ", ?datatyped); separator=" <|> ") AS ?data_type)
-(GROUP_CONCAT(DISTINCT CONCAT(?representationformat, " || ", ?representationformatl, " || ", ?representationformatd); separator=" <|> ") AS ?representation_format)
 
 WHERE {{
 
@@ -21,50 +19,6 @@ WHERE {{
 
     OPTIONAL {{
         ?id wdt:{number of records} ?size_record
-    }}
-
-    OPTIONAL {{
-        ?id p:{uses} ?statement_dt.
-        ?statement_dt ps:{uses} ?datatyperaw.
-        ?statement_dt pq:{object has role} ?qualifier.
-        FILTER (?qualifier = wd:{data type})
-        BIND(CONCAT("mardi:", STRAFTER(STR(?datatyperaw), STR(wd:))) AS ?datatype)
-
-        OPTIONAL {{
-            ?datatyperaw rdfs:label ?datatypelraw
-            FILTER (lang(?datatypelraw) = 'en')
-        }}
-
-        BIND(COALESCE(?datatypelraw, "No Label Provided!") AS ?datatypel)
-
-        OPTIONAL {{
-            ?datatyperaw schema:description ?datatypedraw
-            FILTER (lang(?datatypedraw) = 'en')
-        }}
-
-        BIND(COALESCE(?datatypedraw, "No Description Provided!") AS ?datatyped)
-    }}
-
-    OPTIONAL {{
-        ?id p:{uses} ?statement_dt2.
-        ?statement_dt2 ps:{uses} ?representationformatraw.
-        ?statement_dt2 pq:{object has role} ?qualifier2.
-        FILTER (?qualifier2 = wd:{representation format})
-        BIND(CONCAT("mardi:", STRAFTER(STR(?representationformatraw), STR(wd:))) AS ?representationformat)
-
-        OPTIONAL {{
-            ?representationformatraw rdfs:label ?representationformatlraw
-            FILTER (lang(?representationformatlraw) = 'en')
-        }}
-
-        BIND(COALESCE(?representationformatlraw, "No Label Provided!") AS ?representationformatl)
-
-        OPTIONAL {{
-            ?representationformatraw schema:description ?representationformatdraw
-            FILTER (lang(?representationformatdraw) = 'en')
-        }}
-
-        BIND(COALESCE(?representationformatdraw, "No Description Provided!") AS ?representationformatd)
     }}
 
     OPTIONAL {{
@@ -101,7 +55,7 @@ WHERE {{
 
     BIND(
         IF(
-            EXISTS {{ ?id wdt:{mandates} wd:{data publishing} }}, "Yes", "No"
+            EXISTS {{ ?id wdt:{mandates} wd:{data publishing} }}, "YesText"
         )
         AS ?publish
     )
