@@ -1,68 +1,15 @@
 '''Utility functions for extracting and normalising workflow-related data.
 
 Provides helpers that read structured answers from the RDMO questionnaire and
-derive derived values (discipline labels, data-set sizes, references, archive
-URLs) needed by the workflow worker and handler layers.
+derive derived values (data-set sizes, references, archive URLs) needed by
+the workflow worker and handler layers.
 
 Provides:
 
-- ``get_discipline`` — derive the research discipline label from questionnaire answers
-- ``get_size``       — extract the data-set size value from answer options
-- ``get_reference``  — extract a data-set or instrument reference identifier
-- ``get_archive``    — extract the data-archive URL or identifier
+- ``get_size``      — extract the data-set size value from answer options
+- ``get_reference`` — extract a data-set or instrument reference identifier
+- ``get_archive``   — extract the data-archive URL or identifier
 '''
-
-from .constants import data_set_reference_ids
-
-def get_discipline(answers):
-    '''Partition process-step disciplines into non-math and MSC (math subject classification) categories.
-
-    Iterates over all ``processstep`` discipline entries in *answers*, deduplicates
-    them by ID, and adds two new top-level keys to *answers*:
-
-    * ``nonmathdiscipline`` – items with a ``mardi:`` or ``wikidata:`` prefix
-    * ``mathsubject``       – items with an ``msc:`` prefix
-
-    Args:
-        answers: Top-level answers dict (mutated in place).
-
-    Returns:
-        The mutated *answers* dict.
-    '''
-    ids = []
-    md = 0
-    nmd = 0
-    for key in answers.get('processstep', []):
-        for key2 in answers['processstep'][key].get('discipline', []):
-            if not answers['processstep'][key]['discipline'][key2].get('ID'):
-                continue
-            if answers['processstep'][key]['discipline'][key2]['ID'] in ids:
-                continue
-            if answers['processstep'][key]['discipline'][key2]['ID'].split(':')[0] in ('mardi', 'wikidata'):
-                answers.setdefault('nonmathdiscipline', {}).update(
-                    {
-                        nmd:
-                            {
-                                'ID': answers['processstep'][key]['discipline'][key2]['ID'],
-                                'Name': answers['processstep'][key]['discipline'][key2]['Name']
-                            }
-                    }
-                )
-                nmd += 1
-                ids.append(answers['processstep'][key]['discipline'][key2]['ID'])
-            elif answers['processstep'][key]['discipline'][key2]['ID'].split(':')[0] == 'msc':
-                answers.setdefault('mathsubject', {}).update(
-                    {
-                        md:
-                            {
-                                'ID': answers['processstep'][key]['discipline'][key2]['ID'],
-                                'Name': answers['processstep'][key]['discipline'][key2]['Name']
-                            }
-                    }
-                )
-                md += 1
-                ids.append(answers['processstep'][key]['discipline'][key2]['ID'])
-    return answers
 
 def get_size(data, options):
     '''Extract the size unit and value from a data-set answer dict.
@@ -100,17 +47,10 @@ def get_reference(data, options):
         Dict ``{index: [option_uri, value]}`` for all present references;
         empty dict if none are set.
     '''
-    result = {}
 
-    for idx, key in enumerate(data_set_reference_ids):
-        if key in ('Yes', 'No'):
-            if value := data.get('publish', {}).get('value') == key:
-                result[idx] = [options[key], '']
-        else:
-            if value := data.get(key, {}).get('value'):
-                result[idx] = [options[key], value]
-
-    return result
+    publish = options[data['publish']['value']] if data.get('publish', {}).get('value') else ''
+    doi_url = data.get('DOI', {}).get('value', '') or data.get('URL', {}).get('value', '')
+    return [publish, doi_url] if publish else []
 
 def get_archive(data, options):
     '''Extract archival intent and optional end-year from a data-set answer dict.
