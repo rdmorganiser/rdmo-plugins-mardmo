@@ -39,28 +39,28 @@
 {% for values in answers.model.values %}
 
     {# Include Mathematical Model Name #}
-    {% include "MaRDMO/_name.html" with class="MATHEMATICAL MODEL" counter=forloop.counter name=values.Name prefix="MM" %}
+    {% include "MaRDMO/partials/_name.html" with class="MATHEMATICAL MODEL" counter=forloop.counter name=values.Name prefix="MM" %}
     
     {# Include Mathematical Model Short Description #}
-    {% include "MaRDMO/_short_description.html" with class="MATHEMATICAL MODEL" description=values.Description name=values.Name %}
+    {% include "MaRDMO/partials/_short_description.html" with class="MATHEMATICAL MODEL" description=values.Description name=values.Name %}
 
     {# Include Mathematical Model ID #}
-    {% include "MaRDMO/_id.html" with class="MATHEMATICAL MODEL" id=values.ID %}
+    {% include "MaRDMO/partials/_id.html" with class="MATHEMATICAL MODEL" id=values.ID %}
 
     {# Include Mathematical Model Properties #}
-    {% include "MaRDMO/_properties.html" with properties=values.Properties_Check %}
+    {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
 
     {# Include Block for single Relation between Model and Problem #}
-    {% include "MaRDMO/_relation_block_single.html" with anchor="MM2RP" title="Research Problems" relation="models" relatants=values.RelationRP class="RESEARCH PROBLEM" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2RP" title="Research Problems" relation="models" relatants=values.RelationRP class="RESEARCH PROBLEM" %}
 
     {# Include Block for multiple Relations between Model and Formulation #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="MM2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
 
     {# Include Block for single Relation between Model and Task #}
-    {% include "MaRDMO/_relation_block_single.html" with anchor="MM2CT" title="Computational Tasks" relation="used by" relatants=values.RelationT class="COMPUTATIONAL TASK" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2CT" title="Computational Tasks" relation="used by" relatants=values.RelationT class="COMPUTATIONAL TASK" %}
 
     {# Include Block for multiple Relations between Model and Model #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="MM2MM" title="Mathematical Models" relations=values.RelationMM class="MATHEMATICAL MODEL" empty_msg="False"%}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MM" title="Mathematical Models" relations=values.RelationMM class="MATHEMATICAL MODEL" empty_msg="False"%}
 
 {% empty %}
     <strong style="color:black;">NO MODEL DOCUMENTED</strong>
@@ -70,22 +70,22 @@
 {% for values in answers.task.values %}
 
     {# Include Computational Task Name #}
-    {% include "MaRDMO/_name.html" with class="COMPUTATIONAL TASK" counter=forloop.counter name=values.Name prefix="CT" %}
+    {% include "MaRDMO/partials/_name.html" with class="COMPUTATIONAL TASK" counter=forloop.counter name=values.Name prefix="CT" %}
 
     {# Include Computational Task Short Description #}
-    {% include "MaRDMO/_short_description.html" with class="COMPUTATIONAL TASK" description=values.Description name=values.Name %}
+    {% include "MaRDMO/partials/_short_description.html" with class="COMPUTATIONAL TASK" description=values.Description name=values.Name %}
 
     {# Include Computational Task ID #}
-    {% include "MaRDMO/_id.html" with class="COMPUTATIONAL TASK" id=values.ID %}
+    {% include "MaRDMO/partials/_id.html" with class="COMPUTATIONAL TASK" id=values.ID %}
 
     {# Include Computational Task Properties #}
-    {% include "MaRDMO/_properties.html" with properties=values.Properties_Check %}
+    {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
 
     {# Include Block for multiple Relations between Task and Formulation #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="CT2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="CT2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
 
     {# Include Block for multiple Relations between Task and Task #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="CT2CT" title="Computational Tasks" relations=values.RelationT class="COMPUTATIONAL TASK" empty_msg="False" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="CT2CT" title="Computational Tasks" relations=values.RelationT class="COMPUTATIONAL TASK" empty_msg="False" %}
 
 {% empty %}
     <strong style="color:black;">NO TASK DOCUMENTED</strong>
@@ -95,16 +95,16 @@
 {% for values in answers.formulation.values %}
         
     {# Include Mathematical Expression Name #}
-    {% include "MaRDMO/_name.html" with class="MATHEMATICAL EXPRESSION" counter=forloop.counter name=values.Name prefix="ME" %}
+    {% include "MaRDMO/partials/_name.html" with class="MATHEMATICAL EXPRESSION" counter=forloop.counter name=values.Name prefix="ME" %}
 
     {# Include Mathematical Expression Short Description #}
-    {% include "MaRDMO/_short_description.html" with class="MATHEMATICAL EXPRESSION" description=values.Description name=values.Name %}
+    {% include "MaRDMO/partials/_short_description.html" with class="MATHEMATICAL EXPRESSION" description=values.Description name=values.Name %}
 
     {# Include Mathematical Expression Aliases #}
-    {% include "MaRDMO/_alias.html" with aliases=values.Alias %}
+    {% include "MaRDMO/partials/_alias.html" with aliases=values.Alias %}
 
     {# Include Mathematical Expression Detailed Description #}
-    {% include "MaRDMO/_detailed_description.html" with detailed_descriptions=values.descriptionLong %}
+    {% include "MaRDMO/partials/_detailed_description.html" with detailed_descriptions=values.descriptionLong %}
 
     {% if 'not found' in values.ID %}
         {% if values.reference %}
@@ -115,13 +115,13 @@
     {% endif %}
 
     {# Include Mathematical Expression ID #}
-    {% include "MaRDMO/_id.html" with class="MATHEMATICAL EXPRESSION" id=values.ID %}
+    {% include "MaRDMO/partials/_id.html" with class="MATHEMATICAL EXPRESSION" id=values.ID %}
 
     {# Include Formulation Properties #}
-    {% include "MaRDMO/_properties.html" with properties=values.Properties_Check %}
+    {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
         
     {# Include Block for multiple Relations between Formulation and Formulation #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="MF2MF_2" title="Mathematical Expressions" relations=values.RelationMF2 class="MATHEMATICAL EXPRESSION" empty_msg="False" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MF2MF_2" title="Mathematical Expressions" relations=values.RelationMF2 class="MATHEMATICAL EXPRESSION" empty_msg="False" %}
 
 {% empty %}
     <strong style="color:black;">NO EXPRESSION DOCUMENTED</strong>
@@ -131,7 +131,7 @@
 {% for values in answers.publication.values %}
 
     {# Include Publication Name #}
-    {% include "MaRDMO/_name.html" with class="PUBLICATION" counter=forloop.counter name=values.Name prefix="P" %}
+    {% include "MaRDMO/partials/_name.html" with class="PUBLICATION" counter=forloop.counter name=values.Name prefix="P" %}
     
     {% for reference in values.reference.values %}
         {% if reference.0 == option.DOI %}
@@ -144,10 +144,10 @@
     {% endfor %}
     
     {# Include Publication ID #}
-    {% include "MaRDMO/_id.html" with id=values.ID %}
+    {% include "MaRDMO/partials/_id.html" with id=values.ID %}
 
     {# Include Block for multiple Relations between Publication and Model Entity #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="P2E" title="Entities of the Mathematical Models" relations=values.RelationP class="MATHEMATICAL MODEL ENTITY" empty_msg="True" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="P2E" title="Entities of the Mathematical Models" relations=values.RelationP class="MATHEMATICAL MODEL ENTITY" empty_msg="True" %}
 
 {% empty %}
     <strong style="color:black;">NO PUBLICATION DOCUMENTED</strong>
@@ -157,16 +157,16 @@
 {% for values in answers.problem.values %}
     
     {# Include Research Problem Name #}
-    {% include "MaRDMO/_name.html" with class="RESEARCH PROBLEM" counter=forloop.counter name=values.Name prefix="RP" %}
+    {% include "MaRDMO/partials/_name.html" with class="RESEARCH PROBLEM" counter=forloop.counter name=values.Name prefix="RP" %}
 
     {# Include Research Problem Short Description #}
-    {% include "MaRDMO/_short_description.html" with class="RESEARCH PROBLEM" description=values.Description name=values.Name %}
+    {% include "MaRDMO/partials/_short_description.html" with class="RESEARCH PROBLEM" description=values.Description name=values.Name %}
 
     {# Include Research Problem ID #}
-    {% include "MaRDMO/_id.html" with class="RESERACH PROBLEM" id=values.ID %}
+    {% include "MaRDMO/partials/_id.html" with class="RESERACH PROBLEM" id=values.ID %}
 
     {# Include Block for multiple Relations between Problem and Problem #}
-    {% include "MaRDMO/_relation_block_multiple.html" with anchor="RP2RP" title="other Research Problems" relations=values.RelationRP class="RESEARCH PROBLEM" empty_msg="False"%}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="RP2RP" title="other Research Problems" relations=values.RelationRP class="RESEARCH PROBLEM" empty_msg="False"%}
 
 {% empty %}
     <strong style="color:black;">NO PROBLEM DOCUMENTED</strong>
