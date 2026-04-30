@@ -8,18 +8,17 @@ Contains:
 - Questionnaire write helpers: :func:`value_editor`.
 - Graph utilities: :func:`topological_order`, :func:`is_cyclic`.
 - Date helpers: :func:`date_format`, :func:`date_precision`.
-- Entity-relation processing: :func:`entity_relations`, :func:`map_entity`,
+- Entity-relation processing: :func:`entity_relations`,
+  :func:`entity_relations_grouped`, :func:`map_entity`,
   :func:`build_new_value`, :func:`resolve_target`, :func:`label_index_map`.
 - Export helpers: :func:`unique_items`, :func:`compare_items`,
-  :func:`replace_in_dict`, :func:`inline_mathml`, :func:`clean_mathml`.
+  :func:`replace_in_dict`.
 - Questionnaire utilities: :func:`process_question_dict`,
   :func:`define_setup`, :func:`rank_by_search_term`.
 '''
 
 from typing import Callable, Optional, Any
 from collections import defaultdict, deque
-
-import re
 
 from rdmo.projects.models import Value
 from rdmo.domain.models import Attribute
@@ -572,6 +571,70 @@ def entity_relations(data, idx, entity, order, assumption, mapping):
                 if new_value not in entity_values.values():
                     entity_values[key] = new_value
 
+def entity_relations_grouped(data, idx, entity, order, assumption, mapping):
+    """Resolve cross-entity relations without value-level deduplication.
+
+    Identical to :func:`entity_relations` except that every resolved entry is
+    always written, even when its value already appears under a different key.
+    This is required for grouped structures where the same external ID (e.g.
+    ``'not found'``) or the same platform software legitimately occurs at
+    multiple set-indices.
+
+    Args:
+        data:       Top-level answers dict; mutated in place.
+        idx:        Dict with keys ``from`` and ``to``.
+        entity:     Dict with keys ``relation``, ``old_name``, ``new_name``,
+                    and ``encryption``.
+        order:      Dict with boolean flags ``formulation`` and ``task``.
+        assumption: Boolean controlling assumption qualifier attachment.
+        mapping:    :class:`~MaRDMO.helpers.PropertyRegistry` for relation type lookup.
+    """
+    idx['to'] = check_list(idx.get('to'))
+    entity['encryption'] = check_list(entity['encryption'])
+    label_to_index_maps = label_index_map(data, idx['to'])
+
+    for from_entry in data.get(idx.get('from'), {}).values():
+        relation_keys = from_entry.get(entity['relation'], {}).keys()
+        old_name_keys = from_entry.get(entity['old_name'], {}).keys()
+        for key in relation_keys | old_name_keys:
+            values = from_entry.get(entity['old_name'], {}).get(key, {})
+            entity_values = from_entry.setdefault(entity['new_name'], {})
+            if not is_flat(values):
+                for key2 in from_entry[entity['old_name']][key]:
+                    value = from_entry[entity['old_name']][key][key2]
+                    resolved = None
+                    if value:
+                        for enc_entry, label_map in zip(entity['encryption'], label_to_index_maps):
+                            resolved = resolve_target(
+                                name=value.get("Name"),
+                                description=value.get("Description"),
+                                id_=value.get("ID"),
+                                entity_enc=enc_entry,
+                                label_map=label_map,
+                            )
+                            if resolved != value.get("ID"):
+                                break
+                    new_value = build_new_value(
+                        from_entry, entity, key, resolved, order, assumption, mapping
+                    )
+                    entity_values[f"{key}|{key2}"] = new_value
+            else:
+                resolved = None
+                for enc_entry, label_map in zip(entity['encryption'], label_to_index_maps):
+                    resolved = resolve_target(
+                        name=values.get("Name"),
+                        description=values.get("Description"),
+                        id_=values.get("ID"),
+                        entity_enc=enc_entry,
+                        label_map=label_map,
+                    )
+                    if resolved != values.get("ID"):
+                        break
+                new_value = build_new_value(
+                    from_entry, entity, key, resolved, order, assumption, mapping
+                )
+                entity_values[key] = new_value
+
 def initialize_counter(counter):
     '''Return ``max(counter) + 1``, or ``0`` when *counter* is empty.
 
@@ -823,59 +886,6 @@ def unique_items(data, title = None):
                     search(value)
     search(data)
     return items, dependency
-
-def inline_mathml(data):
-    '''Strip attribute noise from MathML strings in *data* to make them safe for inline HTML.
-
-    Recursively traverses dicts and lists, applying :func:`clean_mathml` to
-    every string value that contains a ``<math`` tag.  Mutates *data* in place.
-
-    Args:
-        data: Nested dict or list (e.g. the workflow answers dict).
-    '''
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if isinstance(value, str):
-                if '<math' in value:
-                    data[key] = clean_mathml(value)
-            elif isinstance(value, (dict, list)):
-                inline_mathml(value)
-    elif isinstance(data, list):
-        for item in data:
-            inline_mathml(item)
-
-def clean_mathml(mathml_str):
-    '''Remove all HTML/XML attributes from MathML tags except ``xmlns`` on ``<math>``.
-
-    Keeps the structural tags intact while stripping presentation attributes
-    that can break inline rendering in browsers.
-
-    Args:
-        mathml_str: Raw MathML string (potentially with many attributes).
-
-    Returns:
-        Cleaned MathML string.
-    '''
-    def clean_tag(match):
-        '''Clean Tag'''
-        tag = match.group(1)
-
-        # Keep xmlns on <math> tag
-        if tag.startswith('math'):
-            xmlns_match = re.search(r'xmlns="[^"]+"', tag)
-            if xmlns_match:
-                return f"<math {xmlns_match.group(0)}>"
-            return "<math>"
-
-        # Just keep the tag name, strip attributes
-        tagname_match = re.match(r'^/?\w+', tag)
-        if tagname_match:
-            return f"<{tagname_match.group(0)}>"
-        return f"<{tag}>"
-
-    # Apply substitution on all opening tags
-    cleaned = re.sub(r'<([^>\s]+(?:\s[^>]*)?)>', clean_tag, mathml_str)
-    return cleaned
 
 def process_question_dict(project, questions, get_answer):
     """Iterate through the nested questions dict and collect answers via *get_answer*.
