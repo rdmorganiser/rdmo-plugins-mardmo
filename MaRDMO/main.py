@@ -2,15 +2,14 @@
 
 Provides:
 
-- :class:`BaseMaRDMOExportProvider` — abstract base for all MaRDMO export
-  providers; extends :class:`~MaRDMO.oauth2.OauthProviderMixin` with
-  catalog-specific submission, preview, and export logic.
-- :class:`MaRDMOExportProvider` — concrete RDMO export provider registered
-  in ``apps.py``; handles form rendering, catalog dispatch, and background
-  job scheduling.
-- :class:`ExportForm` — minimal Django form used on the export action page.
-- Four ``submit_mardmo_*`` methods implementing catalog-specific export flows
-  for model, algorithm, workflow, and search catalogs.
+- :class:`BaseMaRDMOExportProvider` — abstract base carrying the MaRDI Portal
+  OAuth2 credentials and callback wiring shared by all providers that need to
+  post to the portal.
+- :class:`MaRDMOExportProvider` — "Export to MaRDI Portal" button; handles
+  preview and authenticated upload for the model, algorithm, and workflow
+  documentation catalogs.
+- :class:`MaRDMOQueryProvider` — "Query MaRDI Portal" button; handles the
+  search-catalog preview and result rendering without requiring OAuth2.
 '''
 
 import logging
@@ -35,7 +34,6 @@ from .getters import (
 )
 from .helpers import  (
     compare_items,
-    inline_mathml,
     is_cyclic,
     process_question_dict,
     topological_order
@@ -47,7 +45,6 @@ from .model.worker import PrepareModel
 
 from .algorithm.worker import PrepareAlgorithm
 
-from .workflow.utils import get_discipline
 from .workflow.worker import prepareWorkflow
 from .search.worker import search
 from .publication.worker import PublicationRetriever
@@ -120,11 +117,15 @@ class BaseMaRDMOExportProvider(OauthProviderMixin, Export, ABC):
         }
 
 class MaRDMOExportProvider(BaseMaRDMOExportProvider):
-    """Handles MaRDMO export logic.
+    '''Export provider for the "Export to MaRDI Portal" button.
+
+    Handles preview and authenticated Wikibase upload for the model, algorithm,
+    and workflow documentation catalogs.  Search is handled separately by
+    :class:`MaRDMOQueryProvider`.
 
     Attributes:
         request: The Django HttpRequest associated with the provider.
-    """
+    '''
 
     request: HttpRequest
 
@@ -132,14 +133,14 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         '''Empty form class required by the RDMO Export provider interface.'''
 
     def render(self):
-        '''Render the catalog-appropriate preview or documentation page.
+        '''Render the catalog-appropriate documentation preview page.
 
-        Dispatches to the correct preview/submit method based on the active
-        catalog (model, algorithm, workflow, or search).
+        Dispatches to the correct template based on the active catalog
+        (model, algorithm, or workflow).
 
         Returns:
-            HTTP response rendering the preview page or an error page for
-            unknown catalogs.
+            HTTP response rendering the preview page, or an error page for
+            unsupported catalogs.
         '''
         # MaRDMO: Mathematical Model Documentation
         if str(self.project.catalog).endswith(
@@ -148,16 +149,13 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 'mardmo-model-basics-catalog'
             )
         ):
-
-            # Get answers, options, and mathmoddb
             answers, options = self.get_post_data('preview')
 
-            # Select Template
             if str(self.project.catalog).endswith('mardmo-model-basics-catalog'):
                 template = 'MaRDMO/modelTemplate-basics.html'
             else:
                 template = 'MaRDMO/modelTemplate.html'
-
+            print(answers)
             return render_preview(
                 self = self,
                 template = template,
@@ -168,7 +166,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         # MaRDMO: Algorithm Documentation
         if str(self.project.catalog).endswith('mardmo-algorithm-catalog'):
 
-            # Get answers, options, mathalgodb
             answers, options = self.get_post_data('preview')
 
             return render_preview(
@@ -178,30 +175,11 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 option = options
             )
 
-        # MaRDMO: Search Interdisciplinary Workflows, Mathematical Models or Algorithms
-        if str(self.project.catalog).endswith('mardmo-search-catalog'):
-
-            answers, options = self.get_post_data('preview')
-
-            return render_preview(
-                self = self,
-                template = 'MaRDMO/serachTemplate.html',
-                answers = answers,
-                option = options
-            )
-
         # MaRDMO: Interdisciplinary Workflow Documentation
         if str(self.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
 
             answers, options = self.get_post_data('preview')
-
-            # Get Model Data
-            prepare = prepareWorkflow()
-            answers = prepare.preview(answers)
-
-            # Adjust MathML for Preview
-            inline_mathml(answers)
-
+            print(answers)
             return render_preview(
                 self = self,
                 template = 'MaRDMO/workflowTemplate.html',
@@ -221,16 +199,15 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         )
 
     def submit(self):
-        """Dispatch the form submission to the catalog-appropriate handler.
+        '''Dispatch the form submission to the catalog-appropriate export handler.
 
-        Handles the cancel action (redirects to the project page for all
-        catalogs), then routes to :meth:`submit_mardmo_model`,
-        :meth:`submit_mardmo_algorithm`, :meth:`submit_mardmo_search`, or
+        Handles the cancel action (redirects to the project page), then routes
+        to :meth:`submit_mardmo_model`, :meth:`submit_mardmo_algorithm`, or
         :meth:`submit_mardmo_workflow` based on the active project catalog.
 
         Returns:
             HTTP redirect or rendered response from the selected submit method.
-        """
+        '''
 
         # Handle cancel for all submissions
         if 'cancel' in self.request.POST:
@@ -242,8 +219,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             return self.submit_mardmo_model()
         if catalog.endswith('mardmo-algorithm-catalog'):
             return self.submit_mardmo_algorithm()
-        if catalog.endswith('mardmo-search-catalog'):
-            return self.submit_mardmo_search()
         if catalog.endswith('mardmo-interdisciplinary-workflow-catalog'):
             return self.submit_mardmo_workflow()
 
@@ -420,44 +395,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
         return self.post(self.request, payload, dependency_ordered)
 
-    def submit_mardmo_search(self):
-        '''Execute a MaRDI Portal search and return matching results as JSON.
-
-        Reads the search type from the answers dict and dispatches to the
-        appropriate search handler (workflow, model, or algorithm).
-
-        Returns:
-            :class:`~django.http.JsonResponse` with a ``"links"`` key listing
-            matching portal items, or an error JSON on unknown search type.
-        '''
-
-        answers, options = self.get_post_data()
-
-        if answers['search']['options'] == options['InterdisciplinaryWorkflow']:
-            datatype = "Workflow(s)"
-            source = "MaRDI Portal"
-        elif answers['search']['options'] == options['MathematicalModel']:
-            datatype = "Mathematical Model(s)"
-            source = "MathModDB KG"
-        elif answers['search']['options'] == options['Algorithm']:
-            datatype = "Algorithm(s)"
-            source = "MathAlgoDB KG"
-        else:
-            datatype = "Unknown"
-            source = "Unknown"
-
-        return render(
-            self.request,
-            'MaRDMO/searchResults.html',
-            {
-                'datatype': datatype,
-                'source': source,
-                'noResults': answers['no_results'],
-                'links': answers['links']
-            },
-            status=200
-        )
-
     def submit_mardmo_workflow(self):
         '''Prepare and render the Interdisciplinary Workflow documentation preview.
 
@@ -515,7 +452,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
         # Order the creation of Items following their dependencies
         dependency_ordered = topological_order(dependency)
-
+        return
         return self.post(self.request, payload, dependency_ordered)
 
     def post_success(self, request, init, final):
@@ -543,11 +480,14 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         )
 
     def get_post_data(self, mode = 'submit'):
-        '''Collect and pre-process user answers for the active catalog.
+        '''Collect and pre-process user answers for the documentation catalogs.
 
         Reads all RDMO project values, applies catalog-specific processing
         (relation resolution, publication retrieval, etc.), and returns the
         structured answers dict alongside the global options dict.
+
+        Supports the model, algorithm, and workflow documentation catalogs.
+        The search catalog is handled by :class:`MaRDMOQueryProvider`.
 
         Args:
             mode: ``'preview'`` additionally fetches publication metadata and
@@ -568,8 +508,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 'mardmo-model-basics-catalog'
             )
         ):
-
-            # Load Model & Publication Questions
             questions = get_questions('model') | get_questions('publication')
 
             answers = process_question_dict(
@@ -579,7 +517,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             )
 
             if mode == 'preview':
-                # Retrieve Publications related to Model for Preview
                 publication = PublicationRetriever()
                 answers = publication.get_information(
                     project = self.project,
@@ -588,7 +525,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                     options = options
                 )
 
-            # Prepare Mathematical Model (Preview)
             prepare = PrepareModel()
             answers = prepare.preview(answers)
 
@@ -597,7 +533,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         # MaRDMO: Algorithm Documentation
         if str(self.project.catalog).endswith('mardmo-algorithm-catalog'):
 
-            # Load Algorithm and Publication Questions
             questions = get_questions('algorithm') | get_questions('publication')
 
             answers = process_question_dict(
@@ -607,7 +542,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             )
 
             if mode == 'preview':
-                # Retrieve Publications related to Model for Preview
                 publication = PublicationRetriever()
                 answers = publication.get_information(
                     project = self.project,
@@ -616,36 +550,14 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                     options = options
                 )
 
-            # Prepare Mathematical Model (Preview)
             prepare = PrepareAlgorithm()
             answers = prepare.preview(answers)
-
-            return answers, options
-
-        # MaRDMO: Search Interdisciplinary Workflow, Mathematical Model or Algorithm
-        if str(self.project.catalog).endswith('mardmo-search-catalog'):
-
-            # Load Data for Interdisciplinary Workflow, Mathematical Model or Algorithm Search
-            questions = get_questions('search')
-
-            answers = process_question_dict(
-                project = self.project,
-                questions = questions,
-                get_answer = get_answers
-            )
-
-            # Get Results from MaRDI Resources
-            answers = search(
-                answers,
-                options
-            )
 
             return answers, options
 
         # MaRDMO: Interdisciplinary Workflow Documentation
         if str(self.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
 
-            # Load Interdisciplinary Workflow and Publication Questions
             questions = get_questions('workflow') | get_questions('publication')
 
             answers = process_question_dict(
@@ -654,10 +566,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 get_answer = get_answers
             )
 
-            # Refine associated Disciplines
-            answers = get_discipline(answers)
-
-            # Retrieve Publications related to Workflow
             publication = PublicationRetriever()
             answers = publication.get_information(
                 project = self.project,
@@ -666,9 +574,154 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 options = options
             )
 
+            if mode == 'preview':
+                prepare = prepareWorkflow()
+                answers = prepare.preview(answers)
+
             return answers, options
 
         # Default fallback if catalog type is unknown
+        return render(
+            self.request,
+            'core/error.html',
+            {
+                'title': _('Unknown catalog'),
+                'errors': [_('Cannot handle this catalog type.')]
+            },
+            status=400
+        )
+
+
+class MaRDMOQueryProvider(Export):
+    '''Export provider for the "Query MaRDI Portal" button.
+
+    Handles the search-catalog preview (showing a form to configure the query)
+    and the submit action (executing the search and rendering matching results).
+    Does not require OAuth2 — no portal writes are performed.
+
+    Attributes:
+        request: The Django HttpRequest associated with the provider.
+    '''
+
+    request: HttpRequest
+
+    class ExportForm(forms.Form):
+        '''Empty form class required by the RDMO Export provider interface.'''
+
+    def render(self):
+        '''Render the search configuration preview page.
+
+        Returns:
+            HTTP response rendering ``MaRDMO/serachTemplate.html``, or an error
+            page if the active catalog is not the search catalog.
+        '''
+        if str(self.project.catalog).endswith('mardmo-search-catalog'):
+            answers, options = self.get_post_data()
+            return render_preview(
+                self = self,
+                template = 'MaRDMO/searchTemplate.html',
+                answers = answers,
+                option = options
+            )
+
+        return render(
+            self.request,
+            'core/error.html',
+            {
+                'title': _('Catalog Error'),
+                'errors': [_('The catalog is not supported by the MaRDMO Query Plugin.')]
+            },
+            status=200
+        )
+
+    def submit(self):
+        '''Execute the MaRDI Portal query and render the results page.
+
+        Handles the cancel action (redirects to the project page), then calls
+        :meth:`submit_mardmo_search` for the search catalog.
+
+        Returns:
+            HTTP redirect or rendered results response.
+        '''
+        if 'cancel' in self.request.POST:
+            return redirect('project', self.project.id)
+
+        if str(self.project.catalog).endswith('mardmo-search-catalog'):
+            return self.submit_mardmo_search()
+
+        return render(
+            self.request,
+            'core/error.html',
+            {
+                'title': _('Unknown catalog'),
+                'errors': [_('Cannot handle this catalog type.')]
+            },
+            status=400
+        )
+
+    def submit_mardmo_search(self):
+        '''Execute a MaRDI Portal search and render the matching results.
+
+        Reads the search type from the answers dict and labels the result
+        source accordingly (MaRDI Portal, MathModDB KG, or MathAlgoDB KG).
+
+        Returns:
+            Rendered ``MaRDMO/searchResults.html`` response with the list of
+            matching portal items.
+        '''
+        answers, options = self.get_post_data()
+
+        if answers['search']['options'] == options['InterdisciplinaryWorkflow']:
+            datatype = "Workflow(s)"
+            source = "MaRDI Portal"
+        elif answers['search']['options'] == options['MathematicalModel']:
+            datatype = "Mathematical Model(s)"
+            source = "MathModDB KG"
+        elif answers['search']['options'] == options['Algorithm']:
+            datatype = "Algorithm(s)"
+            source = "MathAlgoDB KG"
+        else:
+            datatype = "Unknown"
+            source = "Unknown"
+
+        return render(
+            self.request,
+            'MaRDMO/searchResults.html',
+            {
+                'datatype': datatype,
+                'source': source,
+                'noResults': answers['no_results'],
+                'links': answers['links']
+            },
+            status=200
+        )
+
+    def get_post_data(self):
+        '''Load and execute the search query for the search catalog.
+
+        Reads the search configuration from RDMO project values and dispatches
+        to the :func:`~MaRDMO.search.worker.search` function to retrieve
+        matching items from the MaRDI Portal, MathModDB KG, or MathAlgoDB KG.
+
+        Returns:
+            Tuple ``(answers, options)`` where *answers* contains the search
+            results and *options* maps RDMO option URIs to their string values.
+        '''
+        options = get_options()
+
+        if str(self.project.catalog).endswith('mardmo-search-catalog'):
+            questions = get_questions('search')
+
+            answers = process_question_dict(
+                project = self.project,
+                questions = questions,
+                get_answer = get_answers
+            )
+
+            answers = search(answers, options)
+
+            return answers, options
+
         return render(
             self.request,
             'core/error.html',
