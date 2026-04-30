@@ -9,12 +9,13 @@ from functools import partial
 
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
-from ..getters import get_options, get_questions
+from ..getters import get_items, get_mathalgodb, get_options, get_properties, get_questions, get_sparql_query, get_url
 from ..helpers import value_editor
 from ..adders import add_basics, add_references, add_relations_static
+from ..queries import query_sparql
 
 from .constants import PROPS
-from .models import Method, ProcessStep, Software, Hardware, DataSet
+from .models import ProcessStep, Software, Hardware, DataSet
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,14 @@ logger = logging.getLogger(__name__)
 class Information(BaseInformation):
     '''Handlers for the Workflow Documentation questionnaire.'''
 
-    _ENTITY_KEYS = ('Software', 'Hardware', 'Instrument', 'Data Set', 'Method', 'Process Step')
+    _ENTITY_KEYS = ('Algorithm', 'Software', 'Hardware', 'Data Set', 'Process Step')
 
     def __init__(self):
-        '''Load workflow questions, base URI, and RDMO options.'''
-        self.questions = get_questions('workflow')
-        self.base      = BASE_URI
-        self.options   = get_options()
+        '''Load workflow questions, base URI, RDMO options, and MathAlgoDB registry.'''
+        self.questions  = get_questions('workflow') | get_questions('publication')
+        self.base       = BASE_URI
+        self.options    = get_options()
+        self.mathalgodb = get_mathalgodb()
 
     # ------------------------------------------------------------------ #
     #  Public entry points (called by router via post_save signal)         #
@@ -50,14 +52,6 @@ class Information(BaseInformation):
         '''
         self._entry(instance, 'Hardware', self._fill_hardware_batch)
 
-    def instrument(self, instance):
-        '''Handle Instrument ID save: hydrate basics only (no SPARQL data available).
-
-        Args:
-            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
-        '''
-        self._entry(instance, 'Instrument', self._fill_instrument_batch)
-
     def data_set(self, instance):
         '''Handle Data Set ID save: hydrate basics and SPARQL data.
 
@@ -66,13 +60,14 @@ class Information(BaseInformation):
         '''
         self._entry(instance, 'Data Set', self._fill_data_set_batch)
 
-    def method(self, instance):
-        '''Handle Method ID save: hydrate basics and cascade to Software/Instrument.
+    def algorithm(self, instance):
+        '''Handle Algorithm ID save: hydrate basics and SPARQL data.
 
         Args:
             instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
         '''
-        self._entry(instance, 'Method', self._fill_method_batch)
+        print('HELLO')
+        self._entry(instance, 'Algorithm', self._fill_algorithm_batch)
 
     def process_step(self, instance):
         '''Handle Process Step ID save: hydrate basics and cascade to all related entities.
@@ -81,6 +76,75 @@ class Information(BaseInformation):
             instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
         '''
         self._entry(instance, 'Process Step', self._fill_process_step_batch)
+
+    def model(self, instance):
+        '''Handle Workflow Model ID save: add linked Tasks from the MaRDI Portal.
+
+        Queries the MaRDI Portal for computational tasks linked to the selected model
+        and adds any not yet present as Task values. Already-present tasks are left
+        untouched so tasks from previously selected models are preserved.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
+        
+        if not instance.external_id:
+            return
+
+        tasks = self._fetch_tasks_for_model(instance.external_id)
+
+        if not tasks:
+            return
+        
+        for idx, (identifier, label, description) in enumerate(tasks):
+            value_editor(
+                project = instance.project,
+                uri = f'{self.base}{self.questions["Workflow"]["Task"]["uri"]}',
+                info = {
+                    'external_id': identifier,
+                    'text': f'{label} ({description}) [mardi]',
+                    'collection_index': idx,
+                    'set_prefix': instance.set_prefix,
+                    'set_index': instance.set_index
+                },
+            )
+
+    # ------------------------------------------------------------------ #
+    #  Private helpers                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _fetch_tasks_for_model(self, model_id):
+        '''Run ``task_mardi.sparql`` for *id_value* and return parsed task tuples.
+
+        Args:
+            id_value: Raw Wikibase QID string (e.g. ``"Q1234"``), without prefix.
+
+        Returns:
+            List of ``(identifier, label, description)`` tuples, or empty list when
+            the portal returns no results or the query fails.
+        '''
+        _, id_value = model_id.split(':')
+
+        query = get_sparql_query('workflow/queries/task_mardi.sparql').format(
+            id_value,
+            **get_items(),
+            **get_properties(),
+        )
+
+        results = query_sparql(query, get_url('mardi', 'sparql'))
+
+        if not results or not results[0].get('usedBy', {}).get('value'):
+            return []
+
+        tasks = []
+        for raw in results[0]['usedBy']['value'].split(' <|> '):
+            try:
+                identifier, label, description = raw.split(' || ')
+                tasks.append((identifier, label, description))
+            except ValueError:
+                logger.warning('Unexpected task format, skipping: %r', raw)
+
+        return tasks
 
     # ------------------------------------------------------------------ #
     #  Batch _fill_* methods (one SPARQL query for N entities)            #
@@ -164,42 +228,32 @@ class Information(BaseInformation):
             add_basics(project=project, text=text, questions=self.questions,
                        item_type='Hardware', index=(0, set_index))
 
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['H2CPU']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{hardware["CPU"]["uri"]}'})
-
             if data.nodes:
                 value_editor(
                     project=project,
                     uri=f'{self.base}{hardware["Nodes"]["uri"]}',
                     info={'text': data.nodes, 'set_prefix': set_index})
 
-            if data.cores:
+            for i, cpu in enumerate(data.cpu):
+                source, _ = cpu.id.split(':')
                 value_editor(
                     project=project,
-                    uri=f'{self.base}{hardware["Cores"]["uri"]}',
-                    info={'text': data.cores, 'set_prefix': set_index})
-
-    def _fill_instrument_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple Instrument pages with basic label/description only.
-
-        Instruments have no external SPARQL data; only :func:`~.adders.add_basics`
-        is called for each item.
-
-        Args:
-            project:  RDMO project instance.
-            items:    List of ``(text, external_id, set_index)`` tuples to process.
-            catalog:  Active catalog URI suffix (default ``""``; unused).
-            visited:  Set of external IDs already processed (unused for instruments).
-        '''
-        if not items:
-            return
-
-        for text, _, set_index in items:
-            add_basics(project=project, text=text, questions=self.questions,
-                       item_type='Instrument', index=(0, set_index))
+                    uri=f'{self.base}{hardware["CPU"]["uri"]}',
+                    info={'text': f'{cpu.label} ({cpu.description}) [{source}]',
+                          'external_id': cpu.id,
+                          'set_prefix': f"{set_index}|0", 'set_index': i})
+                if cpu.count:
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{hardware["Number of CPU"]["uri"]}',
+                        info={'text': cpu.count,
+                              'set_prefix': f"{set_index}|0", 'set_index': i})
+                if cpu.cores:
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{hardware["Cores"]["uri"]}',
+                        info={'text': cpu.cores,
+                              'set_prefix': f"{set_index}|0", 'set_index': i})
 
     def _fill_data_set_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Data Set pages with a single SPARQL query per source.
@@ -247,22 +301,6 @@ class Information(BaseInformation):
                 info={'text': data.size[1], 'option': data.size[0],
                       'set_prefix': set_index})
 
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['DS2DT']},
-            index={'set_prefix': set_index},
-            statement={
-                'relatant': f'{self.base}{data_set_q["Data Type"]["uri"]}'
-            })
-
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['DS2RF']},
-            index={'set_prefix': set_index},
-            statement={
-                'relatant': f'{self.base}{data_set_q["Representation Format"]["uri"]}'
-            })
-
         if data.file_format:
             value_editor(
                 project=project,
@@ -292,78 +330,6 @@ class Information(BaseInformation):
                 info={'text': data.to_archive[1], 'option': data.to_archive[0],
                       'set_prefix': set_index})
 
-    def _fill_method_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple Method pages with a single SPARQL query per source.
-
-        Explicitly cascades into Software and Instrument via
-        :meth:`_hydrate_relatants` rather than relying on signal-driven cascades.
-
-        Args:
-            project:  RDMO project instance.
-            items:    List of ``(text, external_id, set_index)`` tuples to process.
-            catalog:  Active catalog URI suffix (default ``""``).
-            visited:  Set of external IDs already processed (mutated to avoid cycles).
-        '''
-        if not items:
-            return
-        if visited is None:
-            visited = set()
-
-        method     = self.questions['Method']
-        data_by_id = _fetch_by_source(
-            items,
-            'workflow/queries/method_mardi.sparql',
-            'workflow/queries/method_wikidata.sparql',
-            Method,
-        )
-
-        section_indices = {}
-        for text, external_id, set_index in items:
-            data = data_by_id.get(external_id)
-            if not data:
-                continue
-
-            add_basics(project=project, text=text, questions=self.questions,
-                       item_type='Method', index=(0, set_index))
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['M2S']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{method["Software"]["uri"]}'})
-
-            self._hydrate_relatants(
-                project=project, data=data, prop_keys=PROPS['M2S'],
-                spec=_RelatantSpec(
-                    question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
-                    question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
-                    prefix='S',
-                    fill_method=partial(self._fill, item_type='Software',
-                                        batch_fill_method=self._fill_software_batch),
-                    catalog=catalog, visited=visited,
-                    batch_fill_method=self._fill_software_batch,
-                    section_indices=section_indices,
-                ))
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['M2I']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{method["Instrument"]["uri"]}'})
-
-            self._hydrate_relatants(
-                project=project, data=data, prop_keys=PROPS['M2I'],
-                spec=_RelatantSpec(
-                    question_id_uri=f'{self.base}{self.questions["Instrument"]["ID"]["uri"]}',
-                    question_set_uri=f'{self.base}{self.questions["Instrument"]["uri"]}',
-                    prefix='I',
-                    fill_method=partial(self._fill, item_type='Instrument',
-                                        batch_fill_method=self._fill_instrument_batch),
-                    catalog=catalog, visited=visited,
-                    batch_fill_method=self._fill_instrument_batch,
-                    section_indices=section_indices,
-                ))
-
     def _fill_process_step_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Process Step pages with a single SPARQL query per source.
 
@@ -388,7 +354,6 @@ class Information(BaseInformation):
             'workflow/queries/process_step_wikidata.sparql',
             ProcessStep,
         )
-
         section_indices = {}
         for text, external_id, set_index in items:
             data = data_by_id.get(external_id)
@@ -462,38 +427,32 @@ class Information(BaseInformation):
                 section_indices=section_indices,
             ))
 
-        # Methods
+        # Algorithms
         add_relations_static(
             project=project, data=data,
-            props={'keys': PROPS['PS2M']},
-            index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["Method"]["uri"]}'})
+            props={'keys': PROPS['PS2A']},
+            index={'set_prefix': f'{set_index}|0'},
+            statement={'relatant': f'{self.base}{process_step["Algorithm"]["uri"]}',
+                       'platform': f'{self.base}{process_step["Software"]["uri"]}',
+                       'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
+                       'documentation': f'{self.base}{process_step["Software-Documentation"]["uri"]}',
+                       'parameter': f'{self.base}{process_step["Algorithm-Parameter"]["uri"]}'})
 
         self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2M'],
+            project=project, data=data, prop_keys=PROPS['PS2A'],
             spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Method"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Method"]["uri"]}',
-                prefix='M',
-                fill_method=partial(self._fill, item_type='Method',
-                                    batch_fill_method=self._fill_method_batch),
+                question_id_uri=f'{self.base}{self.questions["Algorithm"]["ID"]["uri"]}',
+                question_set_uri=f'{self.base}{self.questions["Algorithm"]["uri"]}',
+                prefix='A',
+                fill_method=partial(self._fill, item_type='Algorithm',
+                                    batch_fill_method=self._fill_algorithm_batch),
                 catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_method_batch,
+                batch_fill_method=self._fill_algorithm_batch,
                 section_indices=section_indices,
             ))
 
-        # Platform Software
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2PLS']},
-            index={'set_prefix': set_index},
-            statement={
-                'relatant':
-                    f'{self.base}{process_step["Environment-Software"]["uri"]}'
-            })
-
-        self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2PLS'],
+        self._hydrate_qualifier_entities(
+            project=project, data=data, prop_keys=PROPS['PS2A'],
             spec=_RelatantSpec(
                 question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
                 question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
@@ -505,39 +464,35 @@ class Information(BaseInformation):
                 section_indices=section_indices,
             ))
 
-        # Platform Instrument
+        self._hydrate_qualifier_entities(
+            project=project, data=data,
+            prop_keys=PROPS['PS2A'] + PROPS['PS2M'],
+            spec=_RelatantSpec(
+                question_id_uri=f'{self.base}{self.questions["Hardware"]["ID"]["uri"]}',
+                question_set_uri=f'{self.base}{self.questions["Hardware"]["uri"]}',
+                prefix='HW',
+                fill_method=partial(self._fill, item_type='Hardware',
+                                    batch_fill_method=self._fill_hardware_batch),
+                catalog=catalog, visited=visited,
+                batch_fill_method=self._fill_hardware_batch,
+                section_indices=section_indices,
+            ),
+            attr='hardware')
+
+        # Experimental Methods
         add_relations_static(
             project=project, data=data,
-            props={'keys': PROPS['PS2PLI']},
-            index={'set_prefix': set_index},
-            statement={
-                'relatant':
-                    f'{self.base}{process_step["Environment-Instrument"]["uri"]}'
-            })
-
-        self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2PLI'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Instrument"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Instrument"]["uri"]}',
-                prefix='I',
-                fill_method=partial(self._fill, item_type='Instrument',
-                                    batch_fill_method=self._fill_instrument_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_instrument_batch,
-                section_indices=section_indices,
-            ))
+            props={'keys': PROPS['PS2M']},
+            index={'set_prefix': f'{set_index}|0'},
+            statement={'relatant': f'{self.base}{process_step["Method"]["uri"]}',
+                       'platform': f'{self.base}{process_step["Instrument"]["uri"]}',
+                       'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
+                       'documentation': f'{self.base}{process_step["Method-Documentation"]["uri"]}',
+                       'parameter': f'{self.base}{process_step["Method-Parameter"]["uri"]}'})
 
         # Fields of Work (static, no cascade)
         add_relations_static(
             project=project, data=data,
             props={'keys': PROPS['PS2F']},
             index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["Discipline"]["uri"]}'})
-
-        # MSC IDs (static, no cascade)
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2MA']},
-            index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["Discipline"]["uri"]}'})
+            statement={'relatant': f'{self.base}{process_step["RFRelatant"]["uri"]}'})
