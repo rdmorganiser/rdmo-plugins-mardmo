@@ -297,11 +297,8 @@ def get_user_entries(project, query_attribute, values):
         :class:`~rdmo.projects.models.Value` instances.
     '''
     for question in ('id', 'name', 'description'):
-        # Fetch User entries from the project (ID)
-        values[question] = project.values.filter(
-            snapshot = None,
-            attribute = Attribute.objects.get(
-                uri = f'{BASE_URI}domain/{query_attribute}/{question}'
-            )
-        )
+        attr = Attribute.objects.filter(
+            uri=f'{BASE_URI}domain/{query_attribute}/{question}'
+        ).first()
+        values[question] = project.values.filter(snapshot=None, attribute=attr) if attr else []
     return values
