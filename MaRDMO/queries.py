@@ -166,7 +166,7 @@ def query_sparql_pool(query_input):
     data = dict(zip(query_input.keys(), results))
     return data
 
-def query_sources(search, item_class=None, sources=None, not_found=True):
+def query_sources(search, item_class=[], sources=None, not_found=True):
     '''Query one or more knowledge-graph sources for items matching *search*.
 
     Queries the requested sources in parallel, merges the results, and sorts
