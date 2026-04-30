@@ -209,4 +209,16 @@ preview_relations = [
         "assumption": False,
         "grouped": True,
     },
+    {
+        "from_idx": "algorithm",
+        "to_idx": "software",
+        "relation": None,
+        "old_name": "SRelatant",
+        "new_name": "RelationS",
+        "encryption": "S",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": False,
+    },
 ]
