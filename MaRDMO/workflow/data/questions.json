@@ -333,7 +333,8 @@
             "key2": "software-documentation",
             "uri": "domain/process-step/software-documentation",
             "set_prefix": true,
-            "set_index": true
+            "set_index": true,
+            "option_text": true
         },
         "Hardware": {
             "key1": "processstep",
@@ -364,7 +365,8 @@
             "key2": "method-documentation",
             "uri": "domain/process-step/method-documentation",
             "set_prefix": true,
-            "set_index": true
+            "set_index": true,
+            "option_text": true
         },
         "Instrument": {
             "key1": "processstep",
