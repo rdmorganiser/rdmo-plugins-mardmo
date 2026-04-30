@@ -17,6 +17,7 @@
   "Yes": "https://rdmo.mardi4nfdi.de/terms/options/yes_no/yes",
   "No": "https://rdmo.mardi4nfdi.de/terms/options/yes_no/no",
   "YesText": "https://rdmorganiser.github.io/terms/options/yes_with_text_no/yes",
+  "YesLargeText": "https://rdmo.mardi4nfdi.de/terms/options/yes_no_not_relevant/yes",
   "NoText": "https://rdmorganiser.github.io/terms/options/yes_with_text_no/no",
   "ScholarlyArticle": "https://rdmo.mardi4nfdi.de/terms/options/publication-type/scholarly-article",
   "GeneralPublication": "https://rdmo.mardi4nfdi.de/terms/options/publication-type/general-publication",
