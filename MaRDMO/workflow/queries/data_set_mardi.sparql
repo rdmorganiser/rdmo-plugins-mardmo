@@ -55,7 +55,7 @@ WHERE {{
 
     BIND(
         IF(
-            EXISTS {{ ?id wdt:{mandates} wd:{data publishing} }}, "YesText"
+            EXISTS {{ ?id wdt:{mandates} wd:{data publishing} }}, "YesText", "NoText"
         )
         AS ?publish
     )
