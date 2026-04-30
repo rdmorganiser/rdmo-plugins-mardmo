@@ -7,8 +7,8 @@ with the appropriate ``Information`` handler methods from each sub-package.
 
 Provides:
 
-- ``build_handler_map`` — construct and return the ``{catalog: {uri: handler}}``
-  dispatch dict covering the model, algorithm, workflow, and publication catalogs
+- ``build_post_save_handler_set``   — post-save dispatch dict (all catalogs)
+- ``build_post_delete_handler_set`` — post-delete dispatch dict (workflow + publication catalogs)
 '''
 
 from .constants import BASE_URI
@@ -19,8 +19,8 @@ from .workflow.handlers import Information as WorkflowInformation
 from .publication.handlers import Information as PublicationInformation
 from .handlers import Information as GeneralInformation
 
-def build_handler_map():
-    """Build and return the global attribute-URI-to-handler dispatch map.
+def build_post_save_handler_set():
+    """Build and return the post-save attribute-URI-to-handler dispatch set.
 
     Loads question URI configurations from the RDMO database for all four
     catalogs (model, algorithm, workflow, publication), instantiates the
@@ -31,8 +31,8 @@ def build_handler_map():
         dict: Nested mapping of the form
         ``{catalog_slug: {absolute_attribute_uri: handler_method}}``.
         Each inner dict is passed to the router so that incoming
-        ``post_save`` signals can be dispatched without any per-signal
-        lookups.
+        ``value_created`` / ``value_updated`` signals can be dispatched
+        without any per-signal lookups.
     """
 
     base = BASE_URI
@@ -152,35 +152,31 @@ def build_handler_map():
     # Workflow handlers
     handler_map.update({
         'mardmo-interdisciplinary-workflow-catalog': {
+            f"{base}{questions_workflow['Algorithm']['ID']['uri']}":
+                workflow.algorithm,
+            f"{base}{questions_workflow['Workflow']['Model']['uri']}":
+                workflow.model,
             f"{base}{questions_workflow['Software']['ID']['uri']}":
                 workflow.software,
             f"{base}{questions_workflow['Hardware']['ID']['uri']}":
                 workflow.hardware,
-            f"{base}{questions_workflow['Instrument']['ID']['uri']}":
-                workflow.instrument,
             f"{base}{questions_workflow['Data Set']['ID']['uri']}":
                 workflow.data_set,
-            f"{base}{questions_workflow['Method']['ID']['uri']}":
-                workflow.method,
             f"{base}{questions_workflow['Process Step']['ID']['uri']}":
                 workflow.process_step,
+            f'{base}{questions_workflow["Process Step"]["Algorithm"]["uri"]}':
+                general.relation,
+            f'{base}{questions_workflow["Process Step"]["Hardware"]["uri"]}':
+                general.relation,
             f'{base}{questions_workflow["Process Step"]["Input"]["uri"]}':
                 general.relation,
             f'{base}{questions_workflow["Process Step"]["Output"]["uri"]}':
                 general.relation,
-            f'{base}{questions_workflow["Process Step"]["Method"]["uri"]}':
+            f'{base}{questions_workflow["Workflow"]["PSRelatant"]["uri"]}':
                 general.relation,
-            f'{base}{questions_workflow["Process Step"]["Environment-Software"]["uri"]}':
+            f'{base}{questions_workflow["Process Step"]["Software"]["uri"]}':
                 general.relation,
-            f'{base}{questions_workflow["Process Step"]["Environment-Instrument"]["uri"]}':
-                general.relation,
-            f'{base}{questions_workflow["Method"]["Software"]["uri"]}':
-                general.relation,
-            f'{base}{questions_workflow["Method"]["Instrument"]["uri"]}':
-                general.relation,
-            f'{base}{questions_workflow["Instrument"]["Software"]["uri"]}':
-                general.relation,
-            f'{base}{questions_workflow["Hardware"]["Software"]["uri"]}':
+            f'{base}{questions_workflow["Algorithm"]["SRelatant"]["uri"]}':
                 general.relation,
             f"{base}{questions_publication['Publication']['ID']['uri']}":
                 publication.citation,
@@ -188,3 +184,41 @@ def build_handler_map():
     })
 
     return handler_map
+
+
+def build_post_delete_handler_set():
+    """Build and return the post-delete attribute-URI-to-handler dispatch set.
+
+    Covers:
+
+    - Publication catalog: when a Publication value set is deleted, the dependent
+      citation values are cleaned up via
+      :meth:`~MaRDMO.publication.handlers.Information.publication_delete`.
+
+    Returns:
+        dict: Nested mapping of the form
+        ``{catalog_slug: {absolute_attribute_uri: handler_method}}``,
+        structured identically to the map returned by
+        :func:`build_post_save_handler_set`.
+    """
+
+    base = BASE_URI
+    questions_publication = get_questions('publication')
+    publication = PublicationInformation()
+
+    pub_set_uri = f"{base}{questions_publication['Publication']['uri']}"
+
+    return {
+        'mardmo-model-catalog': {
+            pub_set_uri: publication.publication_delete,
+        },
+        'mardmo-model-basics-catalog': {
+            pub_set_uri: publication.publication_delete,
+        },
+        'mardmo-algorithm-catalog': {
+            pub_set_uri: publication.publication_delete,
+        },
+        'mardmo-interdisciplinary-workflow-catalog': {
+            pub_set_uri: publication.publication_delete,
+        },
+    }
