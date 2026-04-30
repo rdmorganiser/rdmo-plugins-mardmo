@@ -109,8 +109,10 @@ class prepareWorkflow:
                 set_idx = int(str(key).split('|')[0])
                 algo_by_set.setdefault(set_idx, []).append(val)
             software = ps_data.get('RelationS', {})
-            all_indices = sorted(set(algo_by_set) | set(software))
+            hardware = ps_data.get('RelationH', {})
+            software_doc = ps_data.get('software-documentation', {})
             algo_params = ps_data.get('algorithm-parameter', {})
+            all_indices = sorted(set(algo_by_set) | set(software) | set(hardware) | set(software_doc))
             ps_data['algorithm_software_pairs'] = [
                 {
                     'primary':       algo_by_set.get(idx, []),
@@ -121,17 +123,22 @@ class prepareWorkflow:
                         v[1][1] for v in sorted(algo_params.get(idx, {}).items())
                         if v[1][1]
                     ),
+                    'software_doc':  software_doc.get(idx),
+                    'hardware':      hardware.get(idx),
                 }
                 for idx in all_indices
             ]
 
-            meth_by_set = {}
-            for key, val in ps_data.get('RelationM', {}).items():
-                set_idx = int(str(key).split('|')[0])
-                meth_by_set.setdefault(set_idx, []).append(val)
-            instruments = ps_data.get('RelationI', {})
+            # Use raw MRelatant/IRelatant dicts so the template can display
+            # Name (Description) for inline items that have no dedicated section.
+            meth_by_set = {
+                set_idx: [raw]
+                for set_idx, raw in ps_data.get('MRelatant', {}).items()
+            }
+            instruments = ps_data.get('IRelatant', {})
+            method_doc  = ps_data.get('method-documentation', {})
             meth_params = ps_data.get('method-parameter', {})
-            all_indices = sorted(set(meth_by_set) | set(instruments))
+            all_indices = sorted(set(meth_by_set) | set(instruments) | set(method_doc))
             ps_data['method_instrument_pairs'] = [
                 {
                     'primary':       meth_by_set.get(idx, []),
@@ -142,6 +149,7 @@ class prepareWorkflow:
                         v[1][1] for v in sorted(meth_params.get(idx, {}).items())
                         if v[1][1]
                     ),
+                    'method_doc':    method_doc.get(idx),
                 }
                 for idx in all_indices
             ]

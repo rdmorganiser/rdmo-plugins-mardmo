@@ -196,5 +196,17 @@ preview_relations = [
         "task": False,
         "assumption": False,
         "grouped": True,
-    }
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "hardware",
+        "relation": None,
+        "old_name": "HRelatant",
+        "new_name": "RelationH",
+        "encryption": "HW",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": True,
+    },
 ]

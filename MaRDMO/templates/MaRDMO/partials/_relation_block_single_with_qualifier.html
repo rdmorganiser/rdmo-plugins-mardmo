@@ -5,34 +5,78 @@
         <li style="margin-bottom: 0.5em;">
             {% if pair.has_primary %}
                 {% for item in pair.primary %}
-                    {% if item == 'not found' %}
-                        {{ primary_label }}: <strong style="color:red;">SELECTED {{ primary_class }} NOT FOUND IN {{ primary_class }} SECTION</strong> {% if not forloop.last %}<br>{% endif %}
+                    {% if has_sections %}
+                        {% if item == 'not found' %}
+                            {{ primary_label }}: <strong style="color:red;">SELECTED {{ primary_class }} NOT FOUND IN {{ primary_class }} SECTION</strong>{% if not forloop.last %}<br>{% endif %}
+                        {% else %}
+                            {{ primary_label }}: {{ item }}{% if not forloop.last %}<br>{% endif %}
+                        {% endif %}
                     {% else %}
-                        {{ primary_label }}: {{ item }}{% if not forloop.last %}<br>{% endif %}
+                        {% if item.ID == 'not found' %}
+                            {{ primary_label }}: {{ item.Name }} ({{ item.Description }}){% if not forloop.last %}<br>{% endif %}
+                        {% else %}
+                            {{ primary_label }}: {{ item.ID }}{% if not forloop.last %}<br>{% endif %}
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
             {% else %}
                 <strong style="color:red;">{{ primary_missing }}</strong>
             {% endif %}
             <ul style="margin-top: 0.3em; list-style-type: none; padding-left: 1em;">
-                <li>&#8594; {{ qualifier_label }}:
+                {% if pair.parameters %}
+                <li>&#8594; Parameters: {{ pair.parameters }}</li>
+                {% endif %}
+                <li>&#8594; {{ qualifier_env_label }}:
                     {% if pair.has_qualifier %}
-                        {% if pair.qualifier == 'not found' %}
-                            <strong style="color:red;">SELECTED {{ qualifier_class }} NOT FOUND IN {{ qualifier_class }} SECTION</strong>
+                        {% if has_sections %}
+                            {% if pair.qualifier == 'not found' %}
+                                <strong style="color:red;">SELECTED {{ qualifier_class }} NOT FOUND IN {{ qualifier_class }} SECTION</strong>
+                            {% else %}
+                                {{ pair.qualifier }}
+                            {% endif %}
                         {% else %}
-                            {{ pair.qualifier }}
+                            {% if pair.qualifier.ID == 'not found' %}
+                                {{ pair.qualifier.Name }} ({{ pair.qualifier.Description }})
+                            {% else %}
+                                {{ pair.qualifier.ID }}
+                            {% endif %}
                         {% endif %}
                     {% else %}
                         <strong style="color:red;">{{ qualifier_missing }}</strong>
                     {% endif %}
-                    {% if pair.parameters %}
-                        with parameters: {{ pair.parameters }}
+                </li>
+                <li>&#8594; {{ doc_label }}:
+                    {% if has_sections %}
+                        {% if pair.software_doc %}
+                            {{ pair.software_doc.1 }}
+                        {% else %}
+                            <strong style="color:red;">MISSING {{ doc_label|upper }}</strong>
+                        {% endif %}
+                    {% else %}
+                        {% if pair.method_doc %}
+                            {{ pair.method_doc.1 }}
+                        {% else %}
+                            <strong style="color:red;">MISSING {{ doc_label|upper }}</strong>
+                        {% endif %}
                     {% endif %}
                 </li>
+                {% if show_hardware %}
+                <li>&#8594; Hardware-Environment:
+                    {% if pair.hardware %}
+                        {% if pair.hardware == 'not found' %}
+                            <strong style="color:red;">SELECTED HARDWARE NOT FOUND IN HARDWARE SECTION</strong>
+                        {% else %}
+                            {{ pair.hardware }}
+                        {% endif %}
+                    {% else %}
+                        <strong style="color:red;">MISSING HARDWARE ENVIRONMENT</strong>
+                    {% endif %}
+                </li>
+                {% endif %}
             </ul>
         </li>
         {% if not forloop.last %}
-            <br><br>        
+            <br><br>
         {% endif %}
         {% endfor %}
     </ul>
