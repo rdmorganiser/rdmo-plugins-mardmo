@@ -6,16 +6,9 @@ publication set entry is deleted.
 
 Provides:
 
-- :class:`Information` — signal receiver class that wires up publication-set
-  relations in the questionnaire (``relation`` method)
-- ``publication_set_delete`` — ``post_delete`` receiver that removes orphaned
-  values when a publication value set is removed
+- :class:`Information` — signal receiver class with ``citation`` and
+  ``publication_delete`` handler methods; routed via ``router.py``
 '''
-
-from django.dispatch import receiver
-from django.db.models.signals import post_delete
-
-from rdmo.projects.models import Value
 
 from ..constants import BASE_URI
 from ..getters import (
@@ -180,25 +173,19 @@ class Information:
             )
 
 
-@receiver(post_delete, sender=Value)
-def publication_set_delete(sender, **kwargs):
-    '''Signal handler: delete hidden citation data when a Publication set page is removed.
+    def publication_delete(self, instance):
+        '''Handle Publication set deletion: remove hidden citation background data.
 
-    Connected to the ``post_delete`` signal on :class:`~rdmo.projects.models.Value`.
-    When the deleted value corresponds to the top-level Publication attribute,
-    removes all background citation fields (item info, language, journal, author)
-    for that set index.
+        Called by the post-delete router when a Value for the top-level Publication
+        set attribute is deleted.  Removes all background citation fields (item info,
+        language, journal, author) for the deleted set index.
 
-    Args:
-        sender: The :class:`~rdmo.projects.models.Value` model class.
-        **kwargs: Signal keyword arguments; ``"instance"`` holds the deleted value.
-    '''
-    instance = kwargs.get("instance", None)
-    questions = get_questions('publication')
-    if instance and instance.attribute.uri == f'{BASE_URI}{questions["Publication"]["uri"]}':
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just deleted.
+        '''
         clean_background_data(
             key_dict  = ITEMINFOS | CITATIONINFOS | LANGUAGES | JOURNALS | AUTHORS,
-            questions = questions["Publication"],
+            questions = self.questions["Publication"],
             project   = instance.project,
             snapshot  = instance.snapshot,
             set_index = instance.set_index
