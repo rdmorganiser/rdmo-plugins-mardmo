@@ -22,13 +22,6 @@ software_reference_ids = [
     'DESCRIPTION_URL'
 ]
 
-data_set_reference_ids = [
-    'Yes',
-    'DOI',
-    'URL',
-    'No'
-]
-
 # URI PREFIX Map
 def get_uri_prefix_map():
     '''Build the attribute-URI → section config mapping for the Workflow Documentation.
@@ -42,6 +35,16 @@ def get_uri_prefix_map():
     '''
     questions = get_questions('workflow')
     uri_prefix_map = {
+        f'{BASE_URI}{questions["Process Step"]["Algorithm"]["uri"]}': {
+            "question_set": f'{BASE_URI}{questions["Algorithm"]["uri"]}',
+            "question_id": f'{BASE_URI}{questions["Algorithm"]["ID"]["uri"]}',
+            "prefix": "A"
+        },
+        f'{BASE_URI}{questions["Process Step"]["Hardware"]["uri"]}': {
+            "question_set": f'{BASE_URI}{questions["Hardware"]["uri"]}',
+            "question_id": f'{BASE_URI}{questions["Hardware"]["ID"]["uri"]}',
+            "prefix": "HW"
+        },
         f'{BASE_URI}{questions["Process Step"]["Input"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Data Set"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Data Set"]["ID"]["uri"]}',
@@ -52,41 +55,21 @@ def get_uri_prefix_map():
             "question_id": f'{BASE_URI}{questions["Data Set"]["ID"]["uri"]}',
             "prefix": "DS"
         },
-        f'{BASE_URI}{questions["Process Step"]["Method"]["uri"]}': {
-            "question_set": f'{BASE_URI}{questions["Method"]["uri"]}',
-            "question_id": f'{BASE_URI}{questions["Method"]["ID"]["uri"]}',
-            "prefix": "M"
+        f'{BASE_URI}{questions["Workflow"]["PSRelatant"]["uri"]}': {
+            "question_set": f'{BASE_URI}{questions["Process Step"]["uri"]}',
+            "question_id": f'{BASE_URI}{questions["Process Step"]["ID"]["uri"]}',
+            "prefix": "PS"
         },
-        f'{BASE_URI}{questions["Process Step"]["Environment-Software"]["uri"]}': {
+        f'{BASE_URI}{questions["Process Step"]["Software"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Software"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
             "prefix": "S"
         },
-        f'{BASE_URI}{questions["Process Step"]["Environment-Instrument"]["uri"]}': {
-            "question_set": f'{BASE_URI}{questions["Instrument"]["uri"]}',
-            "question_id": f'{BASE_URI}{questions["Instrument"]["ID"]["uri"]}',
-            "prefix": "I"
-        },
-        f'{BASE_URI}{questions["Method"]["Software"]["uri"]}': {
+        f'{BASE_URI}{questions["Algorithm"]["SRelatant"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Software"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
             "prefix": "S"
         },
-        f'{BASE_URI}{questions["Method"]["Instrument"]["uri"]}': {
-            "question_set": f'{BASE_URI}{questions["Instrument"]["uri"]}',
-            "question_id": f'{BASE_URI}{questions["Instrument"]["ID"]["uri"]}',
-            "prefix": "I"
-        },
-        f'{BASE_URI}{questions["Instrument"]["Software"]["uri"]}': {
-            "question_set": f'{BASE_URI}{questions["Software"]["uri"]}',
-            "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
-            "prefix": "S"
-        },
-        f'{BASE_URI}{questions["Hardware"]["Software"]["uri"]}': {
-            "question_set": f'{BASE_URI}{questions["Software"]["uri"]}',
-            "question_id": f'{BASE_URI}{questions["Software"]["ID"]["uri"]}',
-            "prefix": "S"
-        }
     }
     return uri_prefix_map
 
@@ -95,18 +78,11 @@ def get_uri_prefix_map():
 PROPS = {
     'PS2IDS': ['input_data_set'],
     'PS2ODS': ['output_data_set'],
-    'PS2M': ['uses'],
-    'PS2PLS': ['platform_software'],
-    'PS2PLI': ['platform_instrument'],
+    'PS2A': ['uses_algorithm'],
+    'PS2M': ['uses_method'],
     'PS2F': ['field_of_work'],
-    'PS2MA': ['msc_id'],
-    'M2S': ['implemented_by_software'],
-    'M2I': ['implemented_by_instrument'],
     'S2PL': ['programmed_in'],
     'S2DP': ['depends_on_software'],
-    'H2CPU': ['cpu'],
-    'DS2DT': ['data_type'],
-    'DS2RF': ['representation_format']
 }
 
 # Order of toPublish Answers
@@ -134,3 +110,91 @@ REPRODUCIBILITY = {
     'originalplatform': 'original platform reproducible research workflow',
     'otherplatform': 'cross-platform reproducible research workflow'
     }
+
+# Parameter for Entity relations
+preview_relations = [
+    {
+        "from_idx": "workflow",
+        "to_idx": "processstep",
+        "relation": None,
+        "old_name": "PSRelatant",
+        "new_name": "RelationPS",
+        "encryption": "PS",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": False,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "dataset",
+        "relation": None,
+        "old_name": "IDSRelatant",
+        "new_name": "RelationIDS",
+        "encryption": "DS",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": False,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "dataset",
+        "relation": None,
+        "old_name": "ODSRelatant",
+        "new_name": "RelationODS",
+        "encryption": "DS",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": False,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "algorithm",
+        "relation": None,
+        "old_name": "ARelatant",
+        "new_name": "RelationA",
+        "encryption": "A",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": True,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "software",
+        "relation": None,
+        "old_name": "SRelatant",
+        "new_name": "RelationS",
+        "encryption": "S",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": True,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "method",
+        "relation": None,
+        "old_name": "MRelatant",
+        "new_name": "RelationM",
+        "encryption": "M",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": True,
+    },
+    {
+        "from_idx": "processstep",
+        "to_idx": "instrument",
+        "relation": None,
+        "old_name": "IRelatant",
+        "new_name": "RelationI",
+        "encryption": "I",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": True,
+    }
+]
