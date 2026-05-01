@@ -52,6 +52,7 @@ INSTALLED_APPS = ['MaRDMO'] + INSTALLED_APPS
 
 PROJECT_EXPORTS += [
         ('wikibase', _('Export to MaRDI Portal'), 'MaRDMO.main.MaRDMOExportProvider'),
+        ('wikibase-search', _('Query MaRDI Portal'), 'MaRDMO.main.MaRDMOQueryProvider'),
         ]
 
 OPTIONSET_PROVIDERS = [
@@ -62,17 +63,20 @@ OPTIONSET_PROVIDERS = [
     ('MaRDISearch', _('Options for MaRDI Search'), 'MaRDMO.search.providers.MaRDISearch'),
     # Workflow
     ('MaRDIAndWikidataSearch', _('Options for MaRDI and Wikidata Search'), 'MaRDMO.workflow.providers.MaRDIAndWikidataSearch'),
-    ('MainMathematicalModel', _('Options for Main Mathematical Model'), 'MaRDMO.workflow.providers.MainMathematicalModel'),
-    ('WorkflowTask', _('Options for Workflow Task'), 'MaRDMO.workflow.providers.WorkflowTask'),
+    ('MathematicalModel', _('Options for Mathematical Model (Workflow)'), 'MaRDMO.workflow.providers.MathematicalModel'),
+    ('Task', _('Options for Task (Workflow)'), 'MaRDMO.workflow.providers.Task'),
     ('Hardware', _('Options for Hardware'), 'MaRDMO.workflow.providers.Hardware'),
-    ('Instrument', _('Options for Instruments'), 'MaRDMO.workflow.providers.Instrument'),
+    ('RelatedHardwareWithCreation', _('Options for related Hardware with Creation'), 'MaRDMO.workflow.providers.RelatedHardwareWithCreation'),
     ('DataSet', _('Options for Data Sets'), 'MaRDMO.workflow.providers.DataSet'),
-    ('RelatedDataSet', _('Options for related Data Sets'), 'MaRDMO.workflow.providers.RelatedDataSet'),
-    ('RelatedInstrument', _('Options for related Instruments'), 'MaRDMO.workflow.providers.RelatedInstrument'),
-    ('Method', _('Options for Methods'), 'MaRDMO.workflow.providers.Method'),
-    ('RelatedMethod', _('Options for related Methods'), 'MaRDMO.workflow.providers.RelatedMethod'),
+    ('RelatedDataSetWithCreation', _('Options for related Data Sets with Creation'), 'MaRDMO.workflow.providers.RelatedDataSetWithCreation'),
+    ('RelatedInstrumentWithCreation', _('Options for related Instruments with Creation'), 'MaRDMO.workflow.providers.RelatedInstrumentWithCreation'),
+    ('RelatedMethodWithCreation', _('Options for related Methods with Creation'), 'MaRDMO.workflow.providers.RelatedMethodWithCreation'),
+    ('RelatedAlgorithmWithCreation', _('Options for related Algorithms with Creation'), 'MaRDMO.workflow.providers.RelatedAlgorithmWithCreation'),
     ('ProcessStep', _('Options for Process Step'), 'MaRDMO.workflow.providers.ProcessStep'),
-    ('Discipline', _('Options for Disciplines'), 'MaRDMO.workflow.providers.Discipline'),
+    ('Workflow', _('Options for Workflows'), 'MaRDMO.workflow.providers.Workflow'),
+    ('RelatedStepWithCreation', _('Options for related Process Steps with Creation'), 'MaRDMO.workflow.providers.RelatedStepWithCreation'),
+    ('RelatedProgrammingLanguageWithCreation', _('Options for related Programming Languages with Creation'), 'MaRDMO.workflow.providers.RelatedProgrammingLanguageWithCreation'),
+    ('RelatedCPUModelWithCreation', _('Options for related CPU Modelss with Creation'), 'MaRDMO.workflow.providers.RelatedCPUModelWithCreation'),
     # Model
     ('Formula', _('Options for Formulas'), 'MaRDMO.model.providers.Formula'),
     ('ResearchField', _('Options for Research Fields'), 'MaRDMO.model.providers.ResearchField'),
@@ -136,8 +140,7 @@ MARDMO_PROVIDER = {
     'wikidata': {
         'uri': 'https://www.wikidata.org',
         'api': 'https://www.wikidata.org/w/api.php',
-        'sparql': 'https://query-main.wikidata.org/sparql',
-        'uri': 'https://www.wikidata.org'
+        'sparql': 'https://query-main.wikidata.org/sparql'
     },
 }
 ``` 
