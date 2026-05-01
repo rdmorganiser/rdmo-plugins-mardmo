@@ -155,7 +155,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 template = 'MaRDMO/modelTemplate-basics.html'
             else:
                 template = 'MaRDMO/modelTemplate.html'
-            print(answers)
+
             return render_preview(
                 self = self,
                 template = template,
@@ -179,7 +179,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         if str(self.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
 
             answers, options = self.get_post_data('preview')
-            print(answers)
+
             return render_preview(
                 self = self,
                 template = 'MaRDMO/workflowTemplate.html',

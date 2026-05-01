@@ -114,7 +114,6 @@ def _fetch_by_source(items, mardi_file, wikidata_file, model_class):
         query   = get_sparql_query(mardi_file).format(
             _values_clause(mardi_items), **get_items(), **get_properties()
         )
-        print(query)
         results = query_sparql(query, get_url('mardi', 'sparql'))
         if results:
             data_by_id.update(model_class.from_query_batch(results))

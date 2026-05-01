@@ -330,5 +330,4 @@ def rule_17(value, attribute, config, prefix_idx):
     path = [config["key1"], prefix_idx, config["key2"], value.set_index]
     if config["key3"]:
         path.append(config["key3"])
-    print(entry, path)
     return entry, path
