@@ -4,8 +4,7 @@ SELECT DISTINCT
 ?number_of_nodes
 (GROUP_CONCAT(DISTINCT CONCAT(
     ?cpu_id, " || ", ?cpul, " || ", ?cpud,
-    " || ", COALESCE(STR(?cpu_count), ""),
-    " || ", COALESCE(STR(?number_of_cores), "")
+    " || ", COALESCE(STR(?cpu_count), "")
 ); separator=" <|> ") AS ?cpu)
 
 WHERE {{
@@ -39,9 +38,6 @@ WHERE {{
             ?statement pq:{quantity_property} ?cpu_count.
         }}
 
-        OPTIONAL {{
-            ?cpuraw wdt:{number of processor cores} ?number_of_cores.
-        }}
     }}
 }}
 

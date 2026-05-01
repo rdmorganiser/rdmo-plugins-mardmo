@@ -1,0 +1,13 @@
+SELECT DISTINCT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?cores
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:P1141 ?cores.
+    }}
+}}

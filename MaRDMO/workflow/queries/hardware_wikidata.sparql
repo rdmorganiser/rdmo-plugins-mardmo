@@ -1,7 +1,7 @@
 SELECT DISTINCT
 ?id
 (REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
-?nodes ?cores
+?nodes
 (GROUP_CONCAT(DISTINCT CONCAT(?cpu_id, " || ", ?cpul, " || ", ?cpud); separator=" <|> ") AS ?cpu)
 
 WHERE {{
@@ -23,13 +23,9 @@ WHERE {{
         BIND(COALESCE(?cpudraw, "No Description Provided!") AS ?cpud)
 
         OPTIONAL {{
-            ?cpuraw wdt:P1141 ?cores.
-        }}
-
-        OPTIONAL {{
             ?statement pq:P1114 ?nodes.
         }}
     }}
 }}
 
-GROUP BY ?id ?nodes ?cores
+GROUP BY ?id ?nodes

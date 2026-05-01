@@ -1,0 +1,13 @@
+SELECT DISTINCT
+?id
+(CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
+?cores
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:{number of processor cores} ?cores.
+    }}
+}}
