@@ -164,26 +164,41 @@ class Software:
 
 @dataclass
 class CpuEntry:
-    '''One CPU type on a hardware entity, with count and core information.'''
+    '''One CPU type on a hardware entity, with count information.'''
     id: Optional[str]
     label: Optional[str]
     description: Optional[str]
     count: Optional[str]
-    cores: Optional[str]
 
     @classmethod
     def from_query(cls, raw: str) -> 'CpuEntry':
-        '''Parse a 5-field ``||``-delimited string into a CpuEntry instance.'''
+        '''Parse a 4-field ``||``-delimited string into a CpuEntry instance.'''
         parts = raw.split(' || ')
-        while len(parts) < 5:
+        while len(parts) < 4:
             parts.append('')
         return cls(
             id=parts[0] or None,
             label=parts[1] or None,
             description=parts[2] or None,
             count=parts[3] or None,
-            cores=parts[4] or None,
         )
+
+
+@dataclass
+class Cpu:
+    '''Number of processor cores for a CPU entity.'''
+    cores: Optional[str] = None
+
+    @classmethod
+    def from_query_batch(cls, raw_data: list) -> 'dict[str, Cpu]':
+        '''Parse a batch SPARQL result into {external_id: instance} dict.'''
+        return {
+            row['qid']['value']: cls(
+                cores=row.get('cores', {}).get('value') or None
+            )
+            for row in raw_data
+            if row.get('qid', {}).get('value')
+        }
 
 
 @dataclass

@@ -15,7 +15,7 @@ from ..adders import add_basics, add_references, add_relations_static
 from ..queries import query_sparql
 
 from .constants import PROPS
-from .models import ProcessStep, Software, Hardware, DataSet
+from .models import Cpu, ProcessStep, Software, Hardware, DataSet
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,32 @@ class Information(BaseInformation):
         '''
         self._entry(instance, 'Hardware', self._fill_hardware_batch)
 
+    def processor_cores(self, instance):
+        '''Handle CPU ID save: query and write number of processor cores.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
+        if not instance.external_id:
+            return
+
+        data_by_id = _fetch_by_source(
+            [(instance.text, instance.external_id, instance.set_index)],
+            'workflow/queries/cpu_mardi.sparql',
+            'workflow/queries/cpu_wikidata.sparql',
+            Cpu,
+        )
+        data = data_by_id.get(instance.external_id)
+        if not data or not data.cores:
+            return
+
+        value_editor(
+            project=instance.project,
+            uri=f'{self.base}{self.questions["Hardware"]["Cores"]["uri"]}',
+            info={'text': data.cores,
+                  'set_prefix': instance.set_prefix,
+                  'set_index': instance.set_index})
+
     def data_set(self, instance):
         '''Handle Data Set ID save: hydrate basics and SPARQL data.
 
@@ -66,7 +92,6 @@ class Information(BaseInformation):
         Args:
             instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
         '''
-        print('HELLO')
         self._entry(instance, 'Algorithm', self._fill_algorithm_batch)
 
     def process_step(self, instance):
@@ -236,7 +261,7 @@ class Information(BaseInformation):
 
             for i, cpu in enumerate(data.cpu):
                 source, _ = cpu.id.split(':')
-                value_editor(
+                cpu_value, _ = value_editor(
                     project=project,
                     uri=f'{self.base}{hardware["CPU"]["uri"]}',
                     info={'text': f'{cpu.label} ({cpu.description}) [{source}]',
@@ -248,12 +273,7 @@ class Information(BaseInformation):
                         uri=f'{self.base}{hardware["Number of CPU"]["uri"]}',
                         info={'text': cpu.count,
                               'set_prefix': f"{set_index}|0", 'set_index': i})
-                if cpu.cores:
-                    value_editor(
-                        project=project,
-                        uri=f'{self.base}{hardware["Cores"]["uri"]}',
-                        info={'text': cpu.cores,
-                              'set_prefix': f"{set_index}|0", 'set_index': i})
+                self.processor_cores(cpu_value)
 
     def _fill_data_set_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Data Set pages with a single SPARQL query per source.

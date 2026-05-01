@@ -162,6 +162,8 @@ def build_post_save_handler_set():
                 workflow.software,
             f"{base}{questions_workflow['Hardware']['ID']['uri']}":
                 workflow.hardware,
+            f"{base}{questions_workflow['Hardware']['CPU']['uri']}":
+                workflow.processor_cores,
             f"{base}{questions_workflow['Data Set']['ID']['uri']}":
                 workflow.data_set,
             f"{base}{questions_workflow['Process Step']['ID']['uri']}":
