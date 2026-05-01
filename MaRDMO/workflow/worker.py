@@ -100,7 +100,7 @@ class prepareWorkflow:
                 }
                 for idx in all_indices
             ]
-        print(answers)
+
         for ps_data in answers.get('processstep', {}).values():
             # RelationA keys are 'set_index|collection_index' strings;
             # group all algorithms sharing the same set_index into one list.
@@ -154,6 +154,22 @@ class prepareWorkflow:
                 for idx in all_indices
             ]
 
+        for hw_data in answers.get('hardware', {}).values():
+            cpu_dict   = hw_data.get('cpu', {})
+            count_dict = hw_data.get('number-of-cpu', {})
+            cores_dict = hw_data.get('cores', {})
+            all_indices = sorted(set(cpu_dict) | set(count_dict) | set(cores_dict))
+            hw_data['cpu_entries'] = [
+                {
+                    'id':          cpu_dict.get(idx, {}).get('ID', {}).get('ID'),
+                    'name':        cpu_dict.get(idx, {}).get('ID', {}).get('Name'),
+                    'description': cpu_dict.get(idx, {}).get('ID', {}).get('Description'),
+                    'count':       count_dict.get(idx),
+                    'cores':       cores_dict.get(idx),
+                }
+                for idx in all_indices
+            ]
+
         return answers
 
     def export(self, data, title, url):
@@ -170,8 +186,7 @@ class prepareWorkflow:
         '''
         
         items, dependency = unique_items(data, title)
-        for key, value in items.items():
-            print(key, value)
+
         payload = GeneratePayload(
             dependency = dependency,
             user_items = items,
