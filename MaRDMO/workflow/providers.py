@@ -127,6 +127,44 @@ class RelatedProgrammingLanguageWithCreation(Provider):
             setup = setup
         )
 
+class RelatedCPUModelWithCreation(Provider):
+    '''CPU Model Provider (MaRDI Portal / Wikidata),
+       User Creation, No Refresh Upon Selection
+    '''
+
+    search = True
+    refresh = True
+
+    def get_options(self, project, search=None, user=None, site=None):
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
+        if not search:
+            return []
+
+        setup = define_setup(
+            creation = True,
+            query_attributes = None,
+            item_class = [
+                _ITEMS['CPU model'],
+            ]
+        )
+
+        return query_sources_with_user_additions(
+            search = search,
+            project = project,
+            setup = setup
+        )
+
 class RelatedMethodWithCreation(Provider):
     '''Method Provider (MaRDI Portal / Wikidata),
        User Creation, No Refresh Upon Selection
