@@ -315,6 +315,7 @@ def query_user_entries(project, setup):
     dic = {}
 
     for query_attribute in setup['query_attributes']:
+
         # Get entries from database
         values = get_user_entries(
             project=project,

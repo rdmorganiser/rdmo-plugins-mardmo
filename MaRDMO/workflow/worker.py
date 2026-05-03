@@ -80,11 +80,11 @@ class prepareWorkflow:
                     'encryption': relation['encryption']
                 },
                 order = {
-                    'formulation': relation['formulation'],
-                    'task': relation['task']
+                    'formulation': False,
+                    'task': False
                 },
-                assumption = relation['assumption'],
-                mapping = self.mathmoddb
+                assumption = False,
+                mapping = self.mathalgodb
             )
 
         for wf_data in answers.get('workflow', {}).values():
@@ -161,9 +161,9 @@ class prepareWorkflow:
             all_indices = sorted(set(cpu_dict) | set(count_dict) | set(cores_dict))
             hw_data['cpu_entries'] = [
                 {
-                    'id':          cpu_dict.get(idx, {}).get('ID', {}).get('ID'),
-                    'name':        cpu_dict.get(idx, {}).get('ID', {}).get('Name'),
-                    'description': cpu_dict.get(idx, {}).get('ID', {}).get('Description'),
+                    'id':          cpu_dict.get(idx, {}).get('ID'),
+                    'name':        cpu_dict.get(idx, {}).get('Name'),
+                    'description': cpu_dict.get(idx, {}).get('Description'),
                     'count':       count_dict.get(idx),
                     'cores':       cores_dict.get(idx),
                 }

@@ -226,4 +226,35 @@ preview_relations = [
         "assumption": False,
         "grouped": False,
     },
+    {
+        "from_idx": "publication",
+        "to_idx": "algorithm",
+        "relation": "P2A",
+        "old_name": "ARelatant",
+        "new_name": "RelationA",
+        "encryption": "A"
+    },
+    {
+        "from_idx": "publication",
+        "to_idx": [
+            "hardware", "software"
+        ],
+        "relation": "P2BS",
+        "old_name": "HSRelatant",
+        "new_name": "RelationHS",
+        "encryption": ["HW", "S"]
+    },
+    {
+        "from_idx": "publication",
+        "to_idx": [
+            "workflow", "processstep", "dataset"
+        ],
+        "relation": "P2E",
+        "old_name": "EntityRelatant",
+        "new_name": "RelationP",
+        "encryption": ["IW", "PS", "DS"],
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+    },
 ]

@@ -45,11 +45,6 @@ class PublicationRetriever:
 
         for key in answers.get('publication', {}):
 
-            if str(project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
-                # Ignore references for individual triple in workflow catalog
-                if answers['publication'][key]['workflow'] != options['Yes']:
-                    continue
-
             # If ID is missing (not answered or deleted)
             if not answers['publication'][key].get('ID'):
                 continue

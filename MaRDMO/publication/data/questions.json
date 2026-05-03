@@ -52,7 +52,7 @@
         "P2BS": {
             "key1": "publication",
             "key2": "P2BS",
-            "uri": "domain/publication/benchmark-or-software-relation",
+            "uri": "domain/publication/documents-uses-relation",
             "set_prefix": true,
             "set_index": true
         },
@@ -65,17 +65,42 @@
             "collection_index": true,
             "external_id": true
         },
-        "P2E": {
+        "HSRelatant": {
+            "key1": "publication",
+            "key2": "HSRelatant",
+            "uri": "domain/publication/hardware-or-software-relatant",
+            "set_prefix": true,
+            "set_index": true,
+            "collection_index": true,
+            "external_id": true
+        },
+        "P2ME": {
             "key1": "publication",
             "key2": "P2E",
             "uri": "domain/publication/entity-relation",
             "set_prefix": true,
             "set_index": true
         },
-        "EntityRelatant": {
+        "ModelEntityRelatant": {
             "key1": "publication",
             "key2": "EntityRelatant",
             "uri": "domain/publication/entity-relatant",
+            "set_prefix": true,
+            "set_index": true,
+            "collection_index": true,
+            "external_id": true
+        },
+        "P2WE": {
+            "key1": "publication",
+            "key2": "P2E",
+            "uri": "domain/publication/remaining-workflow-entity-relation",
+            "set_prefix": true,
+            "set_index": true
+        },
+        "WorkflowEntityRelatant": {
+            "key1": "publication",
+            "key2": "EntityRelatant",
+            "uri": "domain/publication/remaining-workflow-entity-relatant",
             "set_prefix": true,
             "set_index": true,
             "collection_index": true,

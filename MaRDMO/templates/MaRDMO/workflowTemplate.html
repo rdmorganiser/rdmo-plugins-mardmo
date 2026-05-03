@@ -283,41 +283,43 @@
 {% empty %}
     <strong style="color:black;">NO DATA SET DOCUMENTED</strong>
 {% endfor %}
-    
-<h2 id="related-publications">Workflow Published In</h2>
-{% for values in answers.publication.values %}
-    {% if values.workflow == option.Yes %}
-        
-        <h3 id="P{{ forloop.counter }}"> {{ values.Name }} </h2>
-        
-        <p> 
-            {% for reference in values.reference.values %}
-                {% if reference.0 == option.DOI %}
-                    <b>DOI</b>: {{ reference.1 }} <br>
-                {% endif %} 
-                {% if reference.0 == option.URL %}
-                    <b>URL</b>: {{ reference.1 }} <br>
-                {% endif %}
-            {% endfor %}
-        </p>
-    {% endif %}
-{% endfor %}
 
-<h2 id="related-publications">References For Individual Workflow Aspects</h2>
+<h1 id="Publication"> Publications </h1>
 {% for values in answers.publication.values %}
-    {% if values.workflow == option.No %}
-        
-        <p> 
-            {% for reference in values.reference.values %}
-                {% if reference.0 == option.DOI %}
-                    <b>DOI</b>: {{ reference.1 }} <br>
-                {% endif %} 
-                {% if reference.0 == option.URL %}
-                    <b>URL</b>: {{ reference.1 }} <br>
-                {% endif %}
-            {% endfor %}
-        </p>
+
+    {# Include Publication Name #}
+    {% include "MaRDMO/partials/_name.html" with class="PUBLICATION" counter=forloop.counter name=values.Name prefix="P" %}
+    
+    {% for reference in values.reference.values %}
+        {% if reference.0 == option.DOI %}
+            <b>DOI</b>: {{ reference.1 }} <br>
+	    {% endif %} 
+    {% empty %}
+        {% if 'not found' in values.ID %}
+            <strong style="color:red;">MISSING PUBLICATION DOI</strong>
+        {% endif %}
+    {% endfor %}
+
+    {# Include Publication ID #}
+    {% include "MaRDMO/partials/_id.html" with id=values.ID %}
+
+    {% if values.RelationHS or values.RelationA or values.RelationP %}
+
+        {# Include Block for multiple Relations between Publication and Algorithm #}
+        {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="P2A" title="Algorithms" relations=values.RelationA class="ALGORITHM" empty_msg="False" %}
+
+        {# Include Block for multiple Relations between Publication and Hardwae or Software #}
+        {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="P2HS" title="Hardware or Software" relations=values.RelationHS class="HARDWARE OR SOFTWARE" empty_msg="False" %}
+
+        {# Include Block for multiple Relations between Publication and remaining Workflow Entities #}
+        {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="P2E" title="Inerdisciplinary Workflows, Process Steps, or Data Sets" relations=values.RelationP class="INTERDISCIPLINARY WORKFLOW, PROCESS STEP, OR DATA SET" empty_msg="False" %}
+
+    {% else %}
+        <strong style="color:red;">MISSING PUBLICATION to ALGORITHM, BENCHMARK, OR SOFTWARE RELATION</strong>
     {% endif %}
+
+{% empty %}
+    <strong style="color:black;">NO PUBLICATION DOCUMENTED</strong>
 {% endfor %}
 
 </body>

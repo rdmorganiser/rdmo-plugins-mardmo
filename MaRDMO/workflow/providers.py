@@ -203,7 +203,7 @@ class RelatedMethodWithCreation(Provider):
         )
 
 class RelatedAlgorithmWithCreation(Provider):
-    '''MethAlgorithmod Provider (MaRDI Portal),
+    '''Algorithm Provider (MaRDI Portal / Wikidata),
        No User Creation, No Refresh Upon Selection
     '''
 
@@ -556,4 +556,83 @@ class ProcessStep(Provider):
         return query_sources(
             search = search,
             item_class = _ITEMS['process step'],
+        )
+
+class RelatedHardwareOrSoftwareWithoutCreation(Provider):
+    '''Hardware, Software Provider (MaRDI Portal),
+       No User Creation, No Refresh Upon Selection
+    '''
+
+    search = True
+
+    def get_options(self, project, search=None, user=None, site=None):
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
+        if not search or len(search) < 3:
+            return []
+
+        setup = define_setup(
+            query_attributes = ['hardware', 'software'],
+            sources = ['mardi'],
+            item_class = [
+                _ITEMS['computer hardware'],
+                _ITEMS['software']
+            ]
+        )
+
+        return query_sources_with_user_additions(
+            search = search,
+            project = project,
+            setup = setup
+        )
+    
+class RelatedWorkflowEntityWithoutCreation(Provider):
+    '''Interdisciplinary Workflow, Process Step, and Data Set  Provider 
+       (MaRDI Portal / Wikidata), No User Creation, No Refresh Upon Selection
+    '''
+
+    search = True
+
+    def get_options(self, project, search=None, user=None, site=None):
+        '''Query the MathModDB ontology and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
+        if not search or len(search) < 3:
+            return []
+
+
+        # Define the query_setup
+        setup = define_setup(
+            query_attributes = ['workflow', 'process-step', 'data-set'],
+            sources = ['mardi'],
+            item_class = [
+                _ITEMS['research workflow'],
+                _ITEMS['process step'],
+                _ITEMS['data set'],
+            ]
+        )
+
+        return query_sources_with_user_additions(
+            search = search,
+            project = project,
+            setup = setup
         )
