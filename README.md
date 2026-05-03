@@ -63,8 +63,8 @@ OPTIONSET_PROVIDERS = [
     ('MaRDISearch', _('Options for MaRDI Search'), 'MaRDMO.search.providers.MaRDISearch'),
     # Workflow
     ('MaRDIAndWikidataSearch', _('Options for MaRDI and Wikidata Search'), 'MaRDMO.workflow.providers.MaRDIAndWikidataSearch'),
-    ('MathematicalModel', _('Options for Mathematical Model (Workflow)'), 'MaRDMO.workflow.providers.MathematicalModel'),
-    ('Task', _('Options for Task (Workflow)'), 'MaRDMO.workflow.providers.Task'),
+    ('MathematicalModelWorkflow', _('Options for Mathematical Model (Workflow)'), 'MaRDMO.workflow.providers.MathematicalModel'),
+    ('TaskWorkflow', _('Options for Task (Workflow)'), 'MaRDMO.workflow.providers.Task'),
     ('Hardware', _('Options for Hardware'), 'MaRDMO.workflow.providers.Hardware'),
     ('RelatedHardwareWithCreation', _('Options for related Hardware with Creation'), 'MaRDMO.workflow.providers.RelatedHardwareWithCreation'),
     ('DataSet', _('Options for Data Sets'), 'MaRDMO.workflow.providers.DataSet'),
@@ -77,8 +77,9 @@ OPTIONSET_PROVIDERS = [
     ('RelatedStepWithCreation', _('Options for related Process Steps with Creation'), 'MaRDMO.workflow.providers.RelatedStepWithCreation'),
     ('RelatedProgrammingLanguageWithCreation', _('Options for related Programming Languages with Creation'), 'MaRDMO.workflow.providers.RelatedProgrammingLanguageWithCreation'),
     ('RelatedCPUModelWithCreation', _('Options for related CPU Modelss with Creation'), 'MaRDMO.workflow.providers.RelatedCPUModelWithCreation'),
+    ('RelatedHardwareOrSoftwareWithoutCreation', _('Options for related Hardware or Software without Creation'), 'MaRDMO.workflow.providers.RelatedHardwareOrSoftwareWithoutCreation'),
+    ('RelatedWorkflowEntityWithoutCreation', _('Options for related Workflow Entities without Creation'), 'MaRDMO.workflow.providers.RelatedWorkflowEntityWithoutCreation'),
     # Model
-    ('Formula', _('Options for Formulas'), 'MaRDMO.model.providers.Formula'),
     ('ResearchField', _('Options for Research Fields'), 'MaRDMO.model.providers.ResearchField'),
     ('RelatedResearchFieldWithCreation', _('Options for related Research Fields with Creation'), 'MaRDMO.model.providers.RelatedResearchFieldWithCreation'),
     ('RelatedResearchFieldWithoutCreation', _('Options for related Research Fields without Creation'), 'MaRDMO.model.providers.RelatedResearchFieldWithoutCreation'),
@@ -110,7 +111,8 @@ OPTIONSET_PROVIDERS = [
     ('Benchmark', _('Options for Benchmarks'), 'MaRDMO.algorithm.providers.Benchmark'),
     ('RelatedBenchmarkWithCreation', _('Options for related Benchmarks with Creation'), 'MaRDMO.algorithm.providers.RelatedBenchmarkWithCreation'),
     ('RelatedBenchmarkOrSoftwareWithoutCreation', _('Options for related Benchmarks or Software without Creation'), 'MaRDMO.algorithm.providers.RelatedBenchmarkOrSoftwareWithoutCreation'),
-    ]
+]
+
 
 ```
 
