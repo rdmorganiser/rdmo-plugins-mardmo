@@ -7,7 +7,6 @@ entries or restrict suggestions to already-documented entities.
 
 Provides:
 
-- :class:`Formula` — formula lookup; refresh on select
 - :class:`ResearchField` — searches external sources; refresh on select, no creation 
 - :class:`RelatedResearchFieldWithCreation` — searches external sources; no refresh on select, creation
 - :class:`RelatedResearchFieldWithoutCreation` — searches external sources; no refresh on select, no creation
@@ -37,30 +36,6 @@ from ..helpers import define_setup
 from ..queries import query_sources, query_sources_with_user_additions
 
 _ITEMS = get_items()
-
-class Formula(Provider):
-    '''Formula Provider for all sorts of Latex Math.
-       Future Potential:
-          - render Latex Math while entered
-          - definitive safe to automatically extract elements
-    '''
-
-    search = True
-
-    def get_options(self, project, search=None, user=None, site=None):
-        '''Return the search term verbatim as a single formula option.
-
-        Args:
-            project: RDMO project instance (unused).
-            search:  LaTeX formula string entered by the user.
-            user:    Requesting user (unused).
-            site:    Current site (unused).
-
-        Returns:
-            List containing one ``{"id": "formula", "text": search}`` dict,
-            or an empty list when *search* is empty.
-        '''
-        return [{'id': 'formula', 'text': search}]
 
 class ResearchField(Provider):
     '''Research Field Provider (MaRDI Portal / Wikidata),
