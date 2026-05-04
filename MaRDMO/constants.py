@@ -16,6 +16,15 @@ BASE_URI = 'https://rdmo.mardi4nfdi.de/terms/'
 CATALOG_MODEL        = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-model-catalog'
 CATALOG_MODEL_BASICS = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-model-basics-catalog'
 CATALOG_ALGORITHM    = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-algorithm-catalog'
+CATALOG_WORKFLOW     = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-interdisciplinary-workflow-catalog'
+
+# Mapping from catalog slug to preview template
+CATALOG_TEMPLATE_MAP = {
+    'mardmo-model-catalog':                      'MaRDMO/modelTemplate.html',
+    'mardmo-model-basics-catalog':               'MaRDMO/modelTemplate-basics.html',
+    'mardmo-algorithm-catalog':                  'MaRDMO/algorithmTemplate.html',
+    'mardmo-interdisciplinary-workflow-catalog': 'MaRDMO/workflowTemplate.html',
+}
 
 #MaRDMO Section Mapt (Base)
 SECTION_MAP_BASE = {

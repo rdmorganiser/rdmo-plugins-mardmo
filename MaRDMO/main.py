@@ -25,6 +25,7 @@ from rdmo.projects.exports import Export
 from rdmo.services.providers import OauthProviderMixin
 
 from .checks import Checks
+from .constants import CATALOG_TEMPLATE_MAP
 from .getters import (
     get_answers,
     get_item_url,
@@ -45,11 +46,18 @@ from .model.worker import PrepareModel
 
 from .algorithm.worker import PrepareAlgorithm
 
-from .workflow.worker import prepareWorkflow
+from .workflow.worker import PrepareWorkflow
 from .search.worker import search
 from .publication.worker import PublicationRetriever
 
 logger = logging.getLogger(__name__)
+
+_CATALOG_PREPARE_MAP = {
+    'mardmo-model-catalog':                      ('model',    PrepareModel),
+    'mardmo-model-basics-catalog':               ('model',    PrepareModel),
+    'mardmo-algorithm-catalog':                  ('algorithm', PrepareAlgorithm),
+    'mardmo-interdisciplinary-workflow-catalog': ('workflow',  PrepareWorkflow),
+}
 
 class BaseMaRDMOExportProvider(OauthProviderMixin, Export, ABC):
     '''Base export provider wiring MaRDMO to the MaRDI Portal OAuth2 flow.
@@ -142,52 +150,19 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             HTTP response rendering the preview page, or an error page for
             unsupported catalogs.
         '''
-        # MaRDMO: Mathematical Model Documentation
-        if str(self.project.catalog).endswith(
-            (
-                'mardmo-model-catalog',
-                'mardmo-model-basics-catalog'
-            )
-        ):
+
+        catalog_slug = str(self.project.catalog).rsplit('/', 1)[-1]
+        template = CATALOG_TEMPLATE_MAP.get(catalog_slug)
+
+        if template:
             answers, options = self.get_post_data('preview')
-
-            if str(self.project.catalog).endswith('mardmo-model-basics-catalog'):
-                template = 'MaRDMO/modelTemplate-basics.html'
-            else:
-                template = 'MaRDMO/modelTemplate.html'
-
             return render_preview(
-                self = self,
-                template = template,
-                answers = answers,
-                option = options
-            )
+                self=self,
+                template=template,
+                answers=answers,
+                option=options
+        )
 
-        # MaRDMO: Algorithm Documentation
-        if str(self.project.catalog).endswith('mardmo-algorithm-catalog'):
-
-            answers, options = self.get_post_data('preview')
-
-            return render_preview(
-                self = self,
-                template = 'MaRDMO/algorithmTemplate.html',
-                answers = answers,
-                option = options
-            )
-
-        # MaRDMO: Interdisciplinary Workflow Documentation
-        if str(self.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
-
-            answers, options = self.get_post_data('preview')
-
-            return render_preview(
-                self = self,
-                template = 'MaRDMO/workflowTemplate.html',
-                answers = answers,
-                option = options
-            )
-
-        # Non-MaRDMO Catalog
         return render(
             self.request,
             'core/error.html',
@@ -421,7 +396,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         answers, __ = self.get_post_data()
 
         try:
-            prepare = prepareWorkflow()
+            prepare = PrepareWorkflow()
             payload, dependency = prepare.export(
                 answers,
                 self.project.title,
@@ -501,95 +476,41 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         '''
         options = get_options()
 
-        # MaRDMO: Mathematical Model Documentation
-        if str(self.project.catalog).endswith(
-            (
-                'mardmo-model-catalog',
-                'mardmo-model-basics-catalog'
-            )
-        ):
-            questions = get_questions('model') | get_questions('publication')
+        catalog_slug = str(self.project.catalog).rsplit('/', 1)[-1]
+        entry = _CATALOG_PREPARE_MAP.get(catalog_slug)
 
-            answers = process_question_dict(
-                project = self.project,
-                questions = questions,
-                get_answer = get_answers
-            )
-
-            if mode == 'preview':
-                publication = PublicationRetriever()
-                answers = publication.get_information(
-                    project = self.project,
-                    snapshot = self.snapshot,
-                    answers = answers,
-                    options = options
-                )
-
-            prepare = PrepareModel()
-            answers = prepare.preview(answers)
-
-            return answers, options
-
-        # MaRDMO: Algorithm Documentation
-        if str(self.project.catalog).endswith('mardmo-algorithm-catalog'):
-
-            questions = get_questions('algorithm') | get_questions('publication')
-
-            answers = process_question_dict(
-                project = self.project,
-                questions = questions,
-                get_answer = get_answers
+        if not entry:
+            return render(
+                self.request,
+                'core/error.html',
+                {
+                    'title': _('Unknown catalog'),
+                    'errors': [_('Cannot handle this catalog type.')]
+                },
+                status=400
             )
 
-            if mode == 'preview':
-                publication = PublicationRetriever()
-                answers = publication.get_information(
-                    project = self.project,
-                    snapshot = self.snapshot,
-                    answers = answers,
-                    options = options
-                )
+        question_set, PrepareClass = entry
+        questions = get_questions(question_set) | get_questions('publication')
+        answers = process_question_dict(
+            project=self.project,
+            questions=questions,
+            get_answer=get_answers
+        )
 
-            prepare = PrepareAlgorithm()
-            answers = prepare.preview(answers)
-
-            return answers, options
-
-        # MaRDMO: Interdisciplinary Workflow Documentation
-        if str(self.project.catalog).endswith('mardmo-interdisciplinary-workflow-catalog'):
-
-            questions = get_questions('workflow') | get_questions('publication')
-
-            answers = process_question_dict(
-                project = self.project,
-                questions = questions,
-                get_answer = get_answers
-            )
-
+        if mode == 'preview':
             publication = PublicationRetriever()
             answers = publication.get_information(
-                project = self.project,
-                snapshot = self.snapshot,
-                answers = answers,
-                options = options
+                project=self.project,
+                snapshot=self.snapshot,
+                answers=answers,
+                options=options
             )
 
-            if mode == 'preview':
-                prepare = prepareWorkflow()
-                answers = prepare.preview(answers)
+        prepare = PrepareClass()
+        answers = prepare.preview(answers)
 
-            return answers, options
-
-        # Default fallback if catalog type is unknown
-        return render(
-            self.request,
-            'core/error.html',
-            {
-                'title': _('Unknown catalog'),
-                'errors': [_('Cannot handle this catalog type.')]
-            },
-            status=400
-        )
+        return answers, options
 
 
 class MaRDMOQueryProvider(Export):
