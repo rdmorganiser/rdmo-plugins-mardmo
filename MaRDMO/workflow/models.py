@@ -232,6 +232,68 @@ class Hardware:
 
 
 @dataclass
+class Workflow:
+    '''Top-level metadata of an Interdisciplinary Workflow entity from MaRDI Portal.'''
+
+    research_objective: list[str] = field(default_factory=list)
+    procedure: list[str] = field(default_factory=list)
+    mathematical: Optional[str] = None
+    mathematical_comment: Optional[str] = None
+    runtime: Optional[str] = None
+    runtime_comment: Optional[str] = None
+    result: Optional[str] = None
+    result_comment: Optional[str] = None
+    originalplatform: Optional[str] = None
+    originalplatform_comment: Optional[str] = None
+    otherplatform: Optional[str] = None
+    otherplatform_comment: Optional[str] = None
+    transferable: Optional[str] = None
+    transferable_comment: list[str] = field(default_factory=list)
+    uses_model: list[str] = field(default_factory=list)
+    contains_process_step: list[Relatant] = field(default_factory=list)
+
+    @classmethod
+    def from_query_batch(cls, raw_data: list) -> 'dict[str, Workflow]':
+        '''Parse a batch SPARQL result into {external_id: instance} dict.'''
+        return {
+            row['qid']['value']: cls.from_query_single(row)
+            for row in raw_data
+            if row.get('qid', {}).get('value')
+        }
+
+    @classmethod
+    def from_query_single(cls, data: dict) -> 'Workflow':
+        '''Parse one SPARQL result row into a Workflow instance.'''
+        def _split(key):
+            raw = data.get(key, {}).get('value', '')
+            return [v.strip() for v in raw.split(' <|> ') if v.strip()] if raw else []
+
+        def _val(key):
+            return data.get(key, {}).get('value') or None
+
+        return cls(
+            research_objective=_split('research_objective'),
+            procedure=_split('procedure'),
+            mathematical=_val('mathematical'),
+            mathematical_comment=_val('mathematical_comment'),
+            runtime=_val('runtime'),
+            runtime_comment=_val('runtime_comment'),
+            result=_val('result'),
+            result_comment=_val('result_comment'),
+            originalplatform=_val('originalplatform'),
+            originalplatform_comment=_val('originalplatform_comment'),
+            otherplatform=_val('otherplatform'),
+            otherplatform_comment=_val('otherplatform_comment'),
+            transferable=_val('transferable'),
+            transferable_comment=_split('transferable_comment'),
+            uses_model=_split('uses_model'),
+            contains_process_step=split_value(
+                data=data, key='contains_process_step', transform=Relatant.from_query
+            ),
+        )
+
+
+@dataclass
 class DataSet:
     '''Metadata and relations of a Data Set entity from MaRDI/Wikidata.'''
 

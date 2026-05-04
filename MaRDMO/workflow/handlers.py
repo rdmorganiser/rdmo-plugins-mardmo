@@ -15,7 +15,7 @@ from ..adders import add_basics, add_references, add_relations_static
 from ..queries import query_sparql
 
 from .constants import PROPS
-from .models import Cpu, ProcessStep, Software, Hardware, DataSet
+from .models import Cpu, ProcessStep, Software, Hardware, DataSet, Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class Information(BaseInformation):
     '''Handlers for the Workflow Documentation questionnaire.'''
 
-    _ENTITY_KEYS = ('Algorithm', 'Software', 'Hardware', 'Data Set', 'Process Step')
+    _ENTITY_KEYS = ('Workflow', 'Algorithm', 'Software', 'Hardware', 'Data Set', 'Process Step')
 
     def __init__(self):
         '''Load workflow questions, base URI, RDMO options, and MathAlgoDB registry.'''
@@ -35,6 +35,14 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
     #  Public entry points (called by router via post_save signal)         #
     # ------------------------------------------------------------------ #
+
+    def workflow(self, instance):
+        '''Handle Workflow ID save: hydrate basics and SPARQL data.
+
+        Args:
+            instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
+        '''
+        self._entry(instance, 'Workflow', self._fill_workflow_batch)
 
     def software(self, instance):
         '''Handle Software ID save: hydrate basics and SPARQL data.
@@ -174,6 +182,146 @@ class Information(BaseInformation):
     # ------------------------------------------------------------------ #
     #  Batch _fill_* methods (one SPARQL query for N entities)            #
     # ------------------------------------------------------------------ #
+
+    def _fill_workflow_batch(self, project, items, catalog='', visited=None):
+        '''Hydrate multiple Workflow pages with a single SPARQL query per source.
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
+        if not items:
+            return
+
+        workflow_q = self.questions['Workflow']
+        data_by_id = _fetch_by_source(
+            items,
+            'workflow/queries/workflow_mardi.sparql',
+            'workflow/queries/workflow_wikidata.sparql',
+            Workflow,
+        )
+
+        section_indices = {}
+        for text, external_id, set_index in items:
+            data = data_by_id.get(external_id)
+            if not data:
+                continue
+
+            add_basics(project=project, text=text, questions=self.questions,
+                       item_type='Workflow', index=(0, set_index))
+            self._write_workflow_fields(project, workflow_q, data, set_index)
+
+            self._hydrate_relatants(
+                project=project, data=data, prop_keys=['contains_process_step'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Process Step"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Process Step"]["uri"]}',
+                    prefix='PS',
+                    fill_method=partial(self._fill, item_type='Process Step',
+                                        batch_fill_method=self._fill_process_step_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_process_step_batch,
+                    section_indices=section_indices,
+                ))
+
+    def _write_workflow_fields(self, project, workflow_q, data, set_index):
+        '''Write all SPARQL-derived fields for one Workflow page.
+
+        Args:
+            project:    RDMO project instance.
+            workflow_q: Questions sub-dict for the Workflow section.
+            data:       Parsed Workflow dataclass instance.
+            set_index:  Set-index of the workflow page to write into.
+        '''
+        # Research Objective
+        if data.research_objective:
+            value_editor(
+                project=project,
+                uri=f'{self.base}{workflow_q["Objective"]["uri"]}',
+                info={'text': ' | '.join(data.research_objective),
+                      'set_prefix': set_index})
+
+        # Procedure → Long Description (one entry per collection_index)
+        for i, proc in enumerate(data.procedure):
+            value_editor(
+                project=project,
+                uri=f'{self.base}{workflow_q["Long Description"]["uri"]}',
+                info={'text': proc, 'set_prefix': set_index, 'collection_index': i})
+
+        # Mathematical Models with optional Task qualifiers
+        # Group entries by model_id — SPARQL returns one row per model-task pair
+        model_order = []
+        model_tasks = {}
+        for raw in data.uses_model:
+            parts = raw.split(' || ')
+            while len(parts) < 6:
+                parts.append('')
+            model_id, model_label, model_desc, task_id, task_label, task_desc = parts[:6]
+            if not model_id:
+                continue
+            if model_id not in model_tasks:
+                model_order.append((model_id, model_label, model_desc))
+                model_tasks[model_id] = []
+            if task_id:
+                model_tasks[model_id].append((task_id, task_label, task_desc))
+
+        for model_idx, (model_id, model_label, model_desc) in enumerate(model_order):
+            source = model_id.split(':')[0]
+            value_editor(
+                project=project,
+                uri=f'{self.base}{workflow_q["Model"]["uri"]}',
+                info={'text': f'{model_label} ({model_desc}) [{source}]',
+                      'external_id': model_id,
+                      'set_prefix': f"{set_index}|0", 'set_index': model_idx})
+            for task_idx, (task_id, task_label, task_desc) in enumerate(model_tasks[model_id]):
+                source = task_id.split(':')[0]
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["Task"]["uri"]}',
+                    info={'text': f'{task_label} ({task_desc}) [{source}]',
+                          'external_id': task_id,
+                          'set_prefix': f"{set_index}|0", 'set_index': model_idx,
+                          'collection_index': task_idx})
+
+        # Process Steps — write the workflow-section relatant pointer only
+        for i, ps in enumerate(data.contains_process_step):
+            if ps.id:
+                source = ps.id.split(':')[0]
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["PSRelatant"]["uri"]}',
+                    info={'text': f'{ps.label} ({ps.description}) [{source}]',
+                          'external_id': ps.id,
+                          'set_prefix': set_index, 'collection_index': i})
+
+        # Reproducibility (write only when SPARQL returned Yes)
+        repro_fields = [
+            (data.mathematical,     data.mathematical_comment,    'Mathematical'),
+            (data.runtime,          data.runtime_comment,         'Runtime'),
+            (data.result,           data.result_comment,          'Result'),
+            (data.originalplatform, data.originalplatform_comment, 'Original Platform'),
+            (data.otherplatform,    data.otherplatform_comment,   'Other Platform'),
+        ]
+        for value, comment, q_key in repro_fields:
+            if value == 'Yes':
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q[q_key]["uri"]}',
+                    info={'option': self.options['YesLargeText'],
+                          'text': comment or '',
+                          'set_prefix': f"{set_index}|0"})
+
+        # Transferability comments (write only when SPARQL returned Yes)
+        if data.transferable == 'Yes':
+            for i, comment in enumerate(data.transferable_comment):
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["Transferability"]["uri"]}',
+                    info={'text': comment,
+                          'set_prefix': set_index,
+                          'set_index': 0, 'collection_index': i})
 
     def _fill_software_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Software pages with a single SPARQL query per source.

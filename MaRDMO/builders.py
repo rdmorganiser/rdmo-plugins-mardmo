@@ -154,6 +154,8 @@ def build_post_save_handler_set():
     # Workflow handlers
     handler_map.update({
         'mardmo-interdisciplinary-workflow-catalog': {
+            f"{base}{questions_workflow['Workflow']['ID']['uri']}":
+                workflow.workflow,
             f"{base}{questions_workflow['Algorithm']['ID']['uri']}":
                 workflow.algorithm,
             f"{base}{questions_workflow['Workflow']['Model']['uri']}":

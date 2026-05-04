@@ -1,0 +1,155 @@
+SELECT DISTINCT
+?id
+(CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
+(GROUP_CONCAT(DISTINCT ?research_objective_raw; SEPARATOR=" <|> ") AS ?research_objective)
+(GROUP_CONCAT(DISTINCT ?procedure_raw;          SEPARATOR=" <|> ") AS ?procedure)
+?mathematical ?mathematical_comment
+?runtime ?runtime_comment
+?result ?result_comment
+?originalplatform ?originalplatform_comment
+?otherplatform ?otherplatform_comment
+?transferable
+(GROUP_CONCAT(DISTINCT ?transfer_comment_raw; SEPARATOR=" <|> ") AS ?transferable_comment)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?model, " || ", ?modell, " || ", ?modeld,
+    " || ", COALESCE(?task, ""), " || ", COALESCE(?taskl, ""), " || ", COALESCE(?taskd, "")
+); separator=" <|> ") AS ?uses_model)
+(GROUP_CONCAT(DISTINCT CONCAT(?ps, " || ", ?psl, " || ", ?psd); separator=" <|> ") AS ?contains_process_step)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:{problem statement} ?research_objective_raw.
+    }}
+
+    OPTIONAL {{
+        ?id wdt:{description} ?procedure_raw.
+    }}
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_math.
+        ?stmt_math ps:{instance of} wd:{mathematically reproducible research workflow}.
+        OPTIONAL {{
+            ?stmt_math pq:{comment} ?math_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_math), "Yes", "No") AS ?mathematical)
+    BIND(COALESCE(?math_comment_raw, "") AS ?mathematical_comment)
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_runtime.
+        ?stmt_runtime ps:{instance of} wd:{runtime reproducible research workflow}.
+        OPTIONAL {{
+            ?stmt_runtime pq:{comment} ?runtime_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_runtime), "Yes", "No") AS ?runtime)
+    BIND(COALESCE(?runtime_comment_raw, "") AS ?runtime_comment)
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_result.
+        ?stmt_result ps:{instance of} wd:{result reproducible research workflow}.
+        OPTIONAL {{
+            ?stmt_result pq:{comment} ?result_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_result), "Yes", "No") AS ?result)
+    BIND(COALESCE(?result_comment_raw, "") AS ?result_comment)
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_origplat.
+        ?stmt_origplat ps:{instance of} wd:{original platform reproducible research workflow}.
+        OPTIONAL {{
+            ?stmt_origplat pq:{comment} ?origplat_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_origplat), "Yes", "No") AS ?originalplatform)
+    BIND(COALESCE(?origplat_comment_raw, "") AS ?originalplatform_comment)
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_otherplat.
+        ?stmt_otherplat ps:{instance of} wd:{cross-platform reproducible research workflow}.
+        OPTIONAL {{
+            ?stmt_otherplat pq:{comment} ?otherplat_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_otherplat), "Yes", "No") AS ?otherplatform)
+    BIND(COALESCE(?otherplat_comment_raw, "") AS ?otherplatform_comment)
+
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_transfer.
+        ?stmt_transfer ps:{instance of} wd:{transferable research workflow}.
+        OPTIONAL {{
+            ?stmt_transfer pq:{comment} ?transfer_comment_raw.
+        }}
+    }}
+    BIND(IF(BOUND(?stmt_transfer), "Yes", "No") AS ?transferable)
+    BIND(COALESCE(?transfer_comment_raw, "") AS ?transferable_comment)
+
+    OPTIONAL {{
+        ?id p:{uses} ?stmt_model.
+        ?stmt_model ps:{uses} ?modelraw.
+        ?modelraw wdt:{instance of} wd:{mathematical model}.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?modelraw), STR(wd:))) AS ?model)
+
+        OPTIONAL {{
+            ?modelraw rdfs:label ?modellraw
+            FILTER (lang(?modellraw) = 'en')
+        }}
+        BIND(COALESCE(?modellraw, "No Label Provided!") AS ?modell)
+
+        OPTIONAL {{
+            ?modelraw schema:description ?modeldraw
+            FILTER (lang(?modeldraw) = 'en')
+        }}
+        BIND(COALESCE(?modeldraw, "No Description Provided!") AS ?modeld)
+
+        OPTIONAL {{
+            ?stmt_model pq:{used by} ?taskraw.
+            ?taskraw wdt:{instance of} wd:{computational task}.
+            BIND(CONCAT("mardi:", STRAFTER(STR(?taskraw), STR(wd:))) AS ?task)
+
+            OPTIONAL {{
+                ?taskraw rdfs:label ?tasklraw
+                FILTER (lang(?tasklraw) = 'en')
+            }}
+            BIND(COALESCE(?tasklraw, "No Label Provided!") AS ?taskl)
+
+            OPTIONAL {{
+                ?taskraw schema:description ?taskdraw
+                FILTER (lang(?taskdraw) = 'en')
+            }}
+            BIND(COALESCE(?taskdraw, "No Description Provided!") AS ?taskd)
+        }}
+    }}
+
+    OPTIONAL {{
+        ?id p:{contains} ?stmt_ps.
+        ?stmt_ps ps:{contains} ?psraw.
+        ?psraw wdt:{instance of} wd:{process step}.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?psraw), STR(wd:))) AS ?ps)
+
+        OPTIONAL {{
+            ?psraw rdfs:label ?pslraw
+            FILTER (lang(?pslraw) = 'en')
+        }}
+        BIND(COALESCE(?pslraw, "No Label Provided!") AS ?psl)
+
+        OPTIONAL {{
+            ?psraw schema:description ?psdraw
+            FILTER (lang(?psdraw) = 'en')
+        }}
+        BIND(COALESCE(?psdraw, "No Description Provided!") AS ?psd)
+    }}
+
+}}
+
+GROUP BY ?id
+         ?mathematical ?mathematical_comment
+         ?runtime ?runtime_comment
+         ?result ?result_comment
+         ?originalplatform ?originalplatform_comment
+         ?otherplatform ?otherplatform_comment
+         ?transferable
