@@ -1,6 +1,6 @@
 '''Worker module for Interdisciplinary Workflow preview and export.
 
-Provides :class:`prepareWorkflow`, which assembles RDMO questionnaire answers
+Provides :class:`PrepareWorkflow`, which assembles RDMO questionnaire answers
 into a :class:`~MaRDMO.payload.GeneratePayload` ready for submission to the
 MaRDI Portal Wikibase instance.
 '''
@@ -19,7 +19,7 @@ from ..helpers import entity_relations, entity_relations_grouped, unique_items
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
-class prepareWorkflow:
+class PrepareWorkflow:
     '''Prepare interdisciplinary workflow answers for preview and export.
 
     Loads Wikibase vocabulary (items and properties) on instantiation so
