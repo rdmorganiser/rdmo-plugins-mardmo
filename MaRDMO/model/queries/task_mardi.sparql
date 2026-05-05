@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?is_linear ?is_not_linear
@@ -35,14 +35,20 @@ WHERE {{
         ?id wdt:{description} ?descriptionLong
     }}
 
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{linear task} }}, "True", "False" ) AS ?is_linear)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{nonlinear task} }}, "True", "False" ) AS ?is_not_linear)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{linear task}. BIND("True" AS ?is_linear_raw) }}
+    BIND(COALESCE(?is_linear_raw, "False") AS ?is_linear)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{nonlinear task}. BIND("True" AS ?is_not_linear_raw) }}
+    BIND(COALESCE(?is_not_linear_raw, "False") AS ?is_not_linear)
 
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{continuous-space task} }}, "True", "False" ) AS ?is_space_continuous)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{discrete-space task} }}, "True", "False" ) AS ?is_space_discrete)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{continuous-space task}. BIND("True" AS ?is_space_continuous_raw) }}
+    BIND(COALESCE(?is_space_continuous_raw, "False") AS ?is_space_continuous)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{discrete-space task}. BIND("True" AS ?is_space_discrete_raw) }}
+    BIND(COALESCE(?is_space_discrete_raw, "False") AS ?is_space_discrete)
 
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{continuous-time task} }}, "True", "False" ) AS ?is_time_continuous)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{discrete-time task} }}, "True", "False" ) AS ?is_time_discrete)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{continuous-time task}. BIND("True" AS ?is_time_continuous_raw) }}
+    BIND(COALESCE(?is_time_continuous_raw, "False") AS ?is_time_continuous)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{discrete-time task}. BIND("True" AS ?is_time_discrete_raw) }}
+    BIND(COALESCE(?is_time_discrete_raw, "False") AS ?is_time_discrete)
 
     OPTIONAL {{
         ?id wdt:{assumes} ?assraw.

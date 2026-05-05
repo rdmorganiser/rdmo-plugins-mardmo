@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?is_dynamic ?is_static
@@ -36,59 +36,42 @@ WHERE {{
         ?id wdt:{description} ?descriptionLong
     }}
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dynamic quantity} }} AS ?dynamicQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dynamic quantity kind} }} AS ?dynamicQuantityKind)
-    BIND(IF(?dynamicQuantity || ?dynamicQuantityKind, "True", "False") AS ?dynamic)
-    BIND(COALESCE(?dynamic, "False") AS ?is_dynamic)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{dynamic quantity}. }} UNION {{ ?id wdt:{instance of} wd:{dynamic quantity kind}. }} BIND("True" AS ?is_dynamic_raw) }}
+    BIND(COALESCE(?is_dynamic_raw, "False") AS ?is_dynamic)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{static quantity} }} AS ?staticQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{static quantity kind} }} AS ?staticQuantityKind)
-    BIND(IF(?staticQuantity || ?staticQuantityKind, "True", "False") AS ?static)
-    BIND(COALESCE(?static, "False") AS ?is_static)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{static quantity}. }} UNION {{ ?id wdt:{instance of} wd:{static quantity kind}. }} BIND("True" AS ?is_static_raw) }}
+    BIND(COALESCE(?is_static_raw, "False") AS ?is_static)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{deterministic quantity} }} AS ?deterministicQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{deterministic quantity kind} }} AS ?deterministicQuantityKind)
-    BIND(IF(?deterministicQuantity || ?deterministicQuantityKind, "True", "False") AS ?deterministic)
-    BIND(COALESCE(?deterministic, "False") AS ?is_deterministic)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{deterministic quantity}. }} UNION {{ ?id wdt:{instance of} wd:{deterministic quantity kind}. }} BIND("True" AS ?is_deterministic_raw) }}
+    BIND(COALESCE(?is_deterministic_raw, "False") AS ?is_deterministic)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{probabilistic quantity} }} AS ?stochasticQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{probabilistic quantity kind} }} AS ?stochasticQuantityKind)
-    BIND(IF(?stochasticQuantity || ?stochasticQuantityKind, "True", "False") AS ?stochastic)
-    BIND(COALESCE(?stochastic, "False") AS ?is_stochastic)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{probabilistic quantity}. }} UNION {{ ?id wdt:{instance of} wd:{probabilistic quantity kind}. }} BIND("True" AS ?is_stochastic_raw) }}
+    BIND(COALESCE(?is_stochastic_raw, "False") AS ?is_stochastic)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dimensionless quantity} }} AS ?dimensionlessQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dimensionless quantity kind} }} AS ?dimensionlessQuantityKind)
-    BIND(IF(?dimensionlessQuantity || ?dimensionlessQuantityKind, "True", "False") AS ?dimensionless)
-    BIND(COALESCE(?dimensionless, "False") AS ?is_dimensionless)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{dimensionless quantity}. }} UNION {{ ?id wdt:{instance of} wd:{dimensionless quantity kind}. }} BIND("True" AS ?is_dimensionless_raw) }}
+    BIND(COALESCE(?is_dimensionless_raw, "False") AS ?is_dimensionless)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dimensional quantity} }} AS ?dimensionalQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{dimensional quantity kind} }} AS ?dimensionalQuantityKind)
-    BIND(IF(?dimensionalQuantity || ?dimensionalQuantityKind, "True", "False") AS ?dimensional)
-    BIND(COALESCE(?dimensional, "False") AS ?is_dimensional)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{dimensional quantity}. }} UNION {{ ?id wdt:{instance of} wd:{dimensional quantity kind}. }} BIND("True" AS ?is_dimensional_raw) }}
+    BIND(COALESCE(?is_dimensional_raw, "False") AS ?is_dimensional)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{continuous-space quantity} }} AS ?spaceContinuousQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{continuous-space quantity kind} }} AS ?spaceContinuousQuantityKind)
-    BIND(IF(?spaceContinuousQuantity || ?spaceContinuousQuantityKind, "True", "False") AS ?spaceContinuous)
-    BIND(COALESCE(?spaceContinuous, "False") AS ?is_space_continuous)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{continuous-space quantity}. }} UNION {{ ?id wdt:{instance of} wd:{continuous-space quantity kind}. }} BIND("True" AS ?is_space_continuous_raw) }}
+    BIND(COALESCE(?is_space_continuous_raw, "False") AS ?is_space_continuous)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{discrete-space quantity} }} AS ?spaceDiscreteQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{discrete-space quantity kind} }} AS ?spaceDiscreteQuantityKind)
-    BIND(IF(?spaceDiscreteQuantity || ?spaceDiscreteQuantityKind, "True", "False") AS ?spaceDiscrete)
-    BIND(COALESCE(?spaceDiscrete, "False") AS ?is_space_discrete)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{discrete-space quantity}. }} UNION {{ ?id wdt:{instance of} wd:{discrete-space quantity kind}. }} BIND("True" AS ?is_space_discrete_raw) }}
+    BIND(COALESCE(?is_space_discrete_raw, "False") AS ?is_space_discrete)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{continuous-time quantity} }} AS ?timeContinuousQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{continuous-time quantity kind} }} AS ?timeContinuousQuantityKind)
-    BIND(IF(?timeContinuousQuantity || ?timeContinuousQuantityKind, "True", "False") AS ?timeContinuous)
-    BIND(COALESCE(?timeContinuous, "False") AS ?is_time_continuous)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{continuous-time quantity}. }} UNION {{ ?id wdt:{instance of} wd:{continuous-time quantity kind}. }} BIND("True" AS ?is_time_continuous_raw) }}
+    BIND(COALESCE(?is_time_continuous_raw, "False") AS ?is_time_continuous)
 
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{discrete-time quantity} }} AS ?timeDiscreteQuantity)
-    BIND(EXISTS {{ ?id wdt:{instance of} wd:{discrete-time quantity kind} }} AS ?timeDiscreteQuantityKind)
-    BIND(IF(?timeDiscreteQuantity || ?timeDiscreteQuantityKind, "True", "False") AS ?timeDiscrete)
-    BIND(COALESCE(?timeDiscrete, "False") AS ?is_time_discrete)
-                                                    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{chemical constant} }}, "True", "False" ) AS ?is_chemical_constant)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{mathematical constant} }}, "True", "False" ) AS ?is_mathematical_constant)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{physical constant} }}, "True", "False" ) AS ?is_physical_constant)
+    OPTIONAL {{ {{ ?id wdt:{instance of} wd:{discrete-time quantity}. }} UNION {{ ?id wdt:{instance of} wd:{discrete-time quantity kind}. }} BIND("True" AS ?is_time_discrete_raw) }}
+    BIND(COALESCE(?is_time_discrete_raw, "False") AS ?is_time_discrete)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{chemical constant}. BIND("True" AS ?is_chemical_constant_raw) }}
+    BIND(COALESCE(?is_chemical_constant_raw, "False") AS ?is_chemical_constant)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{mathematical constant}. BIND("True" AS ?is_mathematical_constant_raw) }}
+    BIND(COALESCE(?is_mathematical_constant_raw, "False") AS ?is_mathematical_constant)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{physical constant}. BIND("True" AS ?is_physical_constant_raw) }}
+    BIND(COALESCE(?is_physical_constant_raw, "False") AS ?is_physical_constant)
 
     {{
         ?id wdt:{instance of} wd:{quantity}.

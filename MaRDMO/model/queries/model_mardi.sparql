@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?is_linear ?is_not_linear
@@ -41,23 +41,35 @@ WHERE {{
       FILTER (LANG(?alias) = "en")
     }}
                                                    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{linear model} }}, "True", "False" ) AS ?is_linear)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{nonlinear model} }}, "True", "False" ) AS ?is_not_linear)
-    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{dynamic model} }}, "True", "False" ) AS ?is_dynamic)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{static model} }}, "True", "False" ) AS ?is_static)
-    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{deterministic model} }}, "True", "False" ) AS ?is_deterministic)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{probabilistic model} }}, "True", "False" ) AS ?is_stochastic)
-    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{dimensionless model} }}, "True", "False" ) AS ?is_dimensionless)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{dimensional model} }}, "True", "False" ) AS ?is_dimensional)
-    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{continuous-space model} }}, "True", "False" ) AS ?is_space_continuous)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{discrete-space model} }}, "True", "False" ) AS ?is_space_discrete)
-    
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{continuous-time model} }}, "True", "False" ) AS ?is_time_continuous)
-    BIND(IF(EXISTS {{ ?id wdt:{instance of} wd:{discrete-time model} }}, "True", "False" ) AS ?is_time_discrete)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{linear model}. BIND("True" AS ?is_linear_raw) }}
+    BIND(COALESCE(?is_linear_raw, "False") AS ?is_linear)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{nonlinear model}. BIND("True" AS ?is_not_linear_raw) }}
+    BIND(COALESCE(?is_not_linear_raw, "False") AS ?is_not_linear)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{dynamic model}. BIND("True" AS ?is_dynamic_raw) }}
+    BIND(COALESCE(?is_dynamic_raw, "False") AS ?is_dynamic)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{static model}. BIND("True" AS ?is_static_raw) }}
+    BIND(COALESCE(?is_static_raw, "False") AS ?is_static)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{deterministic model}. BIND("True" AS ?is_deterministic_raw) }}
+    BIND(COALESCE(?is_deterministic_raw, "False") AS ?is_deterministic)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{probabilistic model}. BIND("True" AS ?is_stochastic_raw) }}
+    BIND(COALESCE(?is_stochastic_raw, "False") AS ?is_stochastic)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{dimensionless model}. BIND("True" AS ?is_dimensionless_raw) }}
+    BIND(COALESCE(?is_dimensionless_raw, "False") AS ?is_dimensionless)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{dimensional model}. BIND("True" AS ?is_dimensional_raw) }}
+    BIND(COALESCE(?is_dimensional_raw, "False") AS ?is_dimensional)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{continuous-space model}. BIND("True" AS ?is_space_continuous_raw) }}
+    BIND(COALESCE(?is_space_continuous_raw, "False") AS ?is_space_continuous)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{discrete-space model}. BIND("True" AS ?is_space_discrete_raw) }}
+    BIND(COALESCE(?is_space_discrete_raw, "False") AS ?is_space_discrete)
+
+    OPTIONAL {{ ?id wdt:{instance of} wd:{continuous-time model}. BIND("True" AS ?is_time_continuous_raw) }}
+    BIND(COALESCE(?is_time_continuous_raw, "False") AS ?is_time_continuous)
+    OPTIONAL {{ ?id wdt:{instance of} wd:{discrete-time model}. BIND("True" AS ?is_time_discrete_raw) }}
+    BIND(COALESCE(?is_time_discrete_raw, "False") AS ?is_time_discrete)
 
     OPTIONAL {{
         ?rpraw wdt:{modelled by} ?id.
