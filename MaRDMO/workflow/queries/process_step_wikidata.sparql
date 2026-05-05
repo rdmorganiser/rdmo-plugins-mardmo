@@ -1,9 +1,6 @@
-SELECT DISTINCT
+SELECT
 ?id
 (REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
-(GROUP_CONCAT(DISTINCT(?msc); separator=" <|> ") AS ?msc_id)
-(GROUP_CONCAT(DISTINCT CONCAT(?input, " || ", ?inputl, " || ", ?inputd); separator=" <|> ") AS ?input_data_set)
-(GROUP_CONCAT(DISTINCT CONCAT(?output, " || ", ?outputl, " || ", ?outputd); separator=" <|> ") AS ?output_data_set)
 (GROUP_CONCAT(DISTINCT CONCAT(
     ?method, " || ", ?methodl, " || ", ?methodd,
     " || ", COALESCE(?instrument, ""), " || ", COALESCE(?instrumentl, ""), " || ", COALESCE(?instrumentd, ""),
@@ -25,34 +22,6 @@ SELECT DISTINCT
 WHERE {{
 
     VALUES ?id {{{0}}}
-
-    OPTIONAL {{
-        ?id wdt:P ?inputraw
-        BIND(replace(xsd:string(?inputraw),'http://www.wikidata.org/entity/','wikidata:') as ?input)
-
-        SERVICE wikibase:label {{
-            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?inputraw rdfs:label ?inputlraw .
-            ?inputraw schema:description ?inputdraw .
-        }}
-
-        BIND(COALESCE(?inputlraw, "No Label Provided!") AS ?inputl)
-        BIND(COALESCE(?inputdraw, "No Description Provided!") AS ?inputd)
-    }}
-
-    OPTIONAL {{
-        ?id wdt:P ?outputraw
-        BIND(replace(xsd:string(?outputraw),'http://www.wikidata.org/entity/','wikidata:') as ?output)
-
-        SERVICE wikibase:label {{
-            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
-            ?outputraw rdfs:label ?outputlraw .
-            ?outputraw schema:description ?outputdraw .
-        }}
-
-        BIND(COALESCE(?outputlraw, "No Label Provided!") AS ?outputl)
-        BIND(COALESCE(?outputdraw, "No Description Provided!") AS ?outputd)
-    }}
 
     OPTIONAL {{
         ?id p:P2283 ?statement_method.
@@ -211,9 +180,6 @@ WHERE {{
         BIND(COALESCE(?fielddraw, "No Description Provided!") AS ?fieldd)
     }}
 
-    OPTIONAL {{
-        ?id wdt:P3285 ?msc.
-    }}
 }}
 
 GROUP BY ?id

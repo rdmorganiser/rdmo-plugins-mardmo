@@ -1,8 +1,12 @@
-SELECT DISTINCT
+SELECT
 ?id
 (REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
-?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary
-?DOI ?URL ?publish ?archive ?end_time
+?size_value ?size_unit ?size_record ?file_format
+?DOI ?URL ?end_time
+(COALESCE(?bot_binary, ?bot_text,    "") AS ?binary_or_text)
+(COALESCE(?prop_yes,   ?prop_no,     "") AS ?proprietary)
+(COALESCE(?pub_raw,    "NoText")        AS ?publish)
+(COALESCE(?arc_raw,    "NoText")        AS ?archive)
 
 WHERE {{
 
@@ -25,9 +29,11 @@ WHERE {{
         ?id wdt:P1195 ?file_format
     }}
 
-    BIND(IF(EXISTS {{ ?id wdt:P31 wd:Q4913888 }}, "binary", IF(EXISTS {{ ?id wdt:P31 wd:Q60476328 }}, "text", "" )) AS ?binary_or_text)
+    OPTIONAL {{ ?id wdt:P31 wd:Q4913888.   BIND("binary" AS ?bot_binary) }}
+    OPTIONAL {{ ?id wdt:P31 wd:Q60476328.  BIND("text"   AS ?bot_text)   }}
 
-    BIND(IF(EXISTS {{ ?id wdt:P31 wd:Q123684347 }}, "Yes", IF(EXISTS {{ ?id wdt:P31 wd:Q309901 }}, "No", "" )) AS ?proprietary)
+    OPTIONAL {{ ?id wdt:P31 wd:Q123684347. BIND("Yes"    AS ?prop_yes)   }}
+    OPTIONAL {{ ?id wdt:P31 wd:Q309901.    BIND("No"     AS ?prop_no)    }}
 
     OPTIONAL {{
         ?id wdt:P356 ?DOI.
@@ -37,9 +43,8 @@ WHERE {{
         ?id wdt:P2699 ?URL.
     }}
 
-    BIND(IF(EXISTS {{ ?id wdt:P4424 wd:Q17051824 }}, "Yes", "No") AS ?publish)
-
-    BIND(IF(EXISTS {{ ?id wdt:P4424 wd:Q17155735 }}, "YesText", "NoText") AS ?archive)
+    OPTIONAL {{ ?id wdt:P4424 wd:Q17051824. BIND("YesText" AS ?pub_raw) }}
+    OPTIONAL {{ ?id wdt:P4424 wd:Q17155735. BIND("YesText" AS ?arc_raw) }}
 
     OPTIONAL {{
         ?id p:P4424 ?statementNode2.
@@ -50,4 +55,5 @@ WHERE {{
     }}
 }}
 
-GROUP BY ?id ?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary ?DOI ?URL ?publish ?archive ?end_time
+GROUP BY ?id ?size_value ?size_unit ?size_record ?file_format ?DOI ?URL ?end_time
+         ?bot_binary ?bot_text ?prop_yes ?prop_no ?pub_raw ?arc_raw

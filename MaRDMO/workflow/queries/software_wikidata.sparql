@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
 ?DOI ?SWMATH ?SOURCECODE_URL ?DESCRIPTION_URL
@@ -38,19 +38,19 @@ WHERE {{
     }}
 
     OPTIONAL {{
-        ?id wdt:{DOI} ?DOI.
+        ?id wdt:P356 ?DOI.
     }}
 
     OPTIONAL {{
-        ?id wdt:{swMath work ID} ?SWMATH.
+        ?id wdt:P6830 ?SWMATH.
     }}
 
     OPTIONAL {{
-        ?id wdt:{source code repository URL} ?SOURCECODE_URL.
+        ?id wdt:P1324 ?SOURCECODE_URL.
     }}
 
     OPTIONAL {{
-        ?id wdt:{described at URL} ?DESCRIPTION_URL.
+        ?id wdt:P973 ?DESCRIPTION_URL.
     }}
 
 }}
