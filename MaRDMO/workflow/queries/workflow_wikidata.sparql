@@ -1,0 +1,45 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+(GROUP_CONCAT(DISTINCT CONCAT(
+    ?model, " || ", ?modell, " || ", ?modeld,
+    " || ", COALESCE(?task, ""), " || ", COALESCE(?taskl, ""), " || ", COALESCE(?taskd, "")
+); separator=" <|> ") AS ?uses_model)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id p:P2283 ?stmt_model.
+        ?stmt_model ps:P2283 ?modelraw.
+        ?modelraw wdt:P31 wd:Q220298.
+        BIND(REPLACE(STR(?modelraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?model)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?modelraw rdfs:label ?modellraw .
+            ?modelraw schema:description ?modeldraw .
+        }}
+
+        BIND(COALESCE(?modellraw, "No Label Provided!") AS ?modell)
+        BIND(COALESCE(?modeldraw, "No Description Provided!") AS ?modeld)
+
+        OPTIONAL {{
+            ?stmt_model pq:P1535 ?taskraw.
+            BIND(REPLACE(STR(?taskraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?task)
+
+            SERVICE wikibase:label {{
+                bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+                ?taskraw rdfs:label ?tasklraw .
+                ?taskraw schema:description ?taskdraw .
+            }}
+
+            BIND(COALESCE(?tasklraw, "No Label Provided!") AS ?taskl)
+            BIND(COALESCE(?taskdraw, "No Description Provided!") AS ?taskd)
+        }}
+    }}
+
+}}
+
+GROUP BY ?id
