@@ -1,8 +1,12 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
-?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary
-?DOI ?URL ?publish ?archive ?end_time
+?size_value ?size_unit ?size_record ?file_format
+?DOI ?URL ?end_time
+(COALESCE(?bot_binary, ?bot_text,    "") AS ?binary_or_text)
+(COALESCE(?prop_yes,   ?prop_no,     "") AS ?proprietary)
+(COALESCE(?pub_raw,    "NoText")        AS ?publish)
+(COALESCE(?arc_raw,    "NoText")        AS ?archive)
 
 WHERE {{
 
@@ -25,25 +29,11 @@ WHERE {{
         ?id wdt:{file extension} ?file_format
     }}
 
-    BIND(
-        IF(
-            EXISTS {{ ?id wdt:{instance of} wd:{binary data} }}, "binary",
-            IF(
-                EXISTS {{ ?id wdt:{instance of} wd:{text data} }}, "text", ""
-            )
-        )
-        AS ?binary_or_text
-    )
+    OPTIONAL {{ ?id wdt:{instance of} wd:{binary data}.             BIND("binary" AS ?bot_binary) }}
+    OPTIONAL {{ ?id wdt:{instance of} wd:{text data}.               BIND("text"   AS ?bot_text)   }}
 
-    BIND(
-        IF(
-            EXISTS {{ ?id wdt:{instance of} wd:{proprietary information} }}, "Yes",
-            IF(
-                EXISTS {{ ?id wdt:{instance of} wd:{open data} }}, "No", ""
-            )
-        )
-        AS ?proprietary
-    )
+    OPTIONAL {{ ?id wdt:{instance of} wd:{proprietary information}. BIND("Yes"    AS ?prop_yes)   }}
+    OPTIONAL {{ ?id wdt:{instance of} wd:{open data}.               BIND("No"     AS ?prop_no)    }}
 
     OPTIONAL {{
         ?id wdt:{DOI} ?DOI.
@@ -53,19 +43,8 @@ WHERE {{
         ?id wdt:{URL} ?URL.
     }}
 
-    BIND(
-        IF(
-            EXISTS {{ ?id wdt:{mandates} wd:{data publishing} }}, "YesText", "NoText"
-        )
-        AS ?publish
-    )
-
-    BIND(
-        IF(
-            EXISTS {{ ?id wdt:{mandates} wd:{research data archiving} }}, "YesText", "NoText"
-        )
-        AS ?archive
-    )
+    OPTIONAL {{ ?id wdt:{mandates} wd:{data publishing}.          BIND("YesText" AS ?pub_raw) }}
+    OPTIONAL {{ ?id wdt:{mandates} wd:{research data archiving}.  BIND("YesText" AS ?arc_raw) }}
 
     OPTIONAL {{
         ?id p:{mandates} ?statementNode2.
@@ -76,4 +55,5 @@ WHERE {{
     }}
 }}
 
-GROUP BY ?id ?size_value ?size_unit ?size_record ?file_format ?binary_or_text ?proprietary ?DOI ?URL ?publish ?archive ?end_time
+GROUP BY ?id ?size_value ?size_unit ?size_record ?file_format ?DOI ?URL ?end_time
+         ?bot_binary ?bot_text ?prop_yes ?prop_no ?pub_raw ?arc_raw

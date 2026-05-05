@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 (GROUP_CONCAT(DISTINCT ?research_objective_raw; SEPARATOR=" <|> ") AS ?research_objective)

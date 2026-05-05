@@ -1,4 +1,4 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?number_of_nodes
