@@ -186,6 +186,12 @@ class Information(BaseInformation):
     def _fill_workflow_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Workflow pages with a single SPARQL query per source.
 
+        Writes basics, research objective, procedure (long description),
+        mathematical models with task qualifiers, process-step relatant pointers,
+        reproducibility statements (Yes + optional comment), and transferability
+        comments.  Then cascades into the Process Step section via
+        :meth:`_hydrate_relatants`.
+
         Args:
             project:  RDMO project instance.
             items:    List of ``(text, external_id, set_index)`` tuples to process.
@@ -211,7 +217,86 @@ class Information(BaseInformation):
 
             add_basics(project=project, text=text, questions=self.questions,
                        item_type='Workflow', index=(0, set_index))
-            self._write_workflow_fields(project, workflow_q, data, set_index)
+
+            if data.research_objective:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["Objective"]["uri"]}',
+                    info={'text': ' | '.join(data.research_objective),
+                          'set_prefix': set_index})
+
+            for i, proc in enumerate(data.procedure):
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["Long Description"]["uri"]}',
+                    info={'text': proc, 'set_prefix': set_index, 'collection_index': i})
+
+            model_order = []
+            model_tasks = {}
+            for raw in data.uses_model:
+                parts = raw.split(' || ')
+                while len(parts) < 6:
+                    parts.append('')
+                model_id, model_label, model_desc, task_id, task_label, task_desc = parts[:6]
+                if not model_id:
+                    continue
+                if model_id not in model_tasks:
+                    model_order.append((model_id, model_label, model_desc))
+                    model_tasks[model_id] = []
+                if task_id:
+                    model_tasks[model_id].append((task_id, task_label, task_desc))
+
+            for model_idx, (model_id, model_label, model_desc) in enumerate(model_order):
+                source = model_id.split(':')[0]
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{workflow_q["Model"]["uri"]}',
+                    info={'text': f'{model_label} ({model_desc}) [{source}]',
+                          'external_id': model_id,
+                          'set_prefix': f"{set_index}|0", 'set_index': model_idx})
+                for task_idx, (task_id, task_label, task_desc) in enumerate(model_tasks[model_id]):
+                    source = task_id.split(':')[0]
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{workflow_q["Task"]["uri"]}',
+                        info={'text': f'{task_label} ({task_desc}) [{source}]',
+                              'external_id': task_id,
+                              'set_prefix': f"{set_index}|0", 'set_index': model_idx,
+                              'collection_index': task_idx})
+
+            for i, ps in enumerate(data.contains_process_step):
+                if ps.id:
+                    source = ps.id.split(':')[0]
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{workflow_q["PSRelatant"]["uri"]}',
+                        info={'text': f'{ps.label} ({ps.description}) [{source}]',
+                              'external_id': ps.id,
+                              'set_prefix': set_index, 'collection_index': i})
+
+            for value, comment, q_key in [
+                (data.mathematical,     data.mathematical_comment,    'Mathematical'),
+                (data.runtime,          data.runtime_comment,         'Runtime'),
+                (data.result,           data.result_comment,          'Result'),
+                (data.originalplatform, data.originalplatform_comment, 'Original Platform'),
+                (data.otherplatform,    data.otherplatform_comment,   'Other Platform'),
+            ]:
+                if value == 'Yes':
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{workflow_q[q_key]["uri"]}',
+                        info={'option': self.options['YesLargeText'],
+                              'text': comment or '',
+                              'set_prefix': f"{set_index}|0"})
+
+            if data.transferable == 'Yes':
+                for i, comment in enumerate(data.transferable_comment):
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{workflow_q["Transferability"]["uri"]}',
+                        info={'text': comment,
+                              'set_prefix': set_index,
+                              'set_index': 0, 'collection_index': i})
 
             self._hydrate_relatants(
                 project=project, data=data, prop_keys=['contains_process_step'],
@@ -225,103 +310,6 @@ class Information(BaseInformation):
                     batch_fill_method=self._fill_process_step_batch,
                     section_indices=section_indices,
                 ))
-
-    def _write_workflow_fields(self, project, workflow_q, data, set_index):
-        '''Write all SPARQL-derived fields for one Workflow page.
-
-        Args:
-            project:    RDMO project instance.
-            workflow_q: Questions sub-dict for the Workflow section.
-            data:       Parsed Workflow dataclass instance.
-            set_index:  Set-index of the workflow page to write into.
-        '''
-        # Research Objective
-        if data.research_objective:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{workflow_q["Objective"]["uri"]}',
-                info={'text': ' | '.join(data.research_objective),
-                      'set_prefix': set_index})
-
-        # Procedure → Long Description (one entry per collection_index)
-        for i, proc in enumerate(data.procedure):
-            value_editor(
-                project=project,
-                uri=f'{self.base}{workflow_q["Long Description"]["uri"]}',
-                info={'text': proc, 'set_prefix': set_index, 'collection_index': i})
-
-        # Mathematical Models with optional Task qualifiers
-        # Group entries by model_id — SPARQL returns one row per model-task pair
-        model_order = []
-        model_tasks = {}
-        for raw in data.uses_model:
-            parts = raw.split(' || ')
-            while len(parts) < 6:
-                parts.append('')
-            model_id, model_label, model_desc, task_id, task_label, task_desc = parts[:6]
-            if not model_id:
-                continue
-            if model_id not in model_tasks:
-                model_order.append((model_id, model_label, model_desc))
-                model_tasks[model_id] = []
-            if task_id:
-                model_tasks[model_id].append((task_id, task_label, task_desc))
-
-        for model_idx, (model_id, model_label, model_desc) in enumerate(model_order):
-            source = model_id.split(':')[0]
-            value_editor(
-                project=project,
-                uri=f'{self.base}{workflow_q["Model"]["uri"]}',
-                info={'text': f'{model_label} ({model_desc}) [{source}]',
-                      'external_id': model_id,
-                      'set_prefix': f"{set_index}|0", 'set_index': model_idx})
-            for task_idx, (task_id, task_label, task_desc) in enumerate(model_tasks[model_id]):
-                source = task_id.split(':')[0]
-                value_editor(
-                    project=project,
-                    uri=f'{self.base}{workflow_q["Task"]["uri"]}',
-                    info={'text': f'{task_label} ({task_desc}) [{source}]',
-                          'external_id': task_id,
-                          'set_prefix': f"{set_index}|0", 'set_index': model_idx,
-                          'collection_index': task_idx})
-
-        # Process Steps — write the workflow-section relatant pointer only
-        for i, ps in enumerate(data.contains_process_step):
-            if ps.id:
-                source = ps.id.split(':')[0]
-                value_editor(
-                    project=project,
-                    uri=f'{self.base}{workflow_q["PSRelatant"]["uri"]}',
-                    info={'text': f'{ps.label} ({ps.description}) [{source}]',
-                          'external_id': ps.id,
-                          'set_prefix': set_index, 'collection_index': i})
-
-        # Reproducibility (write only when SPARQL returned Yes)
-        repro_fields = [
-            (data.mathematical,     data.mathematical_comment,    'Mathematical'),
-            (data.runtime,          data.runtime_comment,         'Runtime'),
-            (data.result,           data.result_comment,          'Result'),
-            (data.originalplatform, data.originalplatform_comment, 'Original Platform'),
-            (data.otherplatform,    data.otherplatform_comment,   'Other Platform'),
-        ]
-        for value, comment, q_key in repro_fields:
-            if value == 'Yes':
-                value_editor(
-                    project=project,
-                    uri=f'{self.base}{workflow_q[q_key]["uri"]}',
-                    info={'option': self.options['YesLargeText'],
-                          'text': comment or '',
-                          'set_prefix': f"{set_index}|0"})
-
-        # Transferability comments (write only when SPARQL returned Yes)
-        if data.transferable == 'Yes':
-            for i, comment in enumerate(data.transferable_comment):
-                value_editor(
-                    project=project,
-                    uri=f'{self.base}{workflow_q["Transferability"]["uri"]}',
-                    info={'text': comment,
-                          'set_prefix': set_index,
-                          'set_index': 0, 'collection_index': i})
 
     def _fill_software_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Software pages with a single SPARQL query per source.
@@ -426,6 +414,9 @@ class Information(BaseInformation):
     def _fill_data_set_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Data Set pages with a single SPARQL query per source.
 
+        Writes basics, size, file format, binary/text type, proprietary flag,
+        and publication/archival statements.
+
         Args:
             project:  RDMO project instance.
             items:    List of ``(text, external_id, set_index)`` tuples to process.
@@ -449,62 +440,55 @@ class Information(BaseInformation):
             data = data_by_id.get(external_id)
             if not data:
                 continue
+
             add_basics(project=project, text=text, questions=self.questions,
                        item_type='Data Set', index=(0, set_index))
-            self._write_data_set_fields(project, data_set_q, data, set_index)
 
-    def _write_data_set_fields(self, project, data_set_q, data, set_index):
-        '''Write size, publication, archival, and reference fields for one Data Set page.
+            if data.size:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["Size"]["uri"]}',
+                    info={'text': data.size[1], 'option': data.size[0],
+                          'set_prefix': set_index})
 
-        Args:
-            project:    RDMO project instance.
-            data_set_q: Questions sub-dict for the Data Set section.
-            data:       Parsed data-set dataclass instance.
-            set_index:  Set-index of the data set page to write into.
-        '''
-        if data.size:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["Size"]["uri"]}',
-                info={'text': data.size[1], 'option': data.size[0],
-                      'set_prefix': set_index})
+            if data.file_format:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["File Format"]["uri"]}',
+                    info={'text': data.file_format, 'set_prefix': set_index})
 
-        if data.file_format:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["File Format"]["uri"]}',
-                info={'text': data.file_format, 'set_prefix': set_index})
+            if data.binary_or_text:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["Binary or Text"]["uri"]}',
+                    info={'option': data.binary_or_text, 'set_prefix': set_index})
 
-        if data.binary_or_text:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["Binary or Text"]["uri"]}',
-                info={'option': data.binary_or_text, 'set_prefix': set_index})
+            if data.proprietary:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["Proprietary"]["uri"]}',
+                    info={'option': data.proprietary, 'set_prefix': set_index})
 
-        if data.proprietary:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["Proprietary"]["uri"]}',
-                info={'option': data.proprietary, 'set_prefix': set_index})
+            if data.to_publish:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["To Publish"]["uri"]}',
+                    info={'text': data.to_publish[1], 'option': data.to_publish[0],
+                          'set_prefix': set_index})
 
-        if data.to_publish:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["To Publish"]["uri"]}',
-                info={'text': data.to_publish[1], 'option': data.to_publish[0],
-                      'set_prefix': set_index})
-
-        if data.to_archive:
-            value_editor(
-                project=project,
-                uri=f'{self.base}{data_set_q["To Archive"]["uri"]}',
-                info={'text': data.to_archive[1][:4], 'option': data.to_archive[0],
-                      'set_prefix': set_index})
+            if data.to_archive:
+                value_editor(
+                    project=project,
+                    uri=f'{self.base}{data_set_q["To Archive"]["uri"]}',
+                    info={'text': data.to_archive[1][:4], 'option': data.to_archive[0],
+                          'set_prefix': set_index})
 
     def _fill_process_step_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Process Step pages with a single SPARQL query per source.
 
-        Explicitly cascades into Data Set, Method, Software, and Instrument via
+        Writes basics and all relation fields (input/output data sets, algorithms
+        with software/hardware qualifiers, experimental methods, fields of work).
+        Cascades into Data Set, Algorithm, Software, and Hardware sections via
         :meth:`_hydrate_relatants` instead of relying on signal-driven cascades.
 
         Args:
@@ -534,136 +518,107 @@ class Information(BaseInformation):
             add_basics(project=project, text=text, questions=self.questions,
                        item_type='Process Step', index=(0, set_index))
 
-            self._fill_process_step_relations(
-                project, process_step, data, set_index, catalog, visited,
-                section_indices,
-            )
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['PS2IDS']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{process_step["Input"]["uri"]}'})
 
-    def _fill_process_step_relations(
-        self, project, process_step, data, set_index, catalog, visited,
-        section_indices=None,
-    ):
-        '''Write all relation fields and cascade hydration for one Process Step page.
+            self._hydrate_relatants(
+                project=project, data=data, prop_keys=PROPS['PS2IDS'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Data Set"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Data Set"]["uri"]}',
+                    prefix='DS',
+                    fill_method=partial(self._fill, item_type='Data Set',
+                                        batch_fill_method=self._fill_data_set_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_data_set_batch,
+                    section_indices=section_indices,
+                ))
 
-        Adds Input/Output Data Set, Method, Software, and Instrument relations,
-        then cascades into related entities via :meth:`_hydrate_relatants`.
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['PS2ODS']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{process_step["Output"]["uri"]}'})
 
-        Args:
-            project:         RDMO project instance.
-            process_step:    Questions sub-dict for the Process Step section.
-            data:            Parsed process-step dataclass instance.
-            set_index:       Set-index of the process step page to write into.
-            catalog:         Active catalog URI suffix.
-            visited:         Set of external IDs already processed.
-            section_indices: Dict mapping section names to next available set
-                             indices (mutated in place for cascade writes).
-        '''
-        # Input Data Sets
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2IDS']},
-            index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["Input"]["uri"]}'})
+            self._hydrate_relatants(
+                project=project, data=data, prop_keys=PROPS['PS2ODS'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Data Set"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Data Set"]["uri"]}',
+                    prefix='DS',
+                    fill_method=partial(self._fill, item_type='Data Set',
+                                        batch_fill_method=self._fill_data_set_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_data_set_batch,
+                    section_indices=section_indices,
+                ))
 
-        self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2IDS'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Data Set"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Data Set"]["uri"]}',
-                prefix='DS',
-                fill_method=partial(self._fill, item_type='Data Set',
-                                    batch_fill_method=self._fill_data_set_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_data_set_batch,
-                section_indices=section_indices,
-            ))
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['PS2A']},
+                index={'set_prefix': f'{set_index}|0'},
+                statement={'relatant': f'{self.base}{process_step["Algorithm"]["uri"]}',
+                           'platform': f'{self.base}{process_step["Software"]["uri"]}',
+                           'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
+                           'documentation': f'{self.base}{process_step["Software-Documentation"]["uri"]}',
+                           'parameter': f'{self.base}{process_step["Algorithm-Parameter"]["uri"]}'})
 
-        # Output Data Sets
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2ODS']},
-            index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["Output"]["uri"]}'})
+            self._hydrate_relatants(
+                project=project, data=data, prop_keys=PROPS['PS2A'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Algorithm"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Algorithm"]["uri"]}',
+                    prefix='A',
+                    fill_method=partial(self._fill, item_type='Algorithm',
+                                        batch_fill_method=self._fill_algorithm_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_algorithm_batch,
+                    section_indices=section_indices,
+                ))
 
-        self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2ODS'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Data Set"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Data Set"]["uri"]}',
-                prefix='DS',
-                fill_method=partial(self._fill, item_type='Data Set',
-                                    batch_fill_method=self._fill_data_set_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_data_set_batch,
-                section_indices=section_indices,
-            ))
+            self._hydrate_qualifier_entities(
+                project=project, data=data, prop_keys=PROPS['PS2A'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
+                    prefix='S',
+                    fill_method=partial(self._fill, item_type='Software',
+                                        batch_fill_method=self._fill_software_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_software_batch,
+                    section_indices=section_indices,
+                ))
 
-        # Algorithms
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2A']},
-            index={'set_prefix': f'{set_index}|0'},
-            statement={'relatant': f'{self.base}{process_step["Algorithm"]["uri"]}',
-                       'platform': f'{self.base}{process_step["Software"]["uri"]}',
-                       'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
-                       'documentation': f'{self.base}{process_step["Software-Documentation"]["uri"]}',
-                       'parameter': f'{self.base}{process_step["Algorithm-Parameter"]["uri"]}'})
+            self._hydrate_qualifier_entities(
+                project=project, data=data,
+                prop_keys=PROPS['PS2A'] + PROPS['PS2M'],
+                spec=_RelatantSpec(
+                    question_id_uri=f'{self.base}{self.questions["Hardware"]["ID"]["uri"]}',
+                    question_set_uri=f'{self.base}{self.questions["Hardware"]["uri"]}',
+                    prefix='HW',
+                    fill_method=partial(self._fill, item_type='Hardware',
+                                        batch_fill_method=self._fill_hardware_batch),
+                    catalog=catalog, visited=visited,
+                    batch_fill_method=self._fill_hardware_batch,
+                    section_indices=section_indices,
+                ),
+                attr='hardware')
 
-        self._hydrate_relatants(
-            project=project, data=data, prop_keys=PROPS['PS2A'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Algorithm"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Algorithm"]["uri"]}',
-                prefix='A',
-                fill_method=partial(self._fill, item_type='Algorithm',
-                                    batch_fill_method=self._fill_algorithm_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_algorithm_batch,
-                section_indices=section_indices,
-            ))
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['PS2M']},
+                index={'set_prefix': f'{set_index}|0'},
+                statement={'relatant': f'{self.base}{process_step["Method"]["uri"]}',
+                           'platform': f'{self.base}{process_step["Instrument"]["uri"]}',
+                           'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
+                           'documentation': f'{self.base}{process_step["Method-Documentation"]["uri"]}',
+                           'parameter': f'{self.base}{process_step["Method-Parameter"]["uri"]}'})
 
-        self._hydrate_qualifier_entities(
-            project=project, data=data, prop_keys=PROPS['PS2A'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Software"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Software"]["uri"]}',
-                prefix='S',
-                fill_method=partial(self._fill, item_type='Software',
-                                    batch_fill_method=self._fill_software_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_software_batch,
-                section_indices=section_indices,
-            ))
-
-        self._hydrate_qualifier_entities(
-            project=project, data=data,
-            prop_keys=PROPS['PS2A'] + PROPS['PS2M'],
-            spec=_RelatantSpec(
-                question_id_uri=f'{self.base}{self.questions["Hardware"]["ID"]["uri"]}',
-                question_set_uri=f'{self.base}{self.questions["Hardware"]["uri"]}',
-                prefix='HW',
-                fill_method=partial(self._fill, item_type='Hardware',
-                                    batch_fill_method=self._fill_hardware_batch),
-                catalog=catalog, visited=visited,
-                batch_fill_method=self._fill_hardware_batch,
-                section_indices=section_indices,
-            ),
-            attr='hardware')
-
-        # Experimental Methods
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2M']},
-            index={'set_prefix': f'{set_index}|0'},
-            statement={'relatant': f'{self.base}{process_step["Method"]["uri"]}',
-                       'platform': f'{self.base}{process_step["Instrument"]["uri"]}',
-                       'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
-                       'documentation': f'{self.base}{process_step["Method-Documentation"]["uri"]}',
-                       'parameter': f'{self.base}{process_step["Method-Parameter"]["uri"]}'})
-
-        # Fields of Work (static, no cascade)
-        add_relations_static(
-            project=project, data=data,
-            props={'keys': PROPS['PS2F']},
-            index={'set_prefix': set_index},
-            statement={'relatant': f'{self.base}{process_step["RFRelatant"]["uri"]}'})
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['PS2F']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{process_step["RFRelatant"]["uri"]}'})
