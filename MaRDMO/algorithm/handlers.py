@@ -238,7 +238,3 @@ class Information(BaseInformation):
                     'relation': f'{self.base}{problem["IntraClassRelation"]["uri"]}',
                     'relatant': f'{self.base}{problem["IntraClassElement"]["uri"]}',
                 })
-
-            # IntraClass relations are not cascade-hydrated
-
-    # _fill_algorithm_batch is inherited from BaseInformation
