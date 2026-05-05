@@ -9,7 +9,7 @@ the publication constants do not depend on the live RDMO database state.
 '''
 
 PROPS = {
-    'P2E': ['documents','invents','studies','surveys','uses'],
+    'P2ME': ['documents','invents','studies','surveys','uses'],
     'P2A': ['analyzes','applies','invents','studies','surveys'],
     'P2BS': ['documents', 'uses']
 }

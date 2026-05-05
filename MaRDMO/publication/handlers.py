@@ -141,11 +141,11 @@ class Information:
             add_relations_flexible(
                 project   = project,
                 data      = data,
-                props     = {'keys': PROPS['P2E'], 'mapping': self.mathmoddb},
+                props     = {'keys': PROPS['P2ME'], 'mapping': self.mathmoddb},
                 index     = {'set_prefix': set_index},
                 statement = {
-                    'relation': f'{BASE_URI}{publication["P2E"]["uri"]}',
-                    'relatant': f'{BASE_URI}{publication["EntityRelatant"]["uri"]}',
+                    'relation': f'{BASE_URI}{publication["P2ME"]["uri"]}',
+                    'relatant': f'{BASE_URI}{publication["ModelEntityRelatant"]["uri"]}',
                 },
             )
 
