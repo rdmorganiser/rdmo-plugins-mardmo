@@ -68,6 +68,8 @@ class Benchmark:
 class Software:
     '''Data Class for Software Item'''
     reference: dict[int, list[str]] = field(default_factory=dict)
+    programmed_in: list[Relatant] = field(default_factory=list)
+    depends_on_software: list[Relatant] = field(default_factory=list)
     tested_by: list[Relatant] = field(default_factory=list)
     publications: list[Relatant] = field(default_factory=list)
 
@@ -97,6 +99,14 @@ class Software:
                 for idx, prop in enumerate(software_reference_ids)
                 if data.get(prop, {}).get('value')
             },
+            # Programming Languages
+            'programmed_in': split_value(
+                data=data, key='programmed_in', transform=Relatant.from_query
+            ),
+            # Software Dependencies
+            'depends_on_software': split_value(
+                data=data, key='depends_on_software', transform=Relatant.from_query
+            ),
             # Related Benchmarks
             'tested_by': split_value(
                 data = data,

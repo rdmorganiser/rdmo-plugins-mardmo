@@ -158,6 +158,18 @@ class Information(BaseInformation):
 
             add_relations_static(
                 project=project, data=data,
+                props={'keys': PROPS['S2PL']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{software["Programming Language"]["uri"]}'})
+
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': PROPS['S2DP']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{software["Dependency"]["uri"]}'})
+
+            add_relations_static(
+                project=project, data=data,
                 props={'keys': PROPS['S2B']},
                 index={'set_prefix': set_index},
                 statement={'relatant': f'{self.base}{software["BRelatant"]["uri"]}'})
