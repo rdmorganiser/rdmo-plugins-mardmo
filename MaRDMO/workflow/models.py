@@ -17,7 +17,6 @@ Provides:
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .constants import software_reference_ids
 from .utils import get_option_text_pair, get_size
 
 from ..getters import get_options
@@ -116,48 +115,6 @@ class ProcessStep:
             ),
             field_of_work=split_value(
                 data=data, key='field_of_work', transform=Relatant.from_query
-            ),
-        )
-
-
-@dataclass
-class Software:
-    '''References and relations of a Software entity from MaRDI/Wikidata.'''
-
-    reference: dict[int, list[str]] = field(default_factory=dict)
-    programmed_in: list[Relatant] = field(default_factory=list)
-    depends_on_software: list[Relatant] = field(default_factory=list)
-
-    @classmethod
-    def from_query(cls, raw_data: dict) -> 'Software':
-        '''Parse a single-item SPARQL result (backward-compatible).'''
-        return cls.from_query_single(raw_data[0])
-
-    @classmethod
-    def from_query_batch(cls, raw_data: list) -> 'dict[str, Software]':
-        '''Parse a batch SPARQL result into {external_id: instance} dict.'''
-        return {
-            row['qid']['value']: cls.from_query_single(row)
-            for row in raw_data
-            if row.get('qid', {}).get('value')
-        }
-
-    @classmethod
-    def from_query_single(cls, data: dict) -> 'Software':
-        '''Parse one SPARQL result row into a Software instance.'''
-        options = get_options()
-
-        return cls(
-            reference={
-                idx: [options[prop], data[prop]['value']]
-                for idx, prop in enumerate(software_reference_ids)
-                if data.get(prop, {}).get('value')
-            },
-            programmed_in=split_value(
-                data=data, key='programmed_in', transform=Relatant.from_query
-            ),
-            depends_on_software=split_value(
-                data=data, key='depends_on_software', transform=Relatant.from_query
             ),
         )
 

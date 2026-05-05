@@ -22,6 +22,8 @@ from different data sources.
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .constants import software_reference_ids
+from .getters import get_options
 from .helpers import split_value
 
 @dataclass
@@ -176,4 +178,47 @@ class Algorithm:
             subclass_of=split_value(data=data, key='subclass_of', transform=Relatant.from_query),
             related_to=split_value(data=data, key='similar_to', transform=Relatant.from_query),
             publications=split_value(data=data, key='publication', transform=Relatant.from_query),
+        )
+
+
+@dataclass
+class Software:
+    '''Software entity with references and relations populated from SPARQL results.'''
+    reference: dict[int, list[str]] = field(default_factory=dict)
+    programmed_in: list[Relatant] = field(default_factory=list)
+    depends_on_software: list[Relatant] = field(default_factory=list)
+    tested_by: list[Relatant] = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
+
+    @classmethod
+    def from_query_batch(cls, raw_data: list) -> 'dict[str, Software]':
+        '''Parse a batch SPARQL result into {external_id: instance} dict.'''
+        return {
+            row['qid']['value']: cls.from_query_single(row)
+            for row in raw_data
+            if row.get('qid', {}).get('value')
+        }
+
+    @classmethod
+    def from_query_single(cls, data: dict) -> 'Software':
+        '''Parse one SPARQL result row into a Software instance.'''
+        options = get_options()
+        return cls(
+            reference={
+                idx: [options[prop], data[prop]['value']]
+                for idx, prop in enumerate(software_reference_ids)
+                if data.get(prop, {}).get('value')
+            },
+            programmed_in=split_value(
+                data=data, key='programmed_in', transform=Relatant.from_query
+            ),
+            depends_on_software=split_value(
+                data=data, key='depends_on_software', transform=Relatant.from_query
+            ),
+            tested_by=split_value(
+                data=data, key='tested_by', transform=Relatant.from_query
+            ),
+            publications=split_value(
+                data=data, key='publication', transform=Relatant.from_query
+            ),
         )

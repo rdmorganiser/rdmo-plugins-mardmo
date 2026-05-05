@@ -86,8 +86,6 @@ PROPS = {
     'PS2A': ['uses_algorithm'],
     'PS2M': ['uses_method'],
     'PS2F': ['field_of_work'],
-    'S2PL': ['programmed_in'],
-    'S2DP': ['depends_on_software'],
 }
 
 # Order of toPublish Answers

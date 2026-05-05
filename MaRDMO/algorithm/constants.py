@@ -22,9 +22,6 @@ SECTION_MAP = {**SECTION_MAP_BASE, 'problem': 'Algorithmic Task'}
 PROPS = {
     **ALGORITHM_PROPS,
     'P2B':     ['manifests'],
-    'S2B':     ['tested_by'],
-    'S2PL':    ['programmed_in'],
-    'S2DP':    ['depends_on_software'],
     'Problem': ['specializes', 'specialized_by'],
 }
 

@@ -11,11 +11,11 @@ from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
 from ..getters import get_items, get_mathalgodb, get_options, get_properties, get_questions, get_sparql_query, get_url
 from ..helpers import value_editor
-from ..adders import add_basics, add_references, add_relations_static
+from ..adders import add_basics, add_relations_static
 from ..queries import query_sparql
 
 from .constants import PROPS
-from .models import Cpu, ProcessStep, Software, Hardware, DataSet, Workflow
+from .models import Cpu, ProcessStep, Hardware, DataSet, Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -310,54 +310,6 @@ class Information(BaseInformation):
                     batch_fill_method=self._fill_process_step_batch,
                     section_indices=section_indices,
                 ))
-
-    def _fill_software_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple Software pages with a single SPARQL query per source.
-
-        Args:
-            project:  RDMO project instance.
-            items:    List of ``(text, external_id, set_index)`` tuples to process.
-            catalog:  Active catalog URI suffix (default ``""``).
-            visited:  Set of external IDs already processed (mutated to avoid cycles).
-        '''
-        if not items:
-            return
-        if visited is None:
-            visited = set()
-
-        software   = self.questions['Software']
-        data_by_id = _fetch_by_source(
-            items,
-            'workflow/queries/software_mardi.sparql',
-            'workflow/queries/software_wikidata.sparql',
-            Software,
-        )
-
-        for text, external_id, set_index in items:
-            data = data_by_id.get(external_id)
-            if not data:
-                continue
-
-            add_basics(project=project, text=text, questions=self.questions,
-                       item_type='Software', index=(0, set_index))
-
-            add_references(project=project, data=data,
-                           uri=f'{self.base}{software["Reference"]["uri"]}',
-                           set_prefix=set_index)
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['S2PL']},
-                index={'set_prefix': set_index},
-                statement={
-                    'relatant': f'{self.base}{software["Programming Language"]["uri"]}'
-                })
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['S2DP']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{software["Dependency"]["uri"]}'})
 
     def _fill_hardware_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Hardware pages with a single SPARQL query per source.

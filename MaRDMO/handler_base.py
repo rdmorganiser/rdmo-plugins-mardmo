@@ -15,8 +15,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .constants import ALGORITHM_PROPS
-from .models import Algorithm
+from .constants import ALGORITHM_PROPS, SOFTWARE_PROPS
+from .models import Algorithm, Software
 from .getters import (
     get_id,
     get_items,
@@ -26,7 +26,7 @@ from .getters import (
     get_url,
 )
 from .helpers import process_qualifier, value_editor
-from .adders import add_basics, add_relations_flexible, add_relations_static
+from .adders import add_basics, add_references, add_relations_flexible, add_relations_static
 from .workflow.models import ProcessStepUsage
 from .queries import query_sparql
 
@@ -459,6 +459,85 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
                     })
 
             self._hydrate_publications(project, data.publications, catalog, visited)
+
+    def _fill_software_batch(self, project, items, catalog='', visited=None):
+        '''Hydrate multiple Software pages with a single SPARQL query per source.
+
+        Writes references, programming languages, and dependencies for all
+        catalogs.  The benchmark cascade and publication hydration are only
+        executed when the active catalog contains a ``Benchmark`` or
+        ``Publication`` section respectively (i.e. the algorithm catalog).
+
+        Args:
+            project:  RDMO project instance.
+            items:    List of ``(text, external_id, set_index)`` tuples to process.
+            catalog:  Active catalog URI suffix (default ``""``).
+            visited:  Set of external IDs already processed (mutated to avoid cycles).
+        '''
+        from functools import partial  # pylint: disable=import-outside-toplevel
+
+        if not items:
+            return
+        if visited is None:
+            visited = set()
+
+        software   = self.questions['Software']
+        data_by_id = _fetch_by_source(
+            items,
+            'queries/software_mardi.sparql',
+            'queries/software_wikidata.sparql',
+            Software,
+        )
+        if not data_by_id:
+            return
+
+        section_indices = {}
+        for text, external_id, set_index in items:
+            data = data_by_id.get(external_id)
+            if not data:
+                continue
+
+            add_basics(project=project, text=text, questions=self.questions,
+                       item_type='Software', index=(0, set_index))
+
+            add_references(project=project, data=data,
+                           uri=f'{self.base}{software["Reference"]["uri"]}',
+                           set_prefix=set_index)
+
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': SOFTWARE_PROPS['S2PL']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{software["Programming Language"]["uri"]}'})
+
+            add_relations_static(
+                project=project, data=data,
+                props={'keys': SOFTWARE_PROPS['S2DP']},
+                index={'set_prefix': set_index},
+                statement={'relatant': f'{self.base}{software["Dependency"]["uri"]}'})
+
+            if 'Benchmark' in self.questions:
+                add_relations_static(
+                    project=project, data=data,
+                    props={'keys': SOFTWARE_PROPS['S2B']},
+                    index={'set_prefix': set_index},
+                    statement={'relatant': f'{self.base}{software["BRelatant"]["uri"]}'})
+
+                self._hydrate_relatants(
+                    project=project, data=data, prop_keys=SOFTWARE_PROPS['S2B'],
+                    spec=_RelatantSpec(
+                        question_id_uri=f'{self.base}{self.questions["Benchmark"]["ID"]["uri"]}',
+                        question_set_uri=f'{self.base}{self.questions["Benchmark"]["uri"]}',
+                        prefix='B',
+                        fill_method=partial(self._fill, item_type='Benchmark',
+                                            batch_fill_method=self._fill_benchmark_batch),
+                        catalog=catalog, visited=visited,
+                        batch_fill_method=self._fill_benchmark_batch,
+                        section_indices=section_indices,
+                    ))
+
+            if 'Publication' in self.questions:
+                self._hydrate_publications(project, data.publications, catalog, visited)
 
     def fill_entity(self, project, text, external_id, question_id,
                     item_type, batch_fill_method, catalog):

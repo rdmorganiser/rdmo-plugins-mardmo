@@ -45,6 +45,19 @@ ALGORITHM_PROPS = {
     'Algorithm': ['has_component', 'component_of', 'has_subclass', 'subclass_of', 'related_to'],
 }
 
+SOFTWARE_PROPS = {
+    'S2PL': ['programmed_in'],
+    'S2DP': ['depends_on_software'],
+    'S2B':  ['tested_by'],
+}
+
+software_reference_ids = [
+    'DOI',
+    'SWMATH',
+    'SOURCECODE_URL',
+    'DESCRIPTION_URL',
+]
+
 flag_dict = {
     (False, False, False, False, False): rules.rule_0,
     (True, False, False, False, False): rules.rule_1,

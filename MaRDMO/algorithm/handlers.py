@@ -11,7 +11,7 @@ import logging
 from functools import partial
 
 from .constants import PROPS
-from .models import Benchmark, Software, Problem
+from .models import Benchmark, Problem
 
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
@@ -115,77 +115,6 @@ class Information(BaseInformation):
             add_references(project=project, data=data,
                            uri=f'{self.base}{benchmark["Reference"]["uri"]}',
                            set_prefix=set_index)
-
-            self._hydrate_publications(project, data.publications,
-                                       catalog, visited)
-
-    def _fill_software_batch(self, project, items, catalog='', visited=None):
-        '''Hydrate multiple Software pages with a single SPARQL query per source.
-
-        Args:
-            project:  RDMO project instance.
-            items:    List of ``(text, external_id, set_index)`` tuples to process.
-            catalog:  Active catalog URI suffix (default ``""``).
-            visited:  Set of external IDs already processed (mutated to avoid cycles).
-        '''
-        if not items:
-            return
-        if visited is None:
-            visited = set()
-
-        software   = self.questions['Software']
-        data_by_id = _fetch_by_source(
-            items,
-            'algorithm/queries/software_mardi.sparql',
-            'algorithm/queries/software_wikidata.sparql',
-            Software,
-        )
-        if not data_by_id:
-            return
-
-        section_indices = {}
-        for text, external_id, set_index in items:
-            data = data_by_id.get(external_id)
-            if not data:
-                continue
-
-            add_basics(project=project, text=text, questions=self.questions,
-                       item_type='Software', index=(0, set_index))
-
-            add_references(project=project, data=data,
-                           uri=f'{self.base}{software["Reference"]["uri"]}',
-                           set_prefix=set_index)
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['S2PL']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{software["Programming Language"]["uri"]}'})
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['S2DP']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{software["Dependency"]["uri"]}'})
-
-            add_relations_static(
-                project=project, data=data,
-                props={'keys': PROPS['S2B']},
-                index={'set_prefix': set_index},
-                statement={'relatant': f'{self.base}{software["BRelatant"]["uri"]}'})
-
-            self._hydrate_relatants(
-                project=project, data=data, prop_keys=PROPS['S2B'],
-                spec=_RelatantSpec(
-                    question_id_uri=f'{self.base}{self.questions["Benchmark"]["ID"]["uri"]}',
-                    question_set_uri=f'{self.base}{self.questions["Benchmark"]["uri"]}',
-                    prefix='B',
-                    fill_method=partial(self._fill, item_type='Benchmark',
-                                        batch_fill_method=self._fill_benchmark_batch),
-                    catalog=catalog, visited=visited,
-                    batch_fill_method=self._fill_benchmark_batch,
-                    section_indices=section_indices,
-                ))
 
             self._hydrate_publications(project, data.publications,
                                        catalog, visited)
