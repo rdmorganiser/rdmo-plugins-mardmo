@@ -1,0 +1,28 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+(GROUP_CONCAT(DISTINCT CONCAT(?bench, " || ", ?benchl, " || ", ?benchd); separator=" <|> ") AS ?manifests)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?benchraw wdt:P1557 ?id.
+        BIND(REPLACE(STR(?benchraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?bench)
+
+        ?benchraw wdt:P31 wd:Q816747.
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?benchraw rdfs:label ?benchlraw .
+            ?benchraw schema:description ?benchdraw .
+        }}
+
+        BIND(COALESCE(?benchlraw, "No Label Provided!") AS ?benchl)
+        BIND(COALESCE(?benchdraw, "No Description Provided!") AS ?benchd)
+    }}
+
+}}
+
+GROUP BY ?id

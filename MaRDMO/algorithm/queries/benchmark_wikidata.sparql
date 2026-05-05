@@ -1,0 +1,41 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?DOI ?SOURCECODE_URL ?DESCRIPTION_URL
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:P356 ?DOI
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P1324 ?SOURCECODE_URL.
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P973 ?DESCRIPTION_URL.
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?pubraw rdfs:label ?publraw .
+            ?pubraw schema:description ?pubdraw .
+        }}
+
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+
+GROUP BY ?id ?DOI ?SOURCECODE_URL ?DESCRIPTION_URL

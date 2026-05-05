@@ -1,7 +1,9 @@
-SELECT DISTINCT
+SELECT
 ?id
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?DOI ?SWMATH ?SOURCECODE_URL ?DESCRIPTION_URL
+(GROUP_CONCAT(DISTINCT CONCAT(?pl, " || ", ?pll, " || ", ?pld); separator=" <|> ") AS ?programmed_in)
+(GROUP_CONCAT(DISTINCT CONCAT(?dp, " || ", ?dpl, " || ", ?dpd); separator=" <|> ") AS ?depends_on_software)
 (GROUP_CONCAT(DISTINCT CONCAT(?bench, " || ", ?benchl, " || ", ?benchd); separator=" <|> ") AS ?tested_by)
 (GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
 
@@ -25,7 +27,45 @@ WHERE {{
     }}
 
     OPTIONAL {{
-        ?benchraw wdt:{tested by} ?id. 
+        ?id wdt:{programmed in} ?plraw.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?plraw), STR(wd:))) AS ?pl)
+
+        OPTIONAL {{
+            ?plraw rdfs:label ?pllraw
+            FILTER (lang(?pllraw) = 'en')
+        }}
+
+        BIND(COALESCE(?pllraw, "No Label Provided!") AS ?pll)
+
+        OPTIONAL {{
+            ?plraw schema:description ?pldraw
+            FILTER (lang(?pldraw) = 'en')
+        }}
+
+        BIND(COALESCE(?pldraw, "No Description Provided!") AS ?pld)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:{depends on software} ?dpraw.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?dpraw), STR(wd:))) AS ?dp)
+
+        OPTIONAL {{
+            ?dpraw rdfs:label ?dplraw
+            FILTER (lang(?dplraw) = 'en')
+        }}
+
+        BIND(COALESCE(?dplraw, "No Label Provided!") AS ?dpl)
+
+        OPTIONAL {{
+            ?dpraw schema:description ?dpdraw
+            FILTER (lang(?dpdraw) = 'en')
+        }}
+
+        BIND(COALESCE(?dpdraw, "No Description Provided!") AS ?dpd)
+    }}
+
+    OPTIONAL {{
+        ?benchraw wdt:{tested by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?benchraw), STR(wd:))) AS ?bench)
 
         ?benchraw wdt:{instance of} wd:{benchmark}.

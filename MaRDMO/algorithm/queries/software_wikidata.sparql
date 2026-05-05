@@ -1,0 +1,74 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?DOI ?SWMATH ?SOURCECODE_URL ?DESCRIPTION_URL
+(GROUP_CONCAT(DISTINCT CONCAT(?pl, " || ", ?pll, " || ", ?pld); separator=" <|> ") AS ?programmed_in)
+(GROUP_CONCAT(DISTINCT CONCAT(?dp, " || ", ?dpl, " || ", ?dpd); separator=" <|> ") AS ?depends_on_software)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
+
+WHERE {{
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id wdt:P6830 ?SWMATH
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P356 ?DOI
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P1324 ?SOURCECODE_URL.
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P973 ?DESCRIPTION_URL.
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P277 ?plraw.
+        BIND(REPLACE(STR(?plraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pl)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?plraw rdfs:label ?pllraw .
+            ?plraw schema:description ?pldraw .
+        }}
+
+        BIND(COALESCE(?pllraw, "No Label Provided!") AS ?pll)
+        BIND(COALESCE(?pldraw, "No Description Provided!") AS ?pld)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P1547 ?dpraw.
+        BIND(REPLACE(STR(?dpraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?dp)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?dpraw rdfs:label ?dplraw .
+            ?dpraw schema:description ?dpdraw .
+        }}
+
+        BIND(COALESCE(?dplraw, "No Label Provided!") AS ?dpl)
+        BIND(COALESCE(?dpdraw, "No Description Provided!") AS ?dpd)
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?pubraw rdfs:label ?publraw .
+            ?pubraw schema:description ?pubdraw .
+        }}
+
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+
+GROUP BY ?id ?DOI ?SWMATH ?SOURCECODE_URL ?DESCRIPTION_URL
