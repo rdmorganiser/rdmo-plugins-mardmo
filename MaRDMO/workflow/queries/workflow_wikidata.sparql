@@ -5,6 +5,7 @@ SELECT
     ?model, " || ", ?modell, " || ", ?modeld,
     " || ", COALESCE(?task, ""), " || ", COALESCE(?taskl, ""), " || ", COALESCE(?taskd, "")
 ); separator=" <|> ") AS ?uses_model)
+(GROUP_CONCAT(DISTINCT CONCAT(?ps, " || ", ?psl, " || ", ?psd); separator=" <|> ") AS ?contains_process_step)
 
 WHERE {{
 
@@ -38,6 +39,21 @@ WHERE {{
             BIND(COALESCE(?tasklraw, "No Label Provided!") AS ?taskl)
             BIND(COALESCE(?taskdraw, "No Description Provided!") AS ?taskd)
         }}
+    }}
+
+    OPTIONAL {{
+        ?id p:P4330 ?stmt_ps.
+        ?stmt_ps ps:P4330 ?psraw.
+        BIND(REPLACE(STR(?psraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?ps)
+
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?psraw rdfs:label ?pslraw .
+            ?psraw schema:description ?psdraw .
+        }}
+
+        BIND(COALESCE(?pslraw, "No Label Provided!") AS ?psl)
+        BIND(COALESCE(?psdraw, "No Description Provided!") AS ?psd)
     }}
 
 }}
