@@ -279,6 +279,18 @@ class Information(BaseInformation):
                     data_by_id[external_id].symbols           = fd['symbols']
                     data_by_id[external_id].contains_quantity = fd['contains_quantity']
 
+        # Fetch formula data via API for wikidata items
+        wikidata_qids = [eid.split(':')[-1] for _, eid, _ in items if eid.startswith('wikidata:')]
+        wikidata_formula_data = models.fetch_formula_data_wikidata(wikidata_qids)
+        for _, external_id, _ in items:
+            if external_id.startswith('wikidata:') and external_id in data_by_id:
+                qid = external_id.split(':')[-1]
+                if qid in wikidata_formula_data:
+                    fd = wikidata_formula_data[qid]
+                    data_by_id[external_id].formulas          = fd['formulas']
+                    data_by_id[external_id].symbols           = fd['symbols']
+                    data_by_id[external_id].contains_quantity = fd['contains_quantity']
+
         for text, external_id, set_index in items:
             data = data_by_id.get(external_id)
             if not data:
@@ -382,6 +394,18 @@ class Information(BaseInformation):
                 qid = external_id.split(':')[-1]
                 if qid in formula_data:
                     fd = formula_data[qid]
+                    data_by_id[external_id].formulas          = fd['formulas']
+                    data_by_id[external_id].symbols           = fd['symbols']
+                    data_by_id[external_id].contains_quantity = fd['contains_quantity']
+
+        # Fetch formula data via API for wikidata items
+        wikidata_qids = [eid.split(':')[-1] for _, eid, _ in items if eid.startswith('wikidata:')]
+        wikidata_formula_data = models.fetch_formula_data_wikidata(wikidata_qids)
+        for _, external_id, _ in items:
+            if external_id.startswith('wikidata:') and external_id in data_by_id:
+                qid = external_id.split(':')[-1]
+                if qid in wikidata_formula_data:
+                    fd = wikidata_formula_data[qid]
                     data_by_id[external_id].formulas          = fd['formulas']
                     data_by_id[external_id].symbols           = fd['symbols']
                     data_by_id[external_id].contains_quantity = fd['contains_quantity']

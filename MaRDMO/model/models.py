@@ -136,7 +136,7 @@ def _fetch_qty_labels(api_url, qty_qids_needed):
     }
 
 
-def _build_formula_entry(data, qty_info):
+def _build_formula_entry(data, qty_info, source='mardi'):
     '''Build the formula result dict for a single item from parsed intermediate data.
 
     Args:
@@ -144,6 +144,7 @@ def _build_formula_entry(data, qty_info):
                   formula strings) and ``raw_qty`` (list of ``(symbol, qty_qid)`` tuples).
         qty_info: Dict mapping quantity QIDs to ``(label, description)`` tuples,
                   as returned by :func:`_fetch_qty_labels`.
+        source:   ID prefix for quantity relatants (``'mardi'`` or ``'wikidata'``).
 
     Returns:
         Dict with keys ``formulas`` (list[str]), ``symbols`` (list[str]),
@@ -157,7 +158,7 @@ def _build_formula_entry(data, qty_info):
             qty_qid, ('No Label Provided!', 'No Description Provided!')
         )
         contains_quantity.append(
-            Relatant.from_triple(f'mardi:{qty_qid}' if qty_qid else '', label, desc)
+            Relatant.from_triple(f'{source}:{qty_qid}' if qty_qid else '', label, desc)
         )
     return {
         'formulas':          data['formulas'],
@@ -194,7 +195,39 @@ def fetch_formula_data(qids: list) -> dict:
     qty_info = _fetch_qty_labels(api_url, qty_qids_needed)
 
     return {
-        qid: _build_formula_entry(data, qty_info)
+        qid: _build_formula_entry(data, qty_info, source='mardi')
+        for qid, data in intermediate.items()
+    }
+
+
+def fetch_formula_data_wikidata(qids: list) -> dict:
+    '''Fetch defining formula and in-defining-formula data from Wikidata via wbgetentities API.
+
+    Uses Wikidata PIDs P2534 (defining formula), P7235 (in defining formula),
+    and P9758 (symbol represents).
+
+    Args:
+        qids: List of raw QIDs such as ``['Q123', 'Q456']`` (without ``wikidata:`` prefix).
+
+    Returns:
+        Dict mapping each QID to a result dict with keys:
+        ``formulas`` (list[str]), ``symbols`` (list[str]),
+        and ``contains_quantity`` (list[Relatant]).
+        Returns an empty dict if *qids* is empty.
+    '''
+    if not qids:
+        return {}
+
+    api_url = get_url('wikidata', 'api')
+
+    entities                      = _wbgetentities_batch(api_url, qids, 'claims')
+    intermediate, qty_qids_needed = _parse_formula_claims(
+        entities, 'P2534', 'P7235', 'P9758'
+    )
+    qty_info = _fetch_qty_labels(api_url, qty_qids_needed)
+
+    return {
+        qid: _build_formula_entry(data, qty_info, source='wikidata')
         for qid, data in intermediate.items()
     }
 
