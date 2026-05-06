@@ -57,7 +57,7 @@
     {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
 
     {# Include Block for single Relation between Model and Problem #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2RP" title="Research Problems" relation="models" relatants=values.RelationRP class="RESEARCH PROBLEM" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2RP" title="Research Problems" relation="models" relatants=values.RelationRP class="RESEARCH PROBLEM" empty_msg="True" %}
 
     {# Include Block for multiple Relations between Model and Formulation #}
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MF" title="Formulas" relations=values.RelationMF class="FORMULA" empty_msg="True" %}

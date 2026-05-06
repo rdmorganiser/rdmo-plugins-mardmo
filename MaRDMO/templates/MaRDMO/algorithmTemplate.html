@@ -47,10 +47,10 @@
     {% include "MaRDMO/partials/_id.html" with class="ALGORITHM" id=values.ID %}
 
     {# Include Block for single Relation between Algorithm and Task #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="A2AT" title="Algorithmic Tasks" relation="solves" relatants=values.RelationP class="ALGORITHMIC TASK" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="A2AT" title="Algorithmic Tasks" relation="solves" relatants=values.RelationP class="ALGORITHMIC TASK" empty_msg="True" %}
 
     {# Include Block for single Relation between Algorithm and Software #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="A2S" title="Softwares" relation="implemented by" relatants=values.RelationS class="SOFTWARE" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="A2S" title="Softwares" relation="implemented by" relatants=values.RelationS class="SOFTWARE" empty_msg="True" %}
         
     {# Include Block for multiple Relations between Algorithm and Algorithm #}
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="A2A" title="Algorithms" relations=values.RelationA class="ALGORITHM" empty_msg="False" %}
@@ -72,7 +72,7 @@
     {% include "MaRDMO/partials/_id.html" with class="ALGORITHMIC TASK" id=values.ID %}
                 
     {# Include Block for single Relation between Algorithmic Task and Benchmark #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="AT2B" title="Benchmarks" relation="instantiates" relatants=values.RelationB class="BENCHMARK" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="AT2B" title="Benchmarks" relation="instantiates" relatants=values.RelationB class="BENCHMARK" empty_msg="True" %}
 
     {# Include Block for multiple Relations between Algorithmic Task and Algorithmic Task #}
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="AT2AT" title="Algorithmic Tasks" relations=values.RelationP class="ALGORITHMIC TASK" empty_msg="False" %}
@@ -109,7 +109,7 @@
     {% include "MaRDMO/partials/_id.html" with class="SOFTWARE" id=values.ID %}
 
     {# Include Block for single Relation between Software and Benchmark #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="S2B" title="Benchmarks" relation="tests" relatants=values.RelationB class="BENCHMARK" %}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="S2B" title="Benchmarks" relation="tests" relatants=values.RelationB class="BENCHMARK" empty_msg="True" %}
 
 {% empty %}
     <strong style="color:black;">NO SOFTWARE DOCUMENTED</strong>

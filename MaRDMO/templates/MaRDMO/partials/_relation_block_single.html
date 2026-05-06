@@ -6,5 +6,9 @@
         {{ relation }}: {{ models }} <br>
     {% endif %}
 {% empty %}
-    <strong style="color:red;">MISSING {{ class }}</strong>
+     {% if empty_msg == "True" %}
+        <strong style="color:red;">MISSING {{ class }}</strong>
+    {% else %}
+        <strong style="color:black;">NOT DOCUMENTED</strong>
+    {% endif %}
 {% endfor %}
