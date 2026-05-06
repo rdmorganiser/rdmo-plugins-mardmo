@@ -225,6 +225,18 @@ preview_relations = [
         "grouped": False,
     },
     {
+        "from_idx": "software",
+        "to_idx": "software",
+        "relation": None,
+        "old_name": "dependency",
+        "new_name": "RelationS",
+        "encryption": "S",
+        "formulation": False,
+        "task": False,
+        "assumption": False,
+        "grouped": False,
+    },
+    {
         "from_idx": "publication",
         "to_idx": "algorithm",
         "relation": "P2A",
