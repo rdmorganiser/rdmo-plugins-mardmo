@@ -1,0 +1,66 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?is_stochastic ?is_dimensionless
+?is_mathematical_constant ?is_physical_constant
+?class ?qudt_quantitykind_id
+(GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=" <|> ") AS ?aliases)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); SEPARATOR=" <|> ") AS ?publication)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    {{
+        ?id wdt:P31 wd:Q309314.
+        BIND("Quantity" AS ?class)
+    }}
+    UNION
+    {{
+        ?id wdt:P31 wd:Q110653654.
+        BIND("QuantityKind" AS ?class)
+    }}
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q108920450. BIND("True" AS ?is_stochastic_raw) }}
+    BIND(COALESCE(?is_stochastic_raw, "False") AS ?is_stochastic)
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q126818. BIND("True" AS ?is_dimensionless_raw) }}
+    BIND(COALESCE(?is_dimensionless_raw, "False") AS ?is_dimensionless)
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q186509. BIND("True" AS ?is_mathematical_constant_raw) }}
+    BIND(COALESCE(?is_mathematical_constant_raw, "False") AS ?is_mathematical_constant)
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q173227. BIND("True" AS ?is_physical_constant_raw) }}
+    BIND(COALESCE(?is_physical_constant_raw, "False") AS ?is_physical_constant)
+
+    OPTIONAL {{
+        ?id wdt:P8393 ?qudt_quantitykind_id
+    }}
+
+    OPTIONAL {{
+        ?id skos:altLabel ?alias .
+        FILTER (LANG(?alias) = "en")
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q12579633 wd:Q265158 wd:Q1298668 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw.
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+GROUP BY ?id ?is_stochastic ?is_dimensionless ?is_mathematical_constant ?is_physical_constant
+         ?class ?qudt_quantitykind_id

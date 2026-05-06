@@ -1,0 +1,118 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?is_linear ?is_not_linear
+(GROUP_CONCAT(DISTINCT CONCAT(?ta, " || ", ?tal, " || ", ?tad); SEPARATOR=" <|> ") AS ?used_by)
+(GROUP_CONCAT(DISTINCT CONCAT(?conf, " || ", ?confl, " || ", ?confd, " || ", ?confq); SEPARATOR=" <|> ") AS ?contains_formulation)
+(GROUP_CONCAT(DISTINCT CONCAT(?conm, " || ", ?conml, " || ", ?conmd); SEPARATOR=" <|> ") AS ?contains_model)
+(GROUP_CONCAT(DISTINCT CONCAT(?conim, " || ", ?coniml, " || ", ?conimd); SEPARATOR=" <|> ") AS ?contained_in_model)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); SEPARATOR=" <|> ") AS ?publication)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q3339222. BIND("True" AS ?is_linear_raw) }}
+    BIND(COALESCE(?is_linear_raw, "False") AS ?is_linear)
+    OPTIONAL {{ ?id wdt:P31 wd:Q57577812. BIND("True" AS ?is_not_linear_raw) }}
+    BIND(COALESCE(?is_not_linear_raw, "False") AS ?is_not_linear)
+
+    OPTIONAL {{
+        ?id wdt:P1535 ?taraw.
+        BIND(REPLACE(STR(?taraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?ta)
+
+        OPTIONAL {{
+            ?taraw rdfs:label ?talraw.
+            FILTER (lang(?talraw) = 'en')
+        }}
+        BIND(COALESCE(?talraw, "No Label Provided!") AS ?tal)
+
+        OPTIONAL {{
+            ?taraw schema:description ?tadraw
+            FILTER (lang(?tadraw) = 'en')
+        }}
+        BIND(COALESCE(?tadraw, "No Description Provided!") AS ?tad)
+    }}
+
+    OPTIONAL {{
+        ?id p:P4330 ?statement_y.
+        ?statement_y ps:P4330 ?confraw.
+        ?confraw wdt:P31 wd:Q976981.
+        BIND(REPLACE(STR(?confraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?conf)
+
+        OPTIONAL {{
+            ?confraw rdfs:label ?conflraw.
+            FILTER (lang(?conflraw) = 'en')
+        }}
+        BIND(COALESCE(?conflraw, "No Label Provided!") AS ?confl)
+
+        OPTIONAL {{
+            ?confraw schema:description ?confdraw
+            FILTER (lang(?confdraw) = 'en')
+        }}
+        BIND(COALESCE(?confdraw, "No Description Provided!") AS ?confd)
+
+        OPTIONAL {{
+            ?statement_y pq:P3831 ?quaraw.
+            BIND(REPLACE(STR(?quaraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?qua)
+        }}
+        BIND(COALESCE(?qua, "") AS ?confq)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P4330 ?conmraw.
+        ?conmraw wdt:P31 wd:Q486902.
+        BIND(REPLACE(STR(?conmraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?conm)
+
+        OPTIONAL {{
+            ?conmraw rdfs:label ?conmlraw.
+            FILTER (lang(?conmlraw) = 'en')
+        }}
+        BIND(COALESCE(?conmlraw, "No Label Provided!") AS ?conml)
+
+        OPTIONAL {{
+            ?conmraw schema:description ?conmdraw
+            FILTER (lang(?conmdraw) = 'en')
+        }}
+        BIND(COALESCE(?conmdraw, "No Description Provided!") AS ?conmd)
+    }}
+
+    OPTIONAL {{
+        ?conimraw wdt:P4330 ?id.
+        ?conimraw wdt:P31 wd:Q486902.
+        BIND(REPLACE(STR(?conimraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?conim)
+
+        OPTIONAL {{
+            ?conimraw rdfs:label ?conimlraw.
+            FILTER (lang(?conimlraw) = 'en')
+        }}
+        BIND(COALESCE(?conimlraw, "No Label Provided!") AS ?coniml)
+
+        OPTIONAL {{
+            ?conimraw schema:description ?conimdraw
+            FILTER (lang(?conimdraw) = 'en')
+        }}
+        BIND(COALESCE(?conimdraw, "No Description Provided!") AS ?conimd)
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q12579633 wd:Q265158 wd:Q1298668 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw.
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+GROUP BY ?id ?is_linear ?is_not_linear

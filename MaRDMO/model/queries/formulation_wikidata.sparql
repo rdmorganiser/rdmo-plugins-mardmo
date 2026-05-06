@@ -1,0 +1,79 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+?is_ordinary_differential_equation
+?is_partial_differential_equation
+?is_stochastic_differential_equation
+?is_integro_differential_equation
+?is_linear
+(GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=" <|> ") AS ?aliases)
+(GROUP_CONCAT(DISTINCT CONCAT(?conf, " || ", ?confl, " || ", ?confd, " || ", ?confq); SEPARATOR=" <|> ") AS ?contains_formulation)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); SEPARATOR=" <|> ") AS ?publication)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?id skos:altLabel ?alias .
+        FILTER (LANG(?alias) = "en")
+    }}
+
+    OPTIONAL {{ ?id wdt:P31 wd:Q465274. BIND("True" AS ?is_ordinary_differential_equation_raw) }}
+    BIND(COALESCE(?is_ordinary_differential_equation_raw, "False") AS ?is_ordinary_differential_equation)
+    OPTIONAL {{ ?id wdt:P31 wd:Q271977. BIND("True" AS ?is_partial_differential_equation_raw) }}
+    BIND(COALESCE(?is_partial_differential_equation_raw, "False") AS ?is_partial_differential_equation)
+    OPTIONAL {{ ?id wdt:P31 wd:Q1545585. BIND("True" AS ?is_stochastic_differential_equation_raw) }}
+    BIND(COALESCE(?is_stochastic_differential_equation_raw, "False") AS ?is_stochastic_differential_equation)
+    OPTIONAL {{ ?id wdt:P31 wd:Q2380676. BIND("True" AS ?is_integro_differential_equation_raw) }}
+    BIND(COALESCE(?is_integro_differential_equation_raw, "False") AS ?is_integro_differential_equation)
+    OPTIONAL {{ ?id wdt:P31 wd:Q484637. BIND("True" AS ?is_linear_raw) }}
+    BIND(COALESCE(?is_linear_raw, "False") AS ?is_linear)
+
+    OPTIONAL {{
+        ?id p:P4330 ?statement2.
+        ?statement2 ps:P4330 ?confraw.
+        ?confraw wdt:P31 wd:Q976981.
+        BIND(REPLACE(STR(?confraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?conf)
+
+        OPTIONAL {{
+            ?confraw rdfs:label ?conflraw.
+            FILTER (lang(?conflraw) = 'en')
+        }}
+        BIND(COALESCE(?conflraw, "No Label Provided!") AS ?confl)
+
+        OPTIONAL {{
+            ?confraw schema:description ?confdraw
+            FILTER (lang(?confdraw) = 'en')
+        }}
+        BIND(COALESCE(?confdraw, "No Description Provided!") AS ?confd)
+
+        OPTIONAL {{
+            ?statement2 pq:P3831 ?quaraw.
+            BIND(REPLACE(STR(?quaraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?qua)
+        }}
+        BIND(COALESCE(?qua, "") AS ?confq)
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q12579633 wd:Q265158 wd:Q1298668 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw .
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+GROUP BY ?id ?is_ordinary_differential_equation ?is_partial_differential_equation
+         ?is_stochastic_differential_equation ?is_integro_differential_equation ?is_linear
