@@ -13,11 +13,7 @@ Provides:
 - ``retrieve_result`` — fetch the final worker output
 '''
 
-import logging
-
 from django.core.cache import cache
-
-logger = logging.getLogger(__name__)
 
 PROGRESS_CACHE_PREFIX = "mardmo_progress_"
 SESSION_JOBS_KEY = "mardmo_jobs"

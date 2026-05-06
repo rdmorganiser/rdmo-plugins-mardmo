@@ -11,7 +11,6 @@ Both handlers pass catalog through every call.  The algorithm handler
 simply uses the default catalog='' everywhere.
 '''
 
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -29,8 +28,6 @@ from .helpers import process_qualifier, value_editor
 from .adders import add_basics, add_references, add_relations_flexible, add_relations_static
 from .workflow.models import ProcessStepUsage
 from .queries import query_sparql
-
-logger = logging.getLogger(__name__)
 
 # Lazy singleton – instantiated on first use so that the Django app registry
 # is guaranteed to be ready (publication.handlers imports rdmo ORM models).

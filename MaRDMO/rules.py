@@ -315,7 +315,7 @@ def rule_16(value, _attribute, config, prefix_idx):
     return entry, path
 
 def rule_17(value, attribute, config, prefix_idx):
-    '''Handle flag-combo 3: ``[key1, prefix_idx, key2, set_index(, key3)]`` path.
+    '''Handle flag-combo 17: ``[key1, prefix_idx, key2, set_index(, key3)]`` path.
 
     Args:
         value:      RDMO :class:`~rdmo.projects.models.Value` instance.

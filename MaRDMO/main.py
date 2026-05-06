@@ -12,7 +12,6 @@ Provides:
   search-catalog preview and result rendering without requiring OAuth2.
 '''
 
-import logging
 from abc import ABC
 
 from django import forms
@@ -22,7 +21,6 @@ from django.shortcuts import redirect, render, reverse
 from django.utils.translation import gettext_lazy as _
 
 from rdmo.projects.exports import Export
-from rdmo.services.providers import OauthProviderMixin
 
 from .checks import Checks
 from .constants import CATALOG_TEMPLATE_MAP
@@ -49,8 +47,6 @@ from .algorithm.worker import PrepareAlgorithm
 from .workflow.worker import PrepareWorkflow
 from .search.worker import search
 from .publication.worker import PublicationRetriever
-
-logger = logging.getLogger(__name__)
 
 _CATALOG_PREPARE_MAP = {
     'mardmo-model-catalog':                      ('model',    PrepareModel),
@@ -427,7 +423,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
         # Order the creation of Items following their dependencies
         dependency_ordered = topological_order(dependency)
-        return
         return self.post(self.request, payload, dependency_ordered)
 
     def post_success(self, request, init, final):
