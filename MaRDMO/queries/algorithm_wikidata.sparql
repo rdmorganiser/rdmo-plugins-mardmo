@@ -1,0 +1,128 @@
+SELECT
+?id
+(REPLACE(STR(?id), "http://www.wikidata.org/entity/", "wikidata:") AS ?qid)
+(GROUP_CONCAT(DISTINCT CONCAT(?prob, " || ", ?probl, " || ", ?probd); separator=" <|> ") AS ?solved_by)
+(GROUP_CONCAT(DISTINCT CONCAT(?hascomp, " || ", ?hascompl, " || ", ?hascompd); separator=" <|> ") AS ?has_parts)
+(GROUP_CONCAT(DISTINCT CONCAT(?comp, " || ", ?compl, " || ", ?compd); separator=" <|> ") AS ?part_of)
+(GROUP_CONCAT(DISTINCT CONCAT(?hassub, " || ", ?hassubl, " || ", ?hassubd); separator=" <|> ") AS ?has_subclass)
+(GROUP_CONCAT(DISTINCT CONCAT(?sub, " || ", ?subl, " || ", ?subd); separator=" <|> ") AS ?subclass_of)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
+
+WHERE {{
+
+    VALUES ?id {{{0}}}
+
+    OPTIONAL {{
+        ?probraw wdt:P1136 ?id.
+        BIND(REPLACE(STR(?probraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?prob)
+
+        OPTIONAL {{
+            ?probraw rdfs:label ?problraw.
+            FILTER (lang(?problraw) = 'en')
+        }}
+        BIND(COALESCE(?problraw, "No Label Provided!") AS ?probl)
+
+        OPTIONAL {{
+            ?probraw schema:description ?probdraw
+            FILTER (lang(?probdraw) = 'en')
+        }}
+        BIND(COALESCE(?probdraw, "No Description Provided!") AS ?probd)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P527 ?hascompraw.
+        BIND(REPLACE(STR(?hascompraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?hascomp)
+
+        ?hascompraw wdt:P31 wd:Q8366.
+
+        OPTIONAL {{
+            ?hascompraw rdfs:label ?hascomplraw.
+            FILTER (lang(?hascomplraw) = 'en')
+        }}
+        BIND(COALESCE(?hascomplraw, "No Label Provided!") AS ?hascompl)
+
+        OPTIONAL {{
+            ?hascompraw schema:description ?hascompdraw
+            FILTER (lang(?hascompdraw) = 'en')
+        }}
+        BIND(COALESCE(?hascompdraw, "No Description Provided!") AS ?hascompd)
+    }}
+
+    OPTIONAL {{
+        ?compraw wdt:P527 ?id.
+        BIND(REPLACE(STR(?compraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?comp)
+
+        ?compraw wdt:P31 wd:Q8366.
+
+        OPTIONAL {{
+            ?compraw rdfs:label ?complraw.
+            FILTER (lang(?complraw) = 'en')
+        }}
+        BIND(COALESCE(?complraw, "No Label Provided!") AS ?compl)
+
+        OPTIONAL {{
+            ?compraw schema:description ?compdraw
+            FILTER (lang(?compdraw) = 'en')
+        }}
+        BIND(COALESCE(?compdraw, "No Description Provided!") AS ?compd)
+    }}
+
+    OPTIONAL {{
+        ?hassubraw wdt:P279 ?id.
+        BIND(REPLACE(STR(?hassubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?hassub)
+
+        ?hassubraw wdt:P31 wd:Q8366.
+
+        OPTIONAL {{
+            ?hassubraw rdfs:label ?hassublraw.
+            FILTER (lang(?hassublraw) = 'en')
+        }}
+        BIND(COALESCE(?hassublraw, "No Label Provided!") AS ?hassubl)
+
+        OPTIONAL {{
+            ?hassubraw schema:description ?hassubdraw
+            FILTER (lang(?hassubdraw) = 'en')
+        }}
+        BIND(COALESCE(?hassubdraw, "No Description Provided!") AS ?hassubd)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:P279 ?subraw.
+        BIND(REPLACE(STR(?subraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?sub)
+
+        ?subraw wdt:P31 wd:Q8366.
+
+        OPTIONAL {{
+            ?subraw rdfs:label ?sublraw.
+            FILTER (lang(?sublraw) = 'en')
+        }}
+        BIND(COALESCE(?sublraw, "No Label Provided!") AS ?subl)
+
+        OPTIONAL {{
+            ?subraw schema:description ?subdraw
+            FILTER (lang(?subdraw) = 'en')
+        }}
+        BIND(COALESCE(?subdraw, "No Description Provided!") AS ?subd)
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q12579633 wd:Q265158 wd:Q1298668 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw .
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw .
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
+    }}
+}}
+GROUP BY ?id
