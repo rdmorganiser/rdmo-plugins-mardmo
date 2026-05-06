@@ -220,6 +220,14 @@ preview_relations = [
         "encryption": "B"
     },
     {
+        "from_idx": "software",
+        "to_idx": "software",
+        "relation": None,
+        "old_name": "dependency",
+        "new_name": "RelationS",
+        "encryption": "S"
+    },
+    {
         "from_idx": "publication",
         "to_idx": "algorithm",
         "relation": "P2A",
