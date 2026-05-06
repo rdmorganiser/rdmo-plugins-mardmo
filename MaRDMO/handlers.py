@@ -50,7 +50,7 @@ _MODEL_PREFIX_TO_FILL = {
     'AD':  ('Research Field',          '_fill_field_batch'),
     'RP':  ('Research Problem',        '_fill_problem_batch'),
     'CT':  ('Task',                    '_fill_task_batch'),
-    'ME':  ('Mathematical Formulation','_fill_formulation_batch'),
+    'F':   ('Mathematical Formulation','_fill_formulation_batch'),
     'QQK': ('Quantity',                '_fill_quantity_batch'),
 }
 

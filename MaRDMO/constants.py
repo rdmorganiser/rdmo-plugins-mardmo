@@ -30,7 +30,7 @@ CATALOG_TEMPLATE_MAP = {
 SECTION_MAP_BASE = {
     'model':       'Mathematical Model',
     'task':        'Computational Task',
-    'formulation': 'Mathematical Expression',
+    'formulation': 'Formula',
     'quantity':    'Quantity [Kind]',
     'field':       'Academic Discipline',
     'algorithm':   'Algorithm',

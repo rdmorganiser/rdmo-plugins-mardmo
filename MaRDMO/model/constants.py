@@ -453,7 +453,7 @@ preview_relations = [
         "relation": "MM2MF",
         "old_name": "MFRelatant",
         "new_name": "RelationMF",
-        "encryption": "ME",
+        "encryption": "F",
         "formulation": True,
         "task": False,
         "assumption": False,
@@ -486,7 +486,7 @@ preview_relations = [
         "relation": "T2MF",
         "old_name": "MFRelatant",
         "new_name": "RelationMF",
-        "encryption": "ME",
+        "encryption": "F",
         "formulation": False,
         "task": False,
         "assumption": False,
@@ -519,7 +519,7 @@ preview_relations = [
         "relation": "MF2MF",
         "old_name": "MFRelatant",
         "new_name": "RelationMF1",
-        "encryption": "ME",
+        "encryption": "F",
         "formulation": False,
         "task": False,
         "assumption": False,
@@ -530,7 +530,7 @@ preview_relations = [
         "relation": "IntraClassRelation",
         "old_name": "IntraClassElement",
         "new_name": "RelationMF2",
-        "encryption": "ME",
+        "encryption": "F",
         "formulation": False,
         "task": False,
         "assumption": True,
@@ -621,7 +621,7 @@ preview_relations = [
         "relation": "P2E",
         "old_name": "EntityRelatant",
         "new_name": "RelationP",
-        "encryption": ["RF", "RP", "MM", "ME", "QQK", "CT"],
+        "encryption": ["RF", "RP", "MM", "F", "QQK", "CT"],
         "formulation": False,
         "task": False,
         "assumption": False,
@@ -630,9 +630,9 @@ preview_relations = [
 
 preview_map_general = [
     # fromIDX, toIDX, entityOld, entityNew, enc
-    ('model', 'formulation', 'assumption', 'assumptionMapped', 'ME'),
-    ('task', 'formulation', 'assumption', 'assumptionMapped', 'ME'),
-    ('formulation', 'formulation', 'assumption', 'assumptionMapped', 'ME'),
+    ('model', 'formulation', 'assumption', 'assumptionMapped', 'F'),
+    ('task', 'formulation', 'assumption', 'assumptionMapped', 'F'),
+    ('formulation', 'formulation', 'assumption', 'assumptionMapped', 'F'),
 ]
 
 preview_map_quantity = [
@@ -664,7 +664,7 @@ def get_uri_prefix_map():
         f'{BASE_URI}{questions["Task"]["MFRelatant"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Mathematical Formulation"]["Element Quantity"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Quantity"]["uri"]}',
@@ -679,27 +679,27 @@ def get_uri_prefix_map():
         f'{BASE_URI}{questions["Mathematical Model"]["MFRelatant"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Mathematical Model"]["Assumption"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Task"]["Assumption"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Mathematical Formulation"]["Assumption"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Mathematical Formulation"]["MFRelatant"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Mathematical Formulation"]["uri"]}',
             "question_id": f'{BASE_URI}{questions["Mathematical Formulation"]["ID"]["uri"]}',
-            "prefix": "ME"
+            "prefix": "F"
         },
         f'{BASE_URI}{questions["Research Problem"]["RFRelatant"]["uri"]}': {
             "question_set": f'{BASE_URI}{questions["Research Field"]["uri"]}',

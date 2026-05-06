@@ -244,7 +244,7 @@ class Checks:
         '''Check Mathematical Model documentation completeness and consistency.
 
         Verifies that each model page has mandatory Research Problem and Task
-        links, valid Mathematical Expression relations, and (for the full
+        links, valid Formula relations, and (for the full
         catalog) consistent specialisation assumptions and expression ordering.
 
         Args:
@@ -283,7 +283,7 @@ class Checks:
                 page_name  = page_name,
                 relation   = 'RelationMF',
                 from_class = 'Mathematical Model',
-                to_class   = 'Mathematical Expression',
+                to_class   = 'Formula',
                 optional   = False
             )
 
@@ -312,7 +312,7 @@ class Checks:
                     self._error(
                         section = 'Mathematical Model',
                         page    = page_name,
-                        message = 'Selected Mathematical Expression not found in Section'
+                        message = 'Selected Formula not found in Section'
                     )
                 )
 
@@ -325,7 +325,7 @@ class Checks:
                             self._error(
                                 section = 'Mathematical Model',
                                 page    = page_name,
-                                message = 'Missing Order Number (Mathematical Expression)'
+                                message = 'Missing Order Number (Formula)'
                             )
                         )
                     else:
@@ -335,14 +335,14 @@ class Checks:
                                 self._error(
                                     section = 'Mathematical Model',
                                     page    = page_name,
-                                    message = 'Incorrect Order Number (Mathematical Expression)'
+                                    message = 'Incorrect Order Number (Formula)'
                                 )
                             )
 
     def task(self, project, data, catalog):
         '''Check Computational Task documentation completeness and consistency.
 
-        Verifies that each task page has mandatory Mathematical Expression links,
+        Verifies that each task page has mandatory Formula links,
         valid task–task relations, and (for the full catalog) specialisation
         assumptions, containment order numbers, and Quantity links.
 
@@ -368,7 +368,7 @@ class Checks:
                 page_name  = page_name,
                 relation   = 'RelationMF',
                 from_class = 'Computational Task',
-                to_class   = 'Mathematical Expression',
+                to_class   = 'Formula',
                 optional   = False
             )
 
@@ -397,7 +397,7 @@ class Checks:
                     self._error(
                         section = 'Computational Task',
                         page    = page_name,
-                        message = 'Selected Mathematical Expression not found in Section'
+                        message = 'Selected Formula not found in Section'
                     )
                 )
 
@@ -424,7 +424,7 @@ class Checks:
             )
 
     def formulation(self, project, data, catalog):
-        '''Check Mathematical Expression documentation completeness and consistency.
+        '''Check Formula documentation completeness and consistency.
 
         For the basics catalog, flags missing references on user-defined entries.
         For the full catalog, also verifies specialisation assumptions, the
@@ -445,14 +445,14 @@ class Checks:
                 data       = ivalue,
                 page_name  = page_name,
                 relation   = 'RelationMF2',
-                from_class ='Mathematical Expression'
+                from_class ='Formula'
             )
 
             if catalog == CATALOG_MODEL_BASICS:
                 if ivalue.get('ID') == 'not found' and not ivalue.get('reference'):
                     self.err.append(
                         self._error(
-                            section = 'Mathematical Expression',
+                            section = 'Formula',
                             page    = page_name,
                             message = 'Missing Reference'
                         )
@@ -466,9 +466,9 @@ class Checks:
             ):
                 self.err.append(
                     self._error(
-                        section = 'Mathematical Expression',
+                        section = 'Formula',
                         page    = page_name,
-                        message = 'Missing Assumption (Mathematical Expression Specialization)'))
+                        message = 'Missing Assumption (Formula Specialization)'))
 
             if any(
                 mval['relation']['url'] in self._pairs(self.mathmoddb, 'specializes', 'specialized_by')
@@ -477,27 +477,27 @@ class Checks:
             ):
                 self.err.append(
                     self._error(
-                        section = 'Mathematical Expression',
+                        section = 'Formula',
                         page    = page_name,
-                        message = 'Selected Mathematical Expression not found in Section'
+                        message = 'Selected Formula not found in Section'
                     )
                 )
 
             if not ivalue.get('Formula'):
                 self.err.append(
                     self._error(
-                        section = 'Mathematical Expression',
+                        section = 'Formula',
                         page    = page_name,
-                        message = 'Missing Mathematical Expression Formula'
+                        message = 'Missing Formula Formula'
                     )
                 )
 
             if not ivalue.get('element'):
                 self.err.append(
                     self._error(
-                        section = 'Mathematical Expression',
+                        section = 'Formula',
                         page    = page_name,
-                        message = 'Missing Mathematical Expression Element Information'
+                        message = 'Missing Formula Element Information'
                     )
                 )
             else:
@@ -506,17 +506,17 @@ class Checks:
                 if not_symbol:
                     self.err.append(
                         self._error(
-                            section = 'Mathematical Expression',
+                            section = 'Formula',
                             page    = page_name,
-                            message = 'Missing Mathematical Expression Symbol'
+                            message = 'Missing Formula Symbol'
                         )
                     )
                 if not_quantity:
                     self.err.append(
                         self._error(
-                            section = 'Mathematical Expression',
+                            section = 'Formula',
                             page    = page_name,
-                            message = 'Missing Mathematical Expression Quantity'
+                            message = 'Missing Formula Quantity'
                         )
                     )
 
@@ -524,7 +524,7 @@ class Checks:
                 data       = ivalue,
                 page_name  = page_name,
                 relation   = 'RelationMF1',
-                from_class = 'Mathematical Expression'
+                from_class = 'Formula'
             )
 
     def quantity(self, project, data, catalog):

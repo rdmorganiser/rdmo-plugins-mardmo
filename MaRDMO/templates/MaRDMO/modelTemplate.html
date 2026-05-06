@@ -60,7 +60,7 @@
     {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2RP" title="Research Problems" relation="models" relatants=values.RelationRP class="RESEARCH PROBLEM" %}
 
     {# Include Block for multiple Relations between Model and Formulation #}
-    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MF" title="Formulas" relations=values.RelationMF class="FORMULA" empty_msg="True" %}
 
     {# Include Block for single Relation between Model and Task #}
     {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2CT" title="Computational Tasks" relation="used by" relatants=values.RelationT class="COMPUTATIONAL TASK" empty_msg="True"%}
@@ -94,7 +94,7 @@
     {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
 
     {# Include Block for multiple Relations between Task and Formulation #}
-    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="CT2MF" title="Mathematical Expressions" relations=values.RelationMF class="MATHEMATICAL EXPRESSION" empty_msg="True" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="CT2MF" title="Formulas" relations=values.RelationMF class="FORMULA" empty_msg="True" %}
 
     {# Include Block for multiple Relations between Task and Quantity #}
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="CT2QQK" title="Quantities / Quantity Kinds" relations=values.RelationQQK class="QUANTITY / QUANTITY KIND" empty_msg="True" %}
@@ -106,27 +106,27 @@
     <strong style="color:black;">NO TASK DOCUMENTED</strong>
 {% endfor %}
 
-<h1 id="MathematicalFormulations"> Mathematical Expressions </h1>
+<h1 id="MathematicalFormulations"> Formulas </h1>
 {% for values in answers.formulation.values %}
-        
-    {# Include Mathematical Expression Name #}
-    {% include "MaRDMO/partials/_name.html" with class="MATHEMATICAL EXPRESSION" counter=forloop.counter name=values.Name prefix="ME" %}
 
-    {# Include Mathematical Expression Short Description #}
-    {% include "MaRDMO/partials/_short_description.html" with class="MATHEMATICAL EXPRESSION" description=values.Description name=values.Name %}
+    {# Include Formula Name #}
+    {% include "MaRDMO/partials/_name.html" with class="FORMULA" counter=forloop.counter name=values.Name prefix="F" %}
 
-    {# Include Mathematical Expression Aliases #}
+    {# Include Formula Short Description #}
+    {% include "MaRDMO/partials/_short_description.html" with class="FORMULA" description=values.Description name=values.Name %}
+
+    {# Include Formula Aliases #}
     {% include "MaRDMO/partials/_alias.html" with aliases=values.Alias %}
 
-    {# Include Mathematical Expression Detailed Description #}
+    {# Include Formula Detailed Description #}
     {% include "MaRDMO/partials/_detailed_description.html" with detailed_descriptions=values.descriptionLong %}
 
-    {# Include Mathematical Expression ID #}
-    {% include "MaRDMO/partials/_id.html" with class="MATHEMATICAL EXPRESSION" id=values.ID %}
+    {# Include Formula ID #}
+    {% include "MaRDMO/partials/_id.html" with class="FORMULA" id=values.ID %}
 
     {# Include Formulation Properties #}
     {% include "MaRDMO/partials/_properties.html" with properties=values.Properties_Check %}
-        
+
     {# Include Formulation Defining Formulas #}
     {% include "MaRDMO/partials/_defining_formula.html" with formula=values.Formula definition="False" %}
 
@@ -134,13 +134,13 @@
     {% include "MaRDMO/partials/_in_defining_formula.html" with element=values.element %}
 
     {# Include Block for multiple Relations between Formulation and Formulation I #}
-    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MF2MF_1" title="Mathematical Expressions I" relations=values.RelationMF1 class="MATHEMATICAL EXPRESSION" empty_msg="False" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MF2MF_1" title="Formulas I" relations=values.RelationMF1 class="FORMULA" empty_msg="False" %}
 
     {# Include Block for multiple Relations between Formulation and Formulation II #}
-    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MF2MF_2" title="Mathematical Expressions II" relations=values.RelationMF2 class="MATHEMATICAL EXPRESSION" empty_msg="False" %}
+    {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MF2MF_2" title="Formulas II" relations=values.RelationMF2 class="FORMULA" empty_msg="False" %}
 
 {% empty %}
-    <strong style="color:black;">NO MATHEMATICAL EXPRESSION DOCUMENTED</strong>
+    <strong style="color:black;">NO FORMULA DOCUMENTED</strong>
 {% endfor %}
     
 <h1 id="Publication"> Publications </h1>
