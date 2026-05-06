@@ -118,7 +118,7 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
   }}
 
   BIND(COALESCE(?labelraw, "No Label Provided!") AS ?label)
-  BIND(COALESCE(?descriptionraw, "No DescriptionProvided!") AS ?description)
+  BIND(COALESCE(?descriptionraw, "No Description Provided!") AS ?description)
   
 }}
 GROUP BY ?doi ?label ?description

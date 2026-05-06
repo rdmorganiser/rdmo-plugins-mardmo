@@ -29,7 +29,7 @@ WHERE {{
     OPTIONAL {{
         ?journalraw wdt:{1} ?journalissnraw
     }}
-    BIND(COALESCE(?journalissn, "") AS ?journalissn)
+    BIND(COALESCE(?journalissnraw, "") AS ?journalissn)
               
     BIND(concat(?journal_id, " <|> ", ?journallabel, " <|> ", ?journaldescription, " <|> ", ?journalissn) AS ?journal_info_raw)
 }}
