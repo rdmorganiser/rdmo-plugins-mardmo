@@ -92,17 +92,23 @@
 
     {% for reference in values.reference.values %}
         {% if reference.0 == option.SWMATH %}
-            <b>swMath ID</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>swMath ID</b>: {{ reference.1 }} <br>
+            {% else %}<b>swMath ID</b>: <strong style="color:red;">MISSING SWMATH ID VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.DOI %}
-            <b>DOI</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>DOI</b>: {{ reference.1 }} <br>
+            {% else %}<b>DOI</b>: <strong style="color:red;">MISSING DOI VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.DESCRIPTION_URL %}
-            <b>Described at URL</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>Described at URL</b>: {{ reference.1 }} <br>
+            {% else %}<b>Described at URL</b>: <strong style="color:red;">MISSING DESCRIPTION URL VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.SOURCECODE_URL %}
-            <b>Source Code URL</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>Source Code URL</b>: {{ reference.1 }} <br>
+            {% else %}<b>Source Code URL</b>: <strong style="color:red;">MISSING SOURCE CODE URL VALUE</strong> <br>{% endif %}
         {% endif %}
+    {% empty %}
+        <strong style="color:red;">MISSING SOFTWARE REFERENCE</strong> <br>
     {% endfor %}
 
     {# Include Software ID #}
@@ -132,18 +138,24 @@
    
     {% for reference in values.reference.values %}
         {% if reference.0 == option.MORWIKI %}
-            <b>MORwiki ID</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>MORwiki ID</b>: {{ reference.1 }} <br>
+            {% else %}<b>MORwiki ID</b>: <strong style="color:red;">MISSING MORWIKI ID VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.DOI %}
-            <b>DOI</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>DOI</b>: {{ reference.1 }} <br>
+            {% else %}<b>DOI</b>: <strong style="color:red;">MISSING DOI VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.DESCRIPTION_URL %}
-            <b>Described at URL</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>Described at URL</b>: {{ reference.1 }} <br>
+            {% else %}<b>Described at URL</b>: <strong style="color:red;">MISSING DESCRIPTION URL VALUE</strong> <br>{% endif %}
         {% endif %}
         {% if reference.0 == option.SOURCECODE_URL %}
-            <b>Source Code URL</b>: {{ reference.1 }} <br>
+            {% if reference.1 %}<b>Source Code URL</b>: {{ reference.1 }} <br>
+            {% else %}<b>Source Code URL</b>: <strong style="color:red;">MISSING SOURCE CODE URL VALUE</strong> <br>{% endif %}
         {% endif %}
-    {% endfor %} 
+    {% empty %}
+        <strong style="color:red;">MISSING BENCHMARK REFERENCE</strong> <br>
+    {% endfor %}
 
     {# Include Benchmark ID #}
     {% include "MaRDMO/partials/_id.html" with class="BENCHMARK" id=values.ID %}

@@ -175,6 +175,7 @@ class PrepareWorkflow:
             hw_data['nodes_valid'] = str(nodes).strip().isdigit() if nodes else False
 
         answers['cpu'] = collect_items_without_section(answers, 'hardware', 'cpu')
+        answers['programminglanguage'] = collect_items_without_section(answers, 'software', 'programminglanguage')
 
         options = get_options()
         for ds_data in answers.get('dataset', {}).values():

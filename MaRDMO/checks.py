@@ -886,7 +886,9 @@ class Checks:
                 parent_class = 'Software',
                 item_class   = 'Programming Language'
             )
-            if ivalue.get('reference'):
+            if not ivalue.get('reference'):
+                self.err.append(self._error('Software', page_name, 'Missing Reference'))
+            else:
                 ref = ivalue['reference']
                 ref_list = [
                     (0, 'DOI', 'ID'),
@@ -920,7 +922,9 @@ class Checks:
         )
         for ikey, ivalue in data.get('benchmark', {}).items():
             page_name = values.get(set_index=ikey).text
-            if ivalue.get('reference'):
+            if not ivalue.get('reference'):
+                self.err.append(self._error('Benchmark', page_name, 'Missing Reference'))
+            else:
                 ref = ivalue['reference']
                 ref_list = [
                     (0, 'DOI', 'ID'),
@@ -1231,7 +1235,9 @@ class Checks:
                 from_class = 'Software',
                 to_class   = 'Software'
             )
-            if ivalue.get('reference'):
+            if not ivalue.get('reference'):
+                self.err.append(self._error('Software', page_name, 'Missing Reference'))
+            else:
                 ref = ivalue['reference']
                 ref_list = [
                     (0, 'DOI', 'ID'),

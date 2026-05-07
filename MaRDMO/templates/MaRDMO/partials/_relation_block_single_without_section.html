@@ -8,9 +8,9 @@
         {% endif %}
         {% if relatant.Description %}
             {% if relatant.Description|length > 250 %}
-                — <strong style="color:red;">SHORT DESCRIPTION TOO LONG</strong>
+                ({{ relatant.Description }}) — <strong style="color:red;">SHORT DESCRIPTION TOO LONG</strong>
             {% elif relatant.Description == relatant.Name %}
-                — <strong style="color:red;">NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>
+                ({{ relatant.Description }}) — <strong style="color:red;">NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>
             {% else %}
                 ({{ relatant.Description }})
             {% endif %}
