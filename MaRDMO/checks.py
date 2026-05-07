@@ -778,8 +778,8 @@ class Checks:
     def algo_problem(self, project, data):
         '''Check Algorithmic Task documentation completeness.
 
-        Verifies that each problem page has a mandatory Benchmark link and
-        valid Algorithmic Task–to–Task relations.
+        Verifies valid Algorithmic Task–to–Task relations and, if a Benchmark
+        is selected, that it exists in the Benchmark section.
 
         Args:
             project: RDMO project instance.
@@ -791,7 +791,7 @@ class Checks:
         )
         for ikey, ivalue in data.get('problem', {}).items():
             page_name = values.get(set_index=ikey).text
-            self._check_static(
+            self._check_optional_static(
                 data       = ivalue,
                 page_name  = page_name,
                 relation   = 'RelationB',
@@ -808,9 +808,9 @@ class Checks:
     def software(self, project, data):
         '''Check Software documentation completeness.
 
-        Verifies that each software page has a mandatory Benchmark link, and
-        that any reference entries (DOI, swMath ID, URL fields) have a
-        corresponding value when their option is selected.
+        Verifies that any selected Benchmark or Software dependency exists in
+        its section, and that reference entries have a corresponding value when
+        their option is selected.
 
         Args:
             project: RDMO project instance.
@@ -822,7 +822,7 @@ class Checks:
         )
         for ikey, ivalue in data.get('software', {}).items():
             page_name = values.get(set_index=ikey).text
-            self._check_static(
+            self._check_optional_static(
                 data       = ivalue,
                 page_name  = page_name,
                 relation   = 'RelationB',
