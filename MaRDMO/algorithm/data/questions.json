@@ -146,7 +146,6 @@
         "Dependency": {
             "key1": "software",
             "key2": "dependency",
-            "key3": "ID",
             "uri": "domain/software/dependency-relatant",
             "set_prefix": true,
             "collection_index": true,

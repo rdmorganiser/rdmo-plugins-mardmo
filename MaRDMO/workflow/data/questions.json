@@ -146,7 +146,6 @@
         "Dependency": {
             "key1": "software",
             "key2": "dependency",
-            "key3": "ID",
             "uri": "domain/software/dependency-relatant",
             "set_prefix": true,
             "collection_index": true,
@@ -204,91 +203,91 @@
         }
     },
     "Data Set": {
-        "uri": "domain/data-set",
+        "uri": "domain/dataset",
         "ID": {
             "key1": "dataset",
             "key2": "ID",
-            "uri": "domain/data-set/id",
+            "uri": "domain/dataset/id",
             "set_index": true,
             "external_id": true
         },
         "Name": {
             "key1": "dataset",
             "key2": "Name",
-            "uri": "domain/data-set/name",
+            "uri": "domain/dataset/name",
             "set_prefix": true
         },
         "Description": {
             "key1": "dataset",
             "key2": "Description",
-            "uri": "domain/data-set/description",
+            "uri": "domain/dataset/description",
             "set_prefix": true
         },
         "Size": {
             "key1": "dataset",
             "key2": "Size",
-            "uri": "domain/data-set/size",
+            "uri": "domain/dataset/size",
             "set_prefix": true,
             "option_text": true
         },
         "File Format": {
             "key1": "dataset",
             "key2": "FileFormat",
-            "uri": "domain/data-set/file-format",
+            "uri": "domain/dataset/file-format",
             "set_prefix": true
         },
         "Binary or Text": {
             "key1": "dataset",
             "key2": "BinaryText",
-            "uri": "domain/data-set/binary-or-text",
+            "uri": "domain/dataset/binary-or-text",
             "set_prefix": true
         },
         "Proprietary": {
             "key1": "dataset",
             "key2": "Proprietary",
-            "uri": "domain/data-set/proprietary",
+            "uri": "domain/dataset/proprietary",
             "set_prefix": true
         },
         "To Publish": {
             "key1": "dataset",
             "key2": "ToPublish",
-            "uri": "domain/data-set/to-publish",
+            "uri": "domain/dataset/to-publish",
             "set_prefix": true,
             "option_text": true
         },
         "To Archive": {
             "key1": "dataset",
             "key2": "ToArchive",
-            "uri": "domain/data-set/to-archive",
+            "uri": "domain/dataset/to-archive",
             "set_prefix": true,
             "option_text": true
         }
     },
     "Process Step": {
-        "uri": "domain/process-step",
+        "uri": "domain/processstep",
         "ID": {
             "key1": "processstep",
             "key2": "ID",
-            "uri": "domain/process-step/id",
+            "uri": "domain/processstep/id",
             "set_index": true,
             "external_id": true
         },
         "Name": {
             "key1": "processstep",
             "key2": "Name",
-            "uri": "domain/process-step/name",
+            "uri": "domain/processstep/name",
             "set_prefix": true
         },
         "Description": {
             "key1": "processstep",
             "key2": "Description",
-            "uri": "domain/process-step/description",
+            "uri": "domain/processstep/description",
             "set_prefix": true
         },
         "Input": {
             "key1": "processstep",
             "key2": "IDSRelatant",
-            "uri": "domain/process-step/input-data-set-relatant",
+            "uri": "domain/processstep/input-data-set-relatant",
             "set_prefix": true,
             "collection_index": true,
             "external_id": true
@@ -296,7 +295,7 @@
         "Output": {
             "key1": "processstep",
             "key2": "ODSRelatant",
-            "uri": "domain/process-step/output-data-set-relatant",
+            "uri": "domain/processstep/output-data-set-relatant",
             "set_prefix": true,
             "collection_index": true,
             "external_id": true
@@ -304,7 +303,7 @@
         "Algorithm": {
             "key1": "processstep",
             "key2": "ARelatant",
-            "uri": "domain/process-step/algorithm-relatant",
+            "uri": "domain/processstep/algorithm-relatant",
             "set_prefix": true,
             "set_index": true,
             "collection_index": true,
@@ -313,7 +312,7 @@
         "Algorithm-Parameter": {
             "key1": "processstep",
             "key2": "algorithm-parameter",
-            "uri": "domain/process-step/algorithm-parameter",
+            "uri": "domain/processstep/algorithm-parameter",
             "set_prefix": true,
             "set_index": true,
             "collection_index": true
@@ -321,7 +320,7 @@
         "Software": {
             "key1": "processstep",
             "key2": "SRelatant",
-            "uri": "domain/process-step/software-relatant",
+            "uri": "domain/processstep/software-relatant",
             "set_prefix": true,
             "set_index": true,
             "external_id": true
@@ -329,7 +328,7 @@
         "Software-Documentation": {
             "key1": "processstep",
             "key2": "software-documentation",
-            "uri": "domain/process-step/software-documentation",
+            "uri": "domain/processstep/software-documentation",
             "set_prefix": true,
             "set_index": true,
             "option_text": true
@@ -337,7 +336,7 @@
         "Hardware": {
             "key1": "processstep",
             "key2": "HRelatant",
-            "uri": "domain/process-step/hardware-relatant",
+            "uri": "domain/processstep/hardware-relatant",
             "set_prefix": true,
             "set_index": true,
             "external_id": true
@@ -345,7 +344,7 @@
         "Method": {
             "key1": "processstep",
             "key2": "MRelatant",
-            "uri": "domain/process-step/method-relatant",
+            "uri": "domain/processstep/method-relatant",
             "set_prefix": true,
             "set_index": true,
             "external_id": true
@@ -353,7 +352,7 @@
         "Method-Parameter": {
             "key1": "processstep",
             "key2": "method-parameter",
-            "uri": "domain/process-step/method-parameter",
+            "uri": "domain/processstep/method-parameter",
             "set_prefix": true,
             "set_index": true,
             "collection_index": true
@@ -361,7 +360,7 @@
         "Method-Documentation": {
             "key1": "processstep",
             "key2": "method-documentation",
-            "uri": "domain/process-step/method-documentation",
+            "uri": "domain/processstep/method-documentation",
             "set_prefix": true,
             "set_index": true,
             "option_text": true
@@ -369,7 +368,7 @@
         "Instrument": {
             "key1": "processstep",
             "key2": "IRelatant",
-            "uri": "domain/process-step/instrument-relatant",
+            "uri": "domain/processstep/instrument-relatant",
             "set_prefix": true,
             "set_index": true,
             "external_id": true
@@ -377,7 +376,7 @@
         "RFRelatant": {
             "key1": "processstep",
             "key2": "RFRelatant",
-            "uri": "domain/process-step/field-relatant",
+            "uri": "domain/processstep/field-relatant",
             "set_prefix": true,
             "collection_index": true,
             "external_id": true
