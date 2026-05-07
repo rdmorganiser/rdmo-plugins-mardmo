@@ -85,6 +85,46 @@ class Checks:
                 )
             )
 
+    def _check_without_section_items(self, items, parent_page, parent_class, item_class):
+        '''Validate name and description for inline items that have no dedicated section.
+
+        Only validates user-defined entries (``ID == "not found"``); portal-matched
+        items are skipped.  Mirrors the checks in ``_name.html`` and
+        ``_short_description.html``.
+
+        Args:
+            items:        Dict of item dicts (e.g. ``ivalue.get("programminglanguage", {})``)
+            parent_page:  Human-readable page label of the parent entity.
+            parent_class: Display name of the parent entity (for error section).
+            item_class:   Display name of the inline item type (e.g. ``"Programming Language"``).
+        '''
+        for item in items.values():
+            if item.get('ID') != 'not found':
+                continue
+            name = item.get('Name', '')
+            desc = item.get('Description', '')
+            label = name or '(unnamed)'
+            if not name:
+                self.err.append(self._error(
+                    parent_class, parent_page,
+                    f'Missing {item_class} Name ({label})'
+                ))
+            if not desc:
+                self.err.append(self._error(
+                    parent_class, parent_page,
+                    f'Missing {item_class} Short Description ({label})'
+                ))
+            elif len(desc) > 250:
+                self.err.append(self._error(
+                    parent_class, parent_page,
+                    f'{item_class} Short Description Too Long ({label})'
+                ))
+            elif desc == name:
+                self.err.append(self._error(
+                    parent_class, parent_page,
+                    f'Equal {item_class} Name and Short Description Forbidden ({label})'
+                ))
+
     def _check_flexible(self, data, page_name, relation, from_class, to_class=None, optional=True):
         '''Append errors for a typed multi-value relation block.
 
@@ -835,6 +875,12 @@ class Checks:
                 relation   = 'RelationS',
                 from_class = 'Software',
                 to_class   = 'Software'
+            )
+            self._check_without_section_items(
+                items        = ivalue.get('programminglanguage', {}),
+                parent_page  = page_name,
+                parent_class = 'Software',
+                item_class   = 'Programming Language'
             )
             if ivalue.get('reference'):
                 ref = ivalue['reference']
