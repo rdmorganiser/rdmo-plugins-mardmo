@@ -187,24 +187,61 @@
 
     {# Include Hardware Number of Compute Nodes #}
     {% if values.nodes %}
-        <strong>Number of Compute Nodes:</strong> {{ values.nodes }}
+        {% if values.nodes_valid %}
+            <strong>Number of Compute Nodes:</strong> {{ values.nodes }} <br>
+        {% else %}
+            <strong>Number of Compute Nodes:</strong> <strong style="color:red;">INVALID COMPUTE NODES VALUE</strong> <br>
+        {% endif %}
     {% else %}
-        <strong style="color:red;">NUMBER OF COMPUTE NODES MISSING</strong>
+        <strong>Number of Compute Nodes:</strong> <strong style="color:red;">NUMBER OF COMPUTE NODES MISSING</strong> <br>
     {% endif %}
 
     {# Include CPU List #}
+    <h3>CPUs of the Hardware</h3>
     {% if values.cpu_entries %}
-        <h3>CPUs of the Hardware</h3>
         {% for cpu in values.cpu_entries %}
             {{ forloop.counter }}.
             {% if cpu.id and cpu.id != 'not found' %}
                 <strong>CPU:</strong> {{ cpu.id }} <br>
             {% else %}
-                <strong>CPU:</strong> {{ cpu.name }} ({{ cpu.description }}) <br>
+                {% if cpu.name %}
+                    <strong>CPU:</strong> {{ cpu.name }}
+                {% else %}
+                    <strong>CPU:</strong> <strong style="color:red;">MISSING CPU NAME</strong>
+                {% endif %}
+                {% if not cpu.description %}
+                    (<strong style="color:red;">MISSING CPU SHORT DESCRIPTION</strong>) <br>
+                {% elif cpu.description|length > 250 %}
+                    (<strong style="color:red;">CPU SHORT DESCRIPTION TOO LONG</strong>) <br>
+                {% elif cpu.description == cpu.name %}
+                    (<strong style="color:red;">CPU NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>) <br>
+                {% else %}
+                    ({{ cpu.description }}) <br>
+                {% endif %}
             {% endif %}
-            &nbsp;&nbsp;&nbsp;&nbsp;-&gt; Occurrence in Hardware: {{ cpu.count }} <br>
-            &nbsp;&nbsp;&nbsp;&nbsp;-&gt; Number of Processor Cores: {{ cpu.cores }} <br>
+            &nbsp;&nbsp;&nbsp;&nbsp;-&gt; Occurrence in Hardware:
+            {% if cpu.count %}
+                {% if cpu.count_valid %}
+                    {{ cpu.count }} <br>
+                {% else %}
+                    <strong style="color:red;">INVALID OCCURRENCE VALUE</strong> <br>
+                {% endif %}
+            {% else %}
+                <strong style="color:red;">MISSING OCCURRENCE</strong> <br>
+            {% endif %}
+            &nbsp;&nbsp;&nbsp;&nbsp;-&gt; Number of Processor Cores:
+            {% if cpu.cores %}
+                {% if cpu.cores_valid %}
+                    {{ cpu.cores }} <br>
+                {% else %}
+                    <strong style="color:red;">INVALID PROCESSOR CORES VALUE</strong> <br>
+                {% endif %}
+            {% else %}
+                <strong style="color:red;">MISSING PROCESSOR CORES</strong> <br>
+            {% endif %}
         {% endfor %}
+    {% else %}
+        <strong style="color:red;">NO CPU DOCUMENTED</strong> <br>
     {% endif %}
 
 {% empty %}
@@ -225,20 +262,37 @@
 
     {# Include Data Set Size #}
     <strong>Data Size:</strong>
-    {% if values.Size.0 == option.kilobyte %}
-        {{ values.Size.1 }} kilobyte <br>
-    {% elif values.Size.0 == option.megabyte %}
-        {{ values.Size.1 }} megabyte <br>
-    {% elif values.Size.0 == option.gigabyte %}  
-        {{ values.Size.1 }} gigabyte <br>
-    {% elif values.Size.0 == option.terabyte %}  
-        {{ values.Size.1 }} terabyte <br>
-    {% elif values.Size.0 == option.items %}  
-        {{ values.Size.1 }} items <br>
+    {% if values.Size.0 == option.kilobyte or values.Size.0 == option.megabyte or values.Size.0 == option.gigabyte or values.Size.0 == option.terabyte or values.Size.0 == option.items %}
+        {% if values.Size.1 %}
+            {% if values.size_value_valid %}
+                {% if values.Size.0 == option.kilobyte %}
+                    {{ values.Size.1 }} kilobyte <br>
+                {% elif values.Size.0 == option.megabyte %}
+                    {{ values.Size.1 }} megabyte <br>
+                {% elif values.Size.0 == option.gigabyte %}
+                    {{ values.Size.1 }} gigabyte <br>
+                {% elif values.Size.0 == option.terabyte %}
+                    {{ values.Size.1 }} terabyte <br>
+                {% elif values.Size.0 == option.items %}
+                    {{ values.Size.1 }} items <br>
+                {% endif %}
+            {% else %}
+                <strong style="color:red;">INVALID DATA SIZE VALUE</strong> <br>
+            {% endif %}
+        {% else %}
+            <strong style="color:red;">MISSING DATA SIZE VALUE</strong> <br>
+        {% endif %}
+    {% else %}
+        <strong style="color:red;">MISSING DATA SIZE</strong> <br>
     {% endif %}
 
     {# Include Data Set File Format #}
-    <strong>File Format:</strong> {{ values.FileFormat }} <br>
+    <strong>File Format:</strong>
+    {% if values.FileFormat %}
+        {{ values.FileFormat }} <br>
+    {% else %}
+        <strong style="color:red;">MISSING FILE FORMAT</strong> <br>
+    {% endif %}
 
     {# Include Data Set Type #}
     <strong>Data Set Type:</strong>
@@ -246,6 +300,8 @@
         binary <br>
     {% elif values.BinaryText == option.text %}
         text <br>
+    {% else %}
+        <strong style="color:red;">MISSING DATA SET TYPE</strong> <br>
     {% endif %}
 
     {# Include Data Set Proprietary #}
@@ -254,30 +310,40 @@
         Yes <br>
     {% elif values.Proprietary == option.No %}
         No <br>
+    {% else %}
+        <strong style="color:red;">MISSING DATA SET PROPRIETARY</strong> <br>
     {% endif %}
 
     {# Include Data Set Publication #}
     <strong>Data Set Publication:</strong>
     {% if values.ToPublish.0 == option.YesText %}
         {% if values.ToPublish.1 %}
-            Yes ({{ values.ToPublish.1 }})
+            Yes ({{ values.ToPublish.1 }}) <br>
         {% else %}
-            Yes
+            Yes <br>
         {% endif %}
     {% elif values.ToPublish.0 == option.NoText %}
-            No
+        No <br>
+    {% else %}
+        <strong style="color:red;">MISSING DATA SET PUBLICATION STATEMENT</strong> <br>
     {% endif %}
 
     {# Include Data Set Archiving #}
     <strong>Data Set Archiving:</strong>
     {% if values.ToArchive.0 == option.YesText %}
         {% if values.ToArchive.1 %}
-            Yes ({{ values.ToArchive.1 }})
+            {% if values.archive_year_valid %}
+                Yes ({{ values.ToArchive.1 }}) <br>
+            {% else %}
+                Yes (<strong style="color:red;">INVALID ARCHIVAL YEAR</strong>) <br>
+            {% endif %}
         {% else %}
-            Yes
+            Yes, <strong style="color:red;">MISSING ARCHIVAL YEAR</strong> <br>
         {% endif %}
     {% elif values.ToArchive.0 == option.NoText %}
-            No
+        No <br>
+    {% else %}
+        <strong style="color:red;">MISSING DATA SET ARCHIVAL STATEMENT</strong> <br>
     {% endif %}
 
 {% empty %}

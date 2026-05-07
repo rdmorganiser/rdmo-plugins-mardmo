@@ -15,6 +15,16 @@ Provides:
 from ..constants import BASE_URI
 from ..getters import get_options, get_questions
 
+SECTION_MAP = {
+    'workflow':    'Interdisciplinary Workflow',
+    'processstep': 'Process Step',
+    'algorithm':   'Algorithm',
+    'software':    'Software',
+    'hardware':    'Hardware',
+    'dataset':     'Data Set',
+    'publication': 'Publication',
+}
+
 software_reference_ids = [
     'DOI',
     'SWMATH',

@@ -391,6 +391,25 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
         answers, __ = self.get_post_data()
 
+        # Validate documentation completeness / consistency
+        checker = Checks()
+
+        err = checker.run_workflow(
+            project = self.project,
+            data = answers
+        )
+
+        if err:
+            return render(
+                self.request,
+                'core/error.html',
+                {
+                    'title': _("Incomplete or Inconsistent Documentation"),
+                    'errors': err
+                },
+                status=200
+            )
+
         try:
             prepare = PrepareWorkflow()
             payload, dependency = prepare.export(

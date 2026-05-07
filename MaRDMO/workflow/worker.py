@@ -15,7 +15,7 @@ from ..getters import (
     get_properties,
     get_url
 )
-from ..helpers import entity_relations, entity_relations_grouped, unique_items
+from ..helpers import collect_items_without_section, entity_relations, entity_relations_grouped, unique_items
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
@@ -165,10 +165,34 @@ class PrepareWorkflow:
                     'name':        cpu_dict.get(idx, {}).get('Name'),
                     'description': cpu_dict.get(idx, {}).get('Description'),
                     'count':       count_dict.get(idx),
+                    'count_valid': str(count_dict.get(idx, '')).strip().isdigit() if count_dict.get(idx) else False,
                     'cores':       cores_dict.get(idx),
+                    'cores_valid': str(cores_dict.get(idx, '')).strip().isdigit() if cores_dict.get(idx) else False,
                 }
                 for idx in all_indices
             ]
+            nodes = hw_data.get('nodes')
+            hw_data['nodes_valid'] = str(nodes).strip().isdigit() if nodes else False
+
+        answers['cpu'] = collect_items_without_section(answers, 'hardware', 'cpu')
+
+        options = get_options()
+        for ds_data in answers.get('dataset', {}).values():
+            size = ds_data.get('Size')
+            if size and size[0] and size[1]:
+                val = str(size[1]).strip()
+                if size[0] == options['items']:
+                    ds_data['size_value_valid'] = val.isdigit()
+                else:
+                    try:
+                        float(val)
+                        ds_data['size_value_valid'] = True
+                    except (ValueError, TypeError):
+                        ds_data['size_value_valid'] = False
+            archive = ds_data.get('ToArchive')
+            if archive and archive[0] and archive[1]:
+                val = str(archive[1]).strip()
+                ds_data['archive_year_valid'] = len(val) == 4 and val.isdigit()
 
         return answers
 

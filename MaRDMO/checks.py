@@ -11,9 +11,10 @@ from rdmo.domain.models import Attribute
 from .model.constants import data_properties_check, data_properties_label
 from .model.constants import SECTION_MAP as SECTION_MAP_MODEL
 from .algorithm.constants import SECTION_MAP as SECTION_MAP_ALGO
+from .workflow.constants import SECTION_MAP as SECTION_MAP_WORKFLOW
 
-from .constants import BASE_URI, CATALOG_ALGORITHM, CATALOG_MODEL, CATALOG_MODEL_BASICS
-from .getters import get_mathmoddb, get_mathalgodb
+from .constants import BASE_URI, CATALOG_ALGORITHM, CATALOG_MODEL, CATALOG_MODEL_BASICS, CATALOG_WORKFLOW
+from .getters import get_mathmoddb, get_mathalgodb, get_options
 
 class Checks:
     '''Validate user answers before transferring documentation to the MaRDI Portal.
@@ -192,6 +193,9 @@ class Checks:
         elif catalog in (CATALOG_MODEL, CATALOG_MODEL_BASICS):
             section_map = SECTION_MAP_MODEL
             okeys = ('model', 'formulation', 'quantity', 'task', 'problem', 'field', 'publication')
+        elif catalog == CATALOG_WORKFLOW:
+            section_map = SECTION_MAP_WORKFLOW
+            okeys = ('workflow', 'processstep', 'algorithm', 'software', 'hardware', 'dataset', 'publication')
         else:
             return
 
@@ -992,6 +996,41 @@ class Checks:
                             message = 'Missing Algorithm, Benchmark, or Software'
                         )
                     )
+            elif catalog == CATALOG_WORKFLOW:
+                # Workflow mode: at least one of Algorithm, Hardware/Software, or Entity required
+                if ivalue.get('RelationA') or ivalue.get('RelationHS') or ivalue.get('RelationP'):
+                    self._check_flexible(
+                        data       = ivalue,
+                        page_name  = page_name,
+                        relation   = 'RelationA',
+                        from_class = 'Publication',
+                        to_class   = 'Algorithm',
+                        optional   = True
+                    )
+                    self._check_flexible(
+                        data       = ivalue,
+                        page_name  = page_name,
+                        relation   = 'RelationHS',
+                        from_class = 'Publication',
+                        to_class   = 'Hardware or Software',
+                        optional   = True
+                    )
+                    self._check_flexible(
+                        data       = ivalue,
+                        page_name  = page_name,
+                        relation   = 'RelationP',
+                        from_class = 'Publication',
+                        to_class   = 'Interdisciplinary Workflow, Process Step, or Data Set',
+                        optional   = True
+                    )
+                else:
+                    self.err.append(
+                        self._error(
+                            section = 'Publication',
+                            page    = page_name,
+                            message = 'Missing Algorithm, Hardware/Software, or Workflow Entity'
+                        )
+                    )
             else:
                 # Model mode: mandatory link to a model entity
                 self._check_flexible(
@@ -1055,6 +1094,291 @@ class Checks:
         self.software(project, data)
         self.benchmark(project, data)
         self.publication(project, data, catalog)
+        return self._finalise()
+
+    # -------------------------------------------------------------------------
+    # Workflow Documentation Checks
+    # -------------------------------------------------------------------------
+
+    def workflow(self, project, data):
+        '''Check Interdisciplinary Workflow documentation completeness.
+
+        Verifies that each workflow page has at least one Process Step link.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/workflow')
+        )
+        for ikey, ivalue in data.get('workflow', {}).items():
+            page_name = values.get(set_index=ikey).text
+            self._check_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationPS',
+                from_class = 'Interdisciplinary Workflow',
+                to_class   = 'Process Step'
+            )
+
+    def step(self, project, data):
+        '''Check Process Step documentation completeness.
+
+        Verifies that each process step page has mandatory Input Data Set,
+        Output Data Set, and Academic Discipline links.  For user-defined
+        disciplines (ID == "not found"), also validates name and description.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/processstep')
+        )
+        for ikey, ivalue in data.get('processstep', {}).items():
+            page_name = values.get(set_index=ikey).text
+            self._check_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationIDS',
+                from_class = 'Process Step',
+                to_class   = 'Input Data Set'
+            )
+            self._check_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationODS',
+                from_class = 'Process Step',
+                to_class   = 'Output Data Set'
+            )
+            if not ivalue.get('RFRelatant'):
+                self.err.append(self._error(
+                    'Process Step', page_name, 'Missing Academic Discipline'
+                ))
+            else:
+                self._check_without_section_items(
+                    items        = ivalue.get('RFRelatant', {}),
+                    parent_page  = page_name,
+                    parent_class = 'Process Step',
+                    item_class   = 'Academic Discipline'
+                )
+
+    def workflow_algorithm(self, project, data):
+        '''Check Algorithm documentation completeness for the workflow catalog.
+
+        Verifies that each algorithm page has at least one Algorithmic Task
+        and one Software link.  For user-defined tasks (ID == "not found"),
+        also validates name and description.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/algorithm')
+        )
+        for ikey, ivalue in data.get('algorithm', {}).items():
+            page_name = values.get(set_index=ikey).text
+            if not ivalue.get('PRelatant'):
+                self.err.append(self._error(
+                    'Algorithm', page_name, 'Missing Algorithmic Task'
+                ))
+            else:
+                self._check_without_section_items(
+                    items        = ivalue.get('PRelatant', {}),
+                    parent_page  = page_name,
+                    parent_class = 'Algorithm',
+                    item_class   = 'Algorithmic Task'
+                )
+            self._check_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationS',
+                from_class = 'Algorithm',
+                to_class   = 'Software'
+            )
+
+    def workflow_software(self, project, data):
+        '''Check Software documentation completeness for the workflow catalog.
+
+        Validates programming language inline items, optional software
+        dependencies, and reference entries.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/software')
+        )
+        for ikey, ivalue in data.get('software', {}).items():
+            page_name = values.get(set_index=ikey).text
+            self._check_without_section_items(
+                items        = ivalue.get('programminglanguage', {}),
+                parent_page  = page_name,
+                parent_class = 'Software',
+                item_class   = 'Programming Language'
+            )
+            self._check_optional_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationS',
+                from_class = 'Software',
+                to_class   = 'Software'
+            )
+            if ivalue.get('reference'):
+                ref = ivalue['reference']
+                ref_list = [
+                    (0, 'DOI', 'ID'),
+                    (1, 'swMath ID', 'ID'),
+                    (2, 'Description URL', 'URL'),
+                    (3, 'Repository URL', 'URL')
+                ]
+                for idx, label, noun in ref_list:
+                    if ref.get(idx) and not ref[idx][1]:
+                        self.err.append(self._error(
+                            'Software', page_name,
+                            f'{label} selected, but no {noun} provided!'
+                        ))
+
+    def hardware(self, project, data):
+        '''Check Hardware documentation completeness.
+
+        Verifies that each hardware page has a valid integer compute-node count,
+        at least one CPU, valid name/description for user-defined CPUs, and
+        integer occurrence and core counts per CPU entry.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/hardware')
+        )
+        for ikey, ivalue in data.get('hardware', {}).items():
+            page_name = values.get(set_index=ikey).text
+
+            nodes = ivalue.get('nodes')
+            if not nodes:
+                self.err.append(self._error('Hardware', page_name, 'Missing Number of Compute Nodes'))
+            elif not str(nodes).strip().isdigit():
+                self.err.append(self._error('Hardware', page_name, 'Invalid Number of Compute Nodes (must be an integer)'))
+
+            cpu_entries = ivalue.get('cpu_entries', [])
+            if not cpu_entries:
+                self.err.append(self._error('Hardware', page_name, 'Missing CPU'))
+            else:
+                self._check_without_section_items(
+                    items        = ivalue.get('cpu', {}),
+                    parent_page  = page_name,
+                    parent_class = 'Hardware',
+                    item_class   = 'CPU'
+                )
+                for entry in cpu_entries:
+                    if not entry.get('count'):
+                        self.err.append(self._error('Hardware', page_name, 'Missing CPU Occurrence in Hardware'))
+                    elif not entry.get('count_valid'):
+                        self.err.append(self._error('Hardware', page_name, 'Invalid CPU Occurrence (must be an integer)'))
+                    if not entry.get('cores'):
+                        self.err.append(self._error('Hardware', page_name, 'Missing Number of Processor Cores'))
+                    elif not entry.get('cores_valid'):
+                        self.err.append(self._error('Hardware', page_name, 'Invalid Number of Processor Cores (must be an integer)'))
+
+    def dataset(self, project, data):
+        '''Check Data Set documentation completeness.
+
+        Verifies mandatory fields: binary/text type, proprietary flag, file
+        format, data size (option + valid number), publication statement, and
+        archival statement (with a valid 4-digit year when Yes is selected).
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+        '''
+        options = get_options()
+        values = project.values.filter(
+            snapshot  = None,
+            attribute = Attribute.objects.get(uri=f'{BASE_URI}domain/dataset')
+        )
+        for ikey, ivalue in data.get('dataset', {}).items():
+            page_name = values.get(set_index=ikey).text
+
+            if not ivalue.get('BinaryText'):
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Set Type'))
+
+            if not ivalue.get('Proprietary'):
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Set Proprietary'))
+
+            if not ivalue.get('FileFormat'):
+                self.err.append(self._error('Data Set', page_name, 'Missing File Format'))
+
+            size = ivalue.get('Size')
+            if not size or not size[0]:
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Size'))
+            elif not size[1]:
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Size Value'))
+            else:
+                val = str(size[1]).strip()
+                if size[0] == options['items']:
+                    if not val.isdigit():
+                        self.err.append(self._error(
+                            'Data Set', page_name,
+                            'Invalid Data Size Value (must be an integer for items)'
+                        ))
+                else:
+                    try:
+                        float(val)
+                    except (ValueError, TypeError):
+                        self.err.append(self._error(
+                            'Data Set', page_name,
+                            'Invalid Data Size Value (must be a number)'
+                        ))
+
+            if not ivalue.get('ToPublish') or not ivalue['ToPublish'][0]:
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Set Publication Statement'))
+
+            to_archive = ivalue.get('ToArchive')
+            if not to_archive or not to_archive[0]:
+                self.err.append(self._error('Data Set', page_name, 'Missing Data Set Archival Statement'))
+            elif to_archive[0] == options['YesText']:
+                if not to_archive[1]:
+                    self.err.append(self._error('Data Set', page_name, 'Missing Archival Year'))
+                else:
+                    val = str(to_archive[1]).strip()
+                    if not (len(val) == 4 and val.isdigit()):
+                        self.err.append(self._error(
+                            'Data Set', page_name,
+                            'Invalid Archival Year (must be a 4-digit year)'
+                        ))
+
+    def run_workflow(self, project, data):
+        '''Run all workflow-catalog checks and return the collected error list.
+
+        Executes, in order: ID/Name/Description, workflow, process step,
+        algorithm, software, hardware, dataset, and publication checks.
+
+        Args:
+            project: RDMO project instance.
+            data:    Top-level answers dict.
+
+        Returns:
+            List of human-readable error strings, or an empty list when all
+            checks pass.
+        '''
+        self.id_name_description(project, data, CATALOG_WORKFLOW)
+        self.workflow(project, data)
+        self.step(project, data)
+        self.workflow_algorithm(project, data)
+        self.workflow_software(project, data)
+        self.hardware(project, data)
+        self.dataset(project, data)
+        self.publication(project, data, CATALOG_WORKFLOW)
         return self._finalise()
 
     def _finalise(self):
