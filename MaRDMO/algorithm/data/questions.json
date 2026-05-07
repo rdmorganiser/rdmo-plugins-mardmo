@@ -138,7 +138,6 @@
         "Programming Language": {
             "key1": "software",
             "key2": "programminglanguage",
-            "key3": "ID",
             "uri": "domain/software/programming-language-relatant",
             "set_prefix": true,
             "collection_index": true,
