@@ -64,6 +64,27 @@ class Checks:
                 )
             )
 
+    def _check_optional_static(self, data, page_name, relation, from_class, to_class):
+        '''Append an error if an optional single-value relation is selected but ``"not found"``.
+
+        Unlike :meth:`_check_static`, a missing relation is not an error.
+
+        Args:
+            data:       Entity answer dict.
+            page_name:  Human-readable page label used in the error message.
+            relation:   Key in *data* for the relation.
+            from_class: Display name of the source entity.
+            to_class:   Display name of the expected target entity.
+        '''
+        if data.get(relation) and 'not found' in data[relation].values():
+            self.err.append(
+                self._error(
+                    section = from_class,
+                    page    = page_name,
+                    message = f'Selected {to_class} not found in {to_class} Section'
+                )
+            )
+
     def _check_flexible(self, data, page_name, relation, from_class, to_class=None, optional=True):
         '''Append errors for a typed multi-value relation block.
 
@@ -807,6 +828,13 @@ class Checks:
                 relation   = 'RelationB',
                 from_class = 'Software',
                 to_class   = 'Benchmark'
+            )
+            self._check_optional_static(
+                data       = ivalue,
+                page_name  = page_name,
+                relation   = 'RelationS',
+                from_class = 'Software',
+                to_class   = 'Software'
             )
             if ivalue.get('reference'):
                 ref = ivalue['reference']
