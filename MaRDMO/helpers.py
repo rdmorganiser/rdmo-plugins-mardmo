@@ -820,6 +820,33 @@ def replace_in_dict(d, target, replacement):
         return d.replace(target, replacement)
     return d
 
+def collect_items_without_section(data, parent_key, child_key):
+    '''Collect and deduplicate child items that have no dedicated questionnaire section.
+
+    Gathers all entries stored under *child_key* on every parent entity in
+    *parent_key* and returns them as a flat, deduplicated dict keyed by
+    consecutive integers.  Useful for exporting items like programming languages
+    that are entered inline on a parent page rather than in their own section.
+
+    Args:
+        data:       Top-level answers dict.
+        parent_key: Key of the parent entity group (e.g. ``"software"``).
+        child_key:  Key of the inline child collection (e.g. ``"programminglanguage"``).
+
+    Returns:
+        Dict mapping ``0, 1, 2, …`` to the deduplicated child item dicts.
+    '''
+    seen = set()
+    result = {}
+    for entity in data.get(parent_key, {}).values():
+        for item in entity.get(child_key, {}).values():
+            key = (item.get('ID', ''), item.get('Name', ''), item.get('Description', ''))
+            if key not in seen:
+                seen.add(key)
+                result[len(result)] = item
+    return result
+
+
 def unique_items(data, title = None):
     '''Collect all unique items referenced anywhere in *data*.
 

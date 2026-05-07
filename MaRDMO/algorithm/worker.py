@@ -16,7 +16,7 @@ import time
 from .constants import get_relations, preview_relations
 
 from ..getters import get_items, get_mathalgodb, get_properties, get_url
-from ..helpers import entity_relations, unique_items
+from ..helpers import collect_items_without_section, entity_relations, unique_items
 from ..payload import GeneratePayload
 from ..queries import query_sparql
 
@@ -68,6 +68,11 @@ class PrepareAlgorithm(PublicationExport):
                 assumption = False,
                 mapping = self.mathalgodb
             )
+
+        # Collect inline items that have no dedicated questionnaire section
+        answers['programminglanguage'] = collect_items_without_section(
+            answers, 'software', 'programminglanguage'
+        )
 
         return answers
 
