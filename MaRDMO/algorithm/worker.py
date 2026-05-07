@@ -117,13 +117,23 @@ class PrepareAlgorithm(PublicationExport):
             payload = payload,
             problems = data.get("problem", {})
         )
+        algo_software_keys = {
+            (item.get('ID', ''), item.get('Name', ''), item.get('Description', ''))
+            for algo in data.get('algorithm', {}).values()
+            for item in algo.get('SRelatant', {}).values()
+        }
         self._export_softwares(
             payload = payload,
-            softwares = data.get("software", {})
+            softwares = data.get("software", {}),
+            algo_software_keys = algo_software_keys,
         )
         self._export_benchmarks(
             payload = payload,
             benchmarks = data.get("benchmark", {})
+        )
+        self._export_programming_languages(
+            payload = payload,
+            programminglanguages = data.get("programminglanguage", {})
         )
         self._export_authors(
             payload = payload,
@@ -268,7 +278,7 @@ class PrepareAlgorithm(PublicationExport):
                 }
             )
 
-    def _export_softwares(self, payload, softwares: dict):
+    def _export_softwares(self, payload, softwares: dict, algo_software_keys: set):
         for entry in softwares.values():
             if not entry.get("ID"):
                 continue
@@ -277,11 +287,18 @@ class PrepareAlgorithm(PublicationExport):
                 value = entry
             )
 
-            self._add_common_metadata(
-                payload = payload,
-                qclass = self.items["software"],
-                profile_type = "MaRDI software profile",
-            )
+            entry_key = (entry.get('ID', ''), entry.get('Name', ''), entry.get('Description', ''))
+            if entry_key in algo_software_keys:
+                self._add_common_metadata(
+                    payload = payload,
+                    qclass = self.items["software"],
+                    profile_type = "MaRDI software profile",
+                )
+            else:
+                payload.add_answer(
+                    verb = self.properties["instance of"],
+                    object_and_type = [self.items["software"], "wikibase-item"],
+                )
 
             payload.add_single_relation(
                 statement = {
@@ -289,6 +306,20 @@ class PrepareAlgorithm(PublicationExport):
                     'relatant': "BRelatant"
                 },
                 reverse = True
+            )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["programmed in"],
+                    'relatant': "programminglanguage"
+                }
+            )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["depends on software"],
+                    'relatant': "dependency"
+                }
             )
 
             if entry.get("reference"):
@@ -312,7 +343,7 @@ class PrepareAlgorithm(PublicationExport):
                         verb = self.properties["source code repository URL"],
                         object_and_type = [entry["reference"][3][1], "URL"],
                     )
-                
+
     def _export_benchmarks(self, payload, benchmarks: dict):
         for entry in benchmarks.values():
             if not entry.get("ID"):
@@ -349,3 +380,17 @@ class PrepareAlgorithm(PublicationExport):
                         verb = self.properties["source code repository URL"],
                         object_and_type = [entry["reference"][3][1], "URL"],
                     )
+
+    def _export_programming_languages(self, payload, programminglanguages: dict):
+        for entry in programminglanguages.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["programming language"], "wikibase-item"],
+            )
