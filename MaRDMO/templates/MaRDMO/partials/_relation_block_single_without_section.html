@@ -1,12 +1,29 @@
 <h3 id="{{ anchor }}">Relations to {{ title }}</h3>
 {% for relatant in relatants.values %}
     {% if relatant.ID == 'not found' %}
-        {{ relation }}: {{ relatant.Name }} ({{ relatant.Description }}) <br>
+        {% if relatant.Name %}
+            {{ relation }}: {{ relatant.Name }}
+        {% else %}
+            {{ relation }}: <strong style="color:red;">MISSING {{ class }} NAME</strong>
+        {% endif %}
+        {% if relatant.Description %}
+            {% if relatant.Description|length > 250 %}
+                — <strong style="color:red;">SHORT DESCRIPTION TOO LONG</strong>
+            {% elif relatant.Description == relatant.Name %}
+                — <strong style="color:red;">NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>
+            {% else %}
+                ({{ relatant.Description }})
+            {% endif %}
+        {% else %}
+            — <strong style="color:red;">MISSING {{ class }} SHORT DESCRIPTION</strong>
+        {% endif %} <br>
     {% else %}
         {{ relation }}: {{ relatant.ID }} <br>
     {% endif %}
 {% empty %}
-    {% if class %}
+    {% if empty_msg == "True" %}
         <strong style="color:red;">MISSING {{ class }}</strong>
+    {% else %}
+        <strong style="color:black;">NOT DOCUMENTED</strong>
     {% endif %}
 {% endfor %}
