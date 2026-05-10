@@ -66,6 +66,7 @@ flag_dict = {
     (False, True, True, False, False): rules.rule_4,
     (True, False, True, False, False): rules.rule_5,
     (True, True, True, False, False): rules.rule_6,
+    (True, True, True, False, True): rules.rule_6,
     (True, False, False, False, True): rules.rule_7,
     (False, True, False, False, True): rules.rule_8,
     (False, False, False, True, False): rules.rule_9,
@@ -76,5 +77,5 @@ flag_dict = {
     (True, True, False, True, False): rules.rule_14,
     (True, False, True, True, False): rules.rule_15,
     (True, True, True, True, False): rules.rule_16,
-    (True, True, False, False, True): rules.rule_17
+    (True, True, False, False, True): rules.rule_17,
 }
