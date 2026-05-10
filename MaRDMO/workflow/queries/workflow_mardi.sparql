@@ -15,6 +15,8 @@ SELECT
     " || ", COALESCE(?task, ""), " || ", COALESCE(?taskl, ""), " || ", COALESCE(?taskd, "")
 ); separator=" <|> ") AS ?uses_model)
 (GROUP_CONCAT(DISTINCT CONCAT(?ps, " || ", ?psl, " || ", ?psd); separator=" <|> ") AS ?contains_process_step)
+(GROUP_CONCAT(DISTINCT CONCAT(?conw, " || ", ?conwl, " || ", ?conwd); separator=" <|> ") AS ?contains_workflow)
+(GROUP_CONCAT(DISTINCT CONCAT(?coniw, " || ", ?coniwl, " || ", ?coniwd); separator=" <|> ") AS ?contained_in_workflow)
 
 WHERE {{
 
@@ -142,6 +144,38 @@ WHERE {{
             FILTER (lang(?psdraw) = 'en')
         }}
         BIND(COALESCE(?psdraw, "No Description Provided!") AS ?psd)
+    }}
+
+    OPTIONAL {{
+        ?id wdt:{contains} ?conwraw.
+        ?conwraw wdt:{instance of} wd:{research workflow}.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?conwraw), STR(wd:))) AS ?conw)
+        OPTIONAL {{
+            ?conwraw rdfs:label ?conwlraw
+            FILTER (lang(?conwlraw) = 'en')
+        }}
+        BIND(COALESCE(?conwlraw, "No Label Provided!") AS ?conwl)
+        OPTIONAL {{
+            ?conwraw schema:description ?conwdraw
+            FILTER (lang(?conwdraw) = 'en')
+        }}
+        BIND(COALESCE(?conwdraw, "No Description Provided!") AS ?conwd)
+    }}
+
+    OPTIONAL {{
+        ?coniwraw wdt:{contains} ?id.
+        ?coniwraw wdt:{instance of} wd:{research workflow}.
+        BIND(CONCAT("mardi:", STRAFTER(STR(?coniwraw), STR(wd:))) AS ?coniw)
+        OPTIONAL {{
+            ?coniwraw rdfs:label ?coniwlraw
+            FILTER (lang(?coniwlraw) = 'en')
+        }}
+        BIND(COALESCE(?coniwlraw, "No Label Provided!") AS ?coniwl)
+        OPTIONAL {{
+            ?coniwraw schema:description ?coniwdraw
+            FILTER (lang(?coniwdraw) = 'en')
+        }}
+        BIND(COALESCE(?coniwdraw, "No Description Provided!") AS ?coniwd)
     }}
 
 }}

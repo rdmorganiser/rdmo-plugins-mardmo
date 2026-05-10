@@ -208,6 +208,8 @@ class Workflow:
     transferable_comment: list[str] = field(default_factory=list)
     uses_model: list[str] = field(default_factory=list)
     contains_process_step: list[Relatant] = field(default_factory=list)
+    contains_workflow: list[Relatant] = field(default_factory=list)
+    contained_in_workflow: list[Relatant] = field(default_factory=list)
 
     @classmethod
     def from_query_batch(cls, raw_data: list) -> 'dict[str, Workflow]':
@@ -246,6 +248,12 @@ class Workflow:
             uses_model=_split('uses_model'),
             contains_process_step=split_value(
                 data=data, key='contains_process_step', transform=Relatant.from_query
+            ),
+            contains_workflow=split_value(
+                data=data, key='contains_workflow', transform=Relatant.from_query
+            ),
+            contained_in_workflow=split_value(
+                data=data, key='contained_in_workflow', transform=Relatant.from_query
             ),
         )
 

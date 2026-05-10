@@ -93,9 +93,10 @@ def get_uri_prefix_map():
 PROPS = {
     'PS2IDS': ['input_data_set'],
     'PS2ODS': ['output_data_set'],
-    'PS2A': ['uses_algorithm'],
-    'PS2M': ['uses_method'],
-    'PS2F': ['field_of_work'],
+    'PS2A':   ['uses_algorithm'],
+    'PS2M':   ['uses_method'],
+    'PS2F':   ['field_of_work'],
+    'IW2IW':  ['contains_workflow', 'contained_in_workflow'],
 }
 
 # Order of toPublish Answers
@@ -126,6 +127,19 @@ REPRODUCIBILITY = {
 
 # Parameter for Entity relations
 preview_relations = [
+    {
+        "from_idx": "workflow",
+        "to_idx":   "workflow",
+        "relation":  "IntraClassRelation",
+        "old_name":  "IntraClassElement",
+        "new_name":  "RelationWF",
+        "encryption": "IW",
+        "formulation": False,
+        "task":        False,
+        "assumption":  False,
+        "grouped":     False,
+        "mapping":     "mathmoddb",
+    },
     {
         "from_idx": "workflow",
         "to_idx": "processstep",

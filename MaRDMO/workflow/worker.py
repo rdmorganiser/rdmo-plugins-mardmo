@@ -84,7 +84,10 @@ class PrepareWorkflow:
                     'task': False
                 },
                 assumption = False,
-                mapping = self.mathalgodb
+                mapping = (
+                    self.mathmoddb if relation.get('mapping') == 'mathmoddb'
+                    else self.mathalgodb
+                )
             )
 
         for wf_data in answers.get('workflow', {}).values():
@@ -123,7 +126,7 @@ class PrepareWorkflow:
                         v[1][1] for v in sorted(algo_params.get(idx, {}).items())
                         if v[1][1]
                     ),
-                    'software_doc':  software_doc.get(idx),
+                    'software_doc':  software_doc.get(idx, {}),
                     'hardware':      hardware.get(idx),
                 }
                 for idx in all_indices
@@ -149,7 +152,7 @@ class PrepareWorkflow:
                         v[1][1] for v in sorted(meth_params.get(idx, {}).items())
                         if v[1][1]
                     ),
-                    'method_doc':    method_doc.get(idx),
+                    'method_doc':    method_doc.get(idx, {}),
                 }
                 for idx in all_indices
             ]
@@ -176,6 +179,10 @@ class PrepareWorkflow:
 
         answers['cpu'] = collect_items_without_section(answers, 'hardware', 'cpu')
         answers['programminglanguage'] = collect_items_without_section(answers, 'software', 'programminglanguage')
+        answers['algorithmictask'] = collect_items_without_section(answers, 'algorithm', 'PRelatant')
+        answers['academicdiscipline'] = collect_items_without_section(answers, 'processstep', 'RFRelatant')
+        answers['method'] = collect_items_without_section(answers, 'processstep', 'MRelatant')
+        answers['instrument'] = collect_items_without_section(answers, 'processstep', 'IRelatant')
 
         options = get_options()
         for ds_data in answers.get('dataset', {}).values():

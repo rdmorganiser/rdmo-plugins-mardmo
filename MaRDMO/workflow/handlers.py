@@ -9,9 +9,9 @@ from functools import partial
 
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
-from ..getters import get_items, get_mathalgodb, get_options, get_properties, get_questions, get_sparql_query, get_url
+from ..getters import get_items, get_mathalgodb, get_mathmoddb, get_options, get_properties, get_questions, get_sparql_query, get_url
 from ..helpers import value_editor
-from ..adders import add_basics, add_relations_static
+from ..adders import add_basics, add_relations_flexible, add_relations_static
 from ..queries import query_sparql
 
 from .constants import PROPS
@@ -31,6 +31,7 @@ class Information(BaseInformation):
         self.base       = BASE_URI
         self.options    = get_options()
         self.mathalgodb = get_mathalgodb()
+        self.mathmoddb  = get_mathmoddb()
 
     # ------------------------------------------------------------------ #
     #  Public entry points (called by router via post_save signal)         #
@@ -208,7 +209,6 @@ class Information(BaseInformation):
             'workflow/queries/workflow_wikidata.sparql',
             Workflow,
         )
-
         section_indices = {}
         for text, external_id, set_index in items:
             data = data_by_id.get(external_id)
@@ -297,6 +297,15 @@ class Information(BaseInformation):
                         info={'text': comment,
                               'set_prefix': set_index,
                               'set_index': 0, 'collection_index': i})
+
+            add_relations_flexible(
+                project=project, data=data,
+                props={'keys': PROPS['IW2IW'], 'mapping': self.mathmoddb},
+                index={'set_prefix': set_index},
+                statement={
+                    'relation': f'{self.base}{workflow_q["IntraClassRelation"]["uri"]}',
+                    'relatant': f'{self.base}{workflow_q["IntraClassElement"]["uri"]}',
+                })
 
             self._hydrate_relatants(
                 project=project, data=data, prop_keys=['contains_process_step'],

@@ -401,6 +401,41 @@ class Workflow(Provider):
             item_class = _ITEMS['research workflow'],
         )
 
+class RelatedWorkflowWithoutCreation(Provider):
+    '''Workflow Provider (MaRDI Portal),
+       No User Creation, No Refresh Upon Selection
+    '''
+
+    search = True
+
+    def get_options(self, project, search=None, user=None, site=None):
+        '''Query external knowledge-graph source(s) and return matching options.
+
+        Args:
+            project: RDMO project instance (used for user-entry lookups when applicable).
+            search:  Search string entered by the user; returns empty list when
+                     fewer than 3 characters.
+            user:    Requesting user (unused).
+            site:    Current site (unused).
+
+        Returns:
+            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
+        '''
+        if not search or len(search) < 3:
+            return []
+
+        setup = define_setup(
+            query_attributes = ['workflow'],
+            sources = ['mardi'],
+            item_class = _ITEMS['research workflow']
+        )
+
+        return query_sources_with_user_additions(
+            search = search,
+            project = project,
+            setup = setup
+        )
+
 class Instrument(Provider):
     '''Instrument Provider (MaRDI Portal / Wikidata),
        No User Creation, Refresh Upon Selection

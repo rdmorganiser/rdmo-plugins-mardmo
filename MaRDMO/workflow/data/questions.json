@@ -105,6 +105,22 @@
             "set_prefix": true,
             "set_index": true,
             "collection_index": true
+        },
+        "IntraClassRelation": {
+            "key1": "workflow",
+            "key2": "IntraClassRelation",
+            "uri": "domain/workflow/workflow-relation",
+            "set_prefix": true,
+            "set_index": true
+        },
+        "IntraClassElement": {
+            "key1": "workflow",
+            "key2": "IntraClassElement",
+            "uri": "domain/workflow/workflow-relatant",
+            "set_prefix": true,
+            "set_index": true,
+            "collection_index": true,
+            "external_id": true
         }
     },
     "Software": {
@@ -331,6 +347,7 @@
             "uri": "domain/processstep/software-documentation",
             "set_prefix": true,
             "set_index": true,
+            "collection_index": true,
             "option_text": true
         },
         "Hardware": {
@@ -363,6 +380,7 @@
             "uri": "domain/processstep/method-documentation",
             "set_prefix": true,
             "set_index": true,
+            "collection_index": true,
             "option_text": true
         },
         "Instrument": {
