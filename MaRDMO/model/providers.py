@@ -7,24 +7,35 @@ entries or restrict suggestions to already-documented entities.
 
 Provides:
 
-- :class:`ResearchField` — searches external sources; refresh on select, no creation 
-- :class:`RelatedResearchFieldWithCreation` — searches external sources; no refresh on select, creation
-- :class:`RelatedResearchFieldWithoutCreation` — searches external sources; no refresh on select, no creation
+- :class:`ResearchField` — searches external sources; refresh on select, no creation
+- :class:`RelatedResearchFieldWithCreation` — searches external sources;
+  no refresh on select, creation
+- :class:`RelatedResearchFieldWithoutCreation` — searches external sources;
+  no refresh on select, no creation
 - :class:`ResearchProblem` — searches external sources; refresh on select, no creation
-- :class:`RelatedResearchProblemWithCreation` — searches external sources; no refresh on select, creation
-- :class:`RelatedResearchProblemWithoutCreation` — searches external sources; no refresh on select, no creation
+- :class:`RelatedResearchProblemWithCreation` — searches external sources;
+  no refresh on select, creation
+- :class:`RelatedResearchProblemWithoutCreation` — searches external sources;
+  no refresh on select, no creation
 - :class:`MathematicalModel` — searches external sources; refresh on select, no creation
-- :class:`RelatedMathematicalModelWithoutCreation` — searches external sources; no refresh on select, no creation
+- :class:`RelatedMathematicalModelWithoutCreation` — searches external sources;
+  no refresh on select, no creation
 - :class:`QuantityOrQuantityKind` — searches external sources; refresh on select, no creation
-- :class:`RelatedQuantityWithoutCreation` — searches external sources; no refresh on select, no creation
-- :class:`RelatedQuantityKindWithoutCreation` — searches external sources; no refresh on select, no creation
-- :class:`RelatedQuantityOrQuantityKindWithCreation` — searches external sources; no refresh on select, creation
+- :class:`RelatedQuantityWithoutCreation` — searches external sources;
+  no refresh on select, no creation
+- :class:`RelatedQuantityKindWithoutCreation` — searches external sources;
+  no refresh on select, no creation
+- :class:`RelatedQuantityOrQuantityKindWithCreation` — searches external sources;
+  no refresh on select, creation
 - :class:`MathematicalFormulation` — searches external sources; refresh on select, no creation
-- :class:`RelatedMathematicalFormulationWithCreation` — searches external sources; refresh on select, creation
-- :class:`RelatedMathematicalFormulationWithoutCreation` — searches external sources; not refresh on select, no creation
+- :class:`RelatedMathematicalFormulationWithCreation` — searches external sources;
+  refresh on select, creation
+- :class:`RelatedMathematicalFormulationWithoutCreation` — searches external sources;
+  no refresh on select, no creation
 - :class:`Task` — searches external sources; refresh on select, no creation
 - :class:`RelatedTaskWithCreation` — searches external sources; no refresh on select, creation
-- :class:`RelatedTaskWithoutCreation` — searches external sources; no refresh on select, no creation
+- :class:`RelatedTaskWithoutCreation` — searches external sources;
+  no refresh on select, no creation
 - :class:`RelatedModelEntityWithoutCreation` — generic cross-entity lookup without creation
 '''
 # pylint: disable=too-few-public-methods  # Provider subclasses only need get_options

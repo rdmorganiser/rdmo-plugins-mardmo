@@ -143,6 +143,11 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
 
     _ENTITY_KEYS: tuple = ()
 
+    # Subclass-provided attributes; None signals "not implemented by this handler".
+    mathalgodb = None
+    _fill_problem_batch = None
+    _fill_benchmark_batch = None
+
     def _entry(self, instance, item_type, batch_fill_method):
         '''Common signal entry-point: build visited set, then delegate to :meth:`_fill`.
 
@@ -445,7 +450,7 @@ class BaseInformation:  # pylint: disable=too-few-public-methods
                     section_indices=section_indices,
                 ))
 
-            if hasattr(self, 'mathalgodb') and 'IntraClassRelation' in algorithm:
+            if self.mathalgodb is not None and 'IntraClassRelation' in algorithm:
                 add_relations_flexible(
                     project=project, data=data,
                     props={'keys': ALGORITHM_PROPS['Algorithm'], 'mapping': self.mathalgodb},
