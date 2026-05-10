@@ -4,4 +4,6 @@
         {{ statement.1 }} <br>
     {% endfor %}
     {% if not forloop.last %}<br>{% endif %}
+{% empty %}
+    <strong style="color:black;">NOT DOCUMENTED</strong>
 {% endfor %}

@@ -13,7 +13,8 @@
                         {% endif %}
                     {% else %}
                         {% if item.ID == 'not found' %}
-                            {{ primary_label }}: {{ item.Name }} ({{ item.Description }}){% if not forloop.last %}<br>{% endif %}
+                            {% if item.Name %}{{ primary_label }}: {{ item.Name }}{% else %}{{ primary_label }}: <strong style="color:red;">MISSING {{ primary_class }} NAME</strong>{% endif %}
+                            {% if not item.Description %} — <strong style="color:red;">MISSING {{ primary_class }} SHORT DESCRIPTION</strong>{% elif item.Description|length > 250 %} ({{ item.Description }}) — <strong style="color:red;">SHORT DESCRIPTION TOO LONG</strong>{% elif item.Description == item.Name %} ({{ item.Description }}) — <strong style="color:red;">NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>{% else %} ({{ item.Description }}){% endif %}{% if not forloop.last %}<br>{% endif %}
                         {% else %}
                             {{ primary_label }}: {{ item.ID }}{% if not forloop.last %}<br>{% endif %}
                         {% endif %}
@@ -36,7 +37,8 @@
                             {% endif %}
                         {% else %}
                             {% if pair.qualifier.ID == 'not found' %}
-                                {{ pair.qualifier.Name }} ({{ pair.qualifier.Description }})
+                                {% if pair.qualifier.Name %}{{ pair.qualifier.Name }}{% else %}<strong style="color:red;">MISSING {{ qualifier_class }} NAME</strong>{% endif %}
+                                {% if not pair.qualifier.Description %} — <strong style="color:red;">MISSING {{ qualifier_class }} SHORT DESCRIPTION</strong>{% elif pair.qualifier.Description|length > 250 %} ({{ pair.qualifier.Description }}) — <strong style="color:red;">SHORT DESCRIPTION TOO LONG</strong>{% elif pair.qualifier.Description == pair.qualifier.Name %} ({{ pair.qualifier.Description }}) — <strong style="color:red;">NAME AND SHORT DESCRIPTION MUST BE DIFFERENT</strong>{% else %} ({{ pair.qualifier.Description }}){% endif %}
                             {% else %}
                                 {{ pair.qualifier.ID }}
                             {% endif %}
@@ -47,17 +49,9 @@
                 </li>
                 <li>&#8594; {{ doc_label }}:
                     {% if has_sections %}
-                        {% if pair.software_doc %}
-                            {{ pair.software_doc.1 }}
-                        {% else %}
-                            <strong style="color:red;">MISSING {{ doc_label|upper }}</strong>
-                        {% endif %}
+                        {% include "MaRDMO/partials/_doc_entries.html" with doc_dict=pair.software_doc %}
                     {% else %}
-                        {% if pair.method_doc %}
-                            {{ pair.method_doc.1 }}
-                        {% else %}
-                            <strong style="color:red;">MISSING {{ doc_label|upper }}</strong>
-                        {% endif %}
+                        {% include "MaRDMO/partials/_doc_entries.html" with doc_dict=pair.method_doc %}
                     {% endif %}
                 </li>
                 {% if show_hardware %}
@@ -79,5 +73,10 @@
             <br><br>
         {% endif %}
         {% endfor %}
+    </ul>
+{% elif show_empty_msg %}
+    <h3 id="{{ anchor }}">Relations to {{ title }}</h3>
+    <ul style="list-style-type: none; padding-left: 1em;">
+        <li><strong style="color:red;">{{ show_empty_msg }}</strong></li>
     </ul>
 {% endif %}

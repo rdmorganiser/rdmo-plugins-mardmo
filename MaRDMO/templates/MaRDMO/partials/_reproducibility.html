@@ -4,5 +4,7 @@
 {% elif value.0.0 == option.No %}
     <p>No</p>
 {% elif value.0.0 == option.NotRelevant %}
-    <p>Not relevant</p>                    
+    <p>Not relevant</p>
+{% else %}
+    <p><strong style="color:red;">MISSING {{ title|upper }}</strong></p>
 {% endif %}
