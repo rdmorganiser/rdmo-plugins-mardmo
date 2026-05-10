@@ -414,7 +414,7 @@ class WorkflowMixin:
     # Run method
     # -------------------------------------------------------------------------
 
-    def run_workflow(self, project, data):
+    def run_workflow(self, project, data, catalog=None):
         '''Run all workflow-catalog checks and return the collected error list.
 
         Executes, in order: ID/Name/Description, workflow, process step,

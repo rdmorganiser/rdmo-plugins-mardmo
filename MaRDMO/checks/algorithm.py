@@ -175,7 +175,7 @@ class AlgorithmMixin:
     # Run method
     # -------------------------------------------------------------------------
 
-    def run_algorithm(self, project, data):
+    def run_algorithm(self, project, data, catalog=None):
         '''Run all algorithm-catalog checks and return the collected error list.
 
         Executes, in order: ID/Name/Description, algorithm, algorithmic task,

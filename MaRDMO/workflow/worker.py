@@ -204,20 +204,19 @@ class PrepareWorkflow:
 
         return answers
 
-    def export(self, data, title, url):
+    def export(self, data, url):
         '''Assemble and return the complete Wikibase payload for a Workflow documentation export.
 
         Args:
-            data:  Top-level workflow answers dict produced by ``get_post_data``.
-            title: Workflow title string used to seed item labels.
-            url:   Target Wikibase API URL for the upload.
+            data: Top-level workflow answers dict produced by ``get_post_data``.
+            url:  Target Wikibase API URL for the upload.
 
         Returns:
             Tuple ``(payload_dict, dependency_order)`` ready for
             :meth:`~MaRDMO.oauth2.OauthProviderMixin.post`.
         '''
-        
-        items, dependency = unique_items(data, title)
+
+        items, dependency = unique_items(data)
 
         payload = GeneratePayload(
             dependency = dependency,
@@ -787,7 +786,7 @@ class PrepareWorkflow:
         # Add Interdisciplinary Workflow Information
         workflow = {
             'ID': 'not found',
-            'Name': title,
+            'Name': '',
             'Description': data.get('workflow', {}).get('objective')
         }
 

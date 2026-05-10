@@ -49,10 +49,10 @@ from .search.worker import search
 from .publication.worker import PublicationRetriever
 
 _CATALOG_PREPARE_MAP = {
-    'mardmo-model-catalog':                      ('model',    PrepareModel),
-    'mardmo-model-basics-catalog':               ('model',    PrepareModel),
-    'mardmo-algorithm-catalog':                  ('algorithm', PrepareAlgorithm),
-    'mardmo-interdisciplinary-workflow-catalog': ('workflow',  PrepareWorkflow),
+    'mardmo-model-catalog':                      ('model',     PrepareModel,     'run_model'),
+    'mardmo-model-basics-catalog':               ('model',     PrepareModel,     'run_model'),
+    'mardmo-algorithm-catalog':                  ('algorithm', PrepareAlgorithm, 'run_algorithm'),
+    'mardmo-interdisciplinary-workflow-catalog': ('workflow',  PrepareWorkflow,  'run_workflow'),
 }
 
 class BaseMaRDMOExportProvider(OauthProviderMixin, Export, ABC):
@@ -173,50 +173,43 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
         '''Dispatch the form submission to the catalog-appropriate export handler.
 
         Handles the cancel action (redirects to the project page), then routes
-        to :meth:`submit_mardmo_model`, :meth:`submit_mardmo_algorithm`, or
-        :meth:`submit_mardmo_workflow` based on the active project catalog.
+        to :meth:`_submit_catalog` based on the active project catalog.
 
         Returns:
             HTTP redirect or rendered response from the selected submit method.
         '''
-
-        # Handle cancel for all submissions
         if 'cancel' in self.request.POST:
             return redirect('project', self.project.id)
 
-        catalog = str(self.project.catalog)
+        catalog_slug = str(self.project.catalog).rsplit('/', 1)[-1]
 
-        if catalog.endswith(('mardmo-model-catalog', 'mardmo-model-basics-catalog')):
-            return self.submit_mardmo_model()
-        if catalog.endswith('mardmo-algorithm-catalog'):
-            return self.submit_mardmo_algorithm()
-        if catalog.endswith('mardmo-interdisciplinary-workflow-catalog'):
-            return self.submit_mardmo_workflow()
+        if catalog_slug not in _CATALOG_PREPARE_MAP:
+            return render(
+                self.request,
+                'core/error.html',
+                {
+                    'title': _('Unknown catalog'),
+                    'errors': [_('Cannot handle this catalog type.')]
+                },
+                status=400
+            )
 
-        # Default fallback if catalog type is unknown
-        return render(
-            self.request,
-            'core/error.html',
-            {
-                'title': _('Unknown catalog'),
-                'errors': [_('Cannot handle this catalog type.')]
-            },
-            status=400
-        )
+        return self._submit_catalog(catalog_slug)
 
-    def submit_mardmo_model(self):
-        '''Validate and submit the Mathematical Model documentation to the MaRDI Portal.
+    def _submit_catalog(self, catalog_slug):
+        '''Validate and submit documentation for any supported catalog.
 
-        Checks OAuth2 credentials, runs all model-catalog consistency checks,
-        assembles the Wikibase payload (items + relations), and delegates to
+        Checks OAuth2 credentials, runs the catalog-appropriate consistency
+        checks, assembles the Wikibase payload, and delegates to
         :meth:`~.oauth2.OauthProviderMixin.post` for the authenticated upload.
+
+        Args:
+            catalog_slug: Trailing slug of the active catalog URI.
 
         Returns:
             HTTP response — either an error page (missing credentials or failed
             checks) or a redirect to the OAuth authorization flow.
         '''
-
-        # Check MaRDI Portal Credentials
         if not (self.oauth2_client_id and self.oauth2_client_secret):
             return render(
                 self.request,
@@ -230,13 +223,12 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
 
         answers, __ = self.get_post_data()
 
-        # Validate documentation completeness / consistency
-        checker = Checks()
+        __, prepare_class, check_method = _CATALOG_PREPARE_MAP[catalog_slug]
 
-        err = checker.run_model(
+        err = getattr(Checks(), check_method)(
             project = self.project,
-            data = answers,
-            catalog = str(self.project.catalog)
+            data    = answers,
+            catalog = str(self.project.catalog),
         )
 
         if err:
@@ -244,18 +236,16 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 self.request,
                 'core/error.html',
                 {
-                    'title': _("Incomplete or Inconsistent Documentation"),
+                    'title': _('Incomplete or Inconsistent Documentation'),
                     'errors': err
                 },
                 status=200
             )
 
-        # Prepare payload
         try:
-            prepare = PrepareModel()
-            payload, dependency = prepare.export(
+            payload, dependency = prepare_class().export(
                 answers,
-                get_url('mardi', 'uri')
+                get_url('mardi', 'uri'),
             )
         except (ValueError, KeyError) as err:
             return render(
@@ -268,7 +258,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 status=200
             )
 
-        # Check if Dependency Graph of Documentation is cyclic
         if is_cyclic(dependency):
             return render(
                 self.request,
@@ -280,169 +269,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 status=200
             )
 
-        # Order the creation of Items following their dependencies
-        dependency_ordered = topological_order(dependency)
-
-        return self.post(self.request, payload, dependency_ordered)
-
-
-    def submit_mardmo_algorithm(self):
-        '''Validate and submit the Algorithm documentation to the MaRDI Portal.
-
-        Checks OAuth2 credentials, runs all algorithm-catalog consistency checks,
-        assembles the Wikibase payload (items + relations), and delegates to
-        :meth:`~.oauth2.OauthProviderMixin.post` for the authenticated upload.
-
-        Returns:
-            HTTP response — either an error page (missing credentials or failed
-            checks) or a redirect to the OAuth authorization flow.
-        '''
-
-        # Check MaRDI Portal Credentials
-        if not (self.oauth2_client_id and self.oauth2_client_secret):
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Missing Credentials'),
-                    'errors': [_('Credentials for MaRDI Portal are missing!')]
-                },
-                status=200
-            )
-
-        answers, __ = self.get_post_data()
-
-        # Validate documentation completeness / consistency
-        checker = Checks()
-
-        err = checker.run_algorithm(
-            project = self.project,
-            data = answers
-        )
-
-        if err:
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _("Incomplete or Inconsistent Documentation"),
-                    'errors': err
-                },
-                status=200
-            )
-
-        # Prepare payload
-        try:
-            prepare = PrepareAlgorithm()
-            payload, dependency = prepare.export(
-                answers,
-                get_url('mardi', 'uri')
-            )
-        except (ValueError, KeyError) as err:
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Value Error'),
-                    'errors': [err]
-                },
-                status=200
-            )
-
-        # Check if Dependency Graph of Documentation is cyclic
-        if is_cyclic(dependency):
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Inconsistent Documentation'),
-                    'errors': ['Cyclic Dependency Graph']
-                },
-                status=200
-            )
-
-        # Order the creation of Items following their dependencies
-        dependency_ordered = topological_order(dependency)
-
-        return self.post(self.request, payload, dependency_ordered)
-
-    def submit_mardmo_workflow(self):
-        '''Prepare and render the Interdisciplinary Workflow documentation preview.
-
-        Checks OAuth2 credentials, assembles the workflow answers into the
-        preview/export template context, and renders the result page.
-
-        Returns:
-            HTTP response — either an error page (missing credentials) or a
-            rendered workflow documentation page.
-        '''
-
-        # Check MaRDI Portal Credentials
-        if not (self.oauth2_client_id and self.oauth2_client_secret):
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Missing Credentials'),
-                    'errors': [_('Credentials for MaRDI Portal are missing!')]
-                },
-                status=200
-            )
-
-        answers, __ = self.get_post_data()
-
-        # Validate documentation completeness / consistency
-        checker = Checks()
-
-        err = checker.run_workflow(
-            project = self.project,
-            data = answers
-        )
-
-        if err:
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _("Incomplete or Inconsistent Documentation"),
-                    'errors': err
-                },
-                status=200
-            )
-
-        try:
-            prepare = PrepareWorkflow()
-            payload, dependency = prepare.export(
-                answers,
-                self.project.title,
-                get_url('mardi', 'uri')
-            )
-        except (ValueError, KeyError) as err:
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Value Error'),
-                    'errors': [err]
-                },
-                status=200
-            )
-
-        # Check if Dependency Graph of Documentation is cyclic
-        if is_cyclic(dependency):
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Inconsistent Documentation'),
-                    'errors': ['Cyclic Dependency Graph']
-                },
-                status=200
-            )
-
-        # Order the creation of Items following their dependencies
-        dependency_ordered = topological_order(dependency)
-        return self.post(self.request, payload, dependency_ordered)
+        return self.post(self.request, payload, topological_order(dependency))
 
     def post_success(self, request, init, final):
         '''Render the success page listing all newly created MaRDI Portal items.
