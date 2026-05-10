@@ -1,0 +1,12 @@
+{% if doc_dict %}
+    <ul style="list-style-type: none; padding-left: 2em;">
+    {% for entry in doc_dict.values %}
+        <li>
+        {% if entry.0 == option.DOI %}DOI{% elif entry.0 == option.URL %}URL{% else %}Reference{% endif %}:
+        {% if entry.1 %}{{ entry.1 }}{% else %}<strong style="color:red;">{% if entry.0 == option.DOI %}MISSING DOI{% elif entry.0 == option.URL %}MISSING URL{% else %}MISSING VALUE{% endif %}</strong>{% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <strong style="color:red;">MISSING {{ doc_label|upper }}</strong>
+{% endif %}
