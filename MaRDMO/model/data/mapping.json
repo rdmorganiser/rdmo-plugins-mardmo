@@ -26,6 +26,8 @@
     {"key": "contained_in_field", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmodb/contained-in", "label": "contained in"},
     {"key": "contains_task", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contains", "label": "contains"},
     {"key": "contained_in_task", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contained-in", "label": "contained in"},
+    {"key": "contains_workflow", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contains", "label": "contains"},
+    {"key": "contained_in_workflow", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contained-in", "label": "contained in"},
     {"key": "assumes", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/assumes", "label": "assumes"},
     {"key": "contains_analytical_solution", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contains-analytical-solution", "label": "contains Analytical Solution"},
     {"key": "contains_physical_law", "url": "https://rdmo.mardi4nfdi.de/terms/options/mathmoddb/contains-physical-law", "label": "contains Physical Law"},
