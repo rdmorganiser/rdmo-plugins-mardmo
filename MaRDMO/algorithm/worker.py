@@ -15,7 +15,7 @@ import time
 
 from .constants import get_relations, preview_relations
 
-from ..getters import get_items, get_mathalgodb, get_properties, get_url
+from ..getters import get_items, get_mathalgodb, get_properties, get_publication_mapping, get_url
 from ..helpers import collect_items_without_section, entity_relations, unique_items
 from ..payload import GeneratePayload
 from ..queries import query_sparql
@@ -32,7 +32,8 @@ class PrepareAlgorithm(PublicationExport):
     def __init__(self):
         '''Initialise with Wikibase vocabulary and the MathAlgoDB ontology registry.'''
         super().__init__()
-        self.mathalgodb = get_mathalgodb()
+        self.mathalgodb          = get_mathalgodb()
+        self.publication_mapping = get_publication_mapping()
 
     def preview(self, answers):
         '''Resolve entity cross-references for the Algorithm documentation preview page.
@@ -66,7 +67,10 @@ class PrepareAlgorithm(PublicationExport):
                     'task': False
                 },
                 assumption = False,
-                mapping = self.mathalgodb
+                mapping = (
+                    self.publication_mapping if relation.get('mapping') == 'publication'
+                    else self.mathalgodb
+                )
             )
 
         # Collect inline items that have no dedicated questionnaire section

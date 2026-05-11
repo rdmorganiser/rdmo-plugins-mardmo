@@ -23,7 +23,7 @@ from .constants import (
 )
 from .utils import get_data_properties, map_entity_quantity
 
-from ..getters import get_items, get_mathmoddb, get_properties, get_url
+from ..getters import get_items, get_mathmoddb, get_properties, get_publication_mapping, get_url
 from ..helpers import entity_relations, map_entity, unique_items
 from ..payload import GeneratePayload
 from ..queries import query_sparql
@@ -41,7 +41,8 @@ class PrepareModel(PublicationExport):
     def __init__(self):
         '''Initialise with Wikibase vocabulary and the MathModDB ontology registry.'''
         super().__init__()
-        self.mathmoddb = get_mathmoddb()
+        self.mathmoddb          = get_mathmoddb()
+        self.publication_mapping = get_publication_mapping()
 
     def preview(self, answers):
         '''Resolve entity cross-references and property checks for the preview page.
@@ -91,7 +92,10 @@ class PrepareModel(PublicationExport):
                     'task': relation['task']
                 },
                 assumption = relation['assumption'],
-                mapping = self.mathmoddb
+                mapping = (
+                    self.publication_mapping if relation.get('mapping') == 'publication'
+                    else self.mathmoddb
+                )
             )
 
         # Quantity Type as Label

@@ -25,6 +25,7 @@ class MaRDMOConfig(AppConfig):
         self.questions = None
         self.mathmoddb = None
         self.mathalgodb = None
+        self.publication_mapping = None
         self.options = None
         self.items = None
         self.properties = None
@@ -47,8 +48,9 @@ class MaRDMOConfig(AppConfig):
             'workflow': get_data('workflow/data/questions.json'),
             'search': get_data('search/data/questions.json'),
         }
-        self.mathmoddb = get_data('model/data/mapping.json')
-        self.mathalgodb = get_data('algorithm/data/mapping.json')
+        self.mathmoddb          = get_data('model/data/mapping.json')
+        self.mathalgodb         = get_data('algorithm/data/mapping.json')
+        self.publication_mapping = get_data('publication/data/mapping.json')
         self.options = get_data('data/options.json')
         self.items = get_data(settings.MARDMO_PROVIDER['mardi']['items'])
         self.properties = get_data(settings.MARDMO_PROVIDER['mardi']['properties'])

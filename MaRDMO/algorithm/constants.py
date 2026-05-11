@@ -13,7 +13,7 @@ Provides:
 '''
 
 from ..constants import ALGORITHM_PROPS, BASE_URI, SECTION_MAP_BASE
-from ..getters import get_items, get_mathalgodb, get_properties, get_questions
+from ..getters import get_items, get_mathalgodb, get_properties, get_publication_mapping, get_questions
 
 #Dictionary for internal / external section names
 SECTION_MAP = {**SECTION_MAP_BASE, 'problem': 'Algorithmic Task'}
@@ -51,9 +51,10 @@ def get_relations():
         Dict mapping MathAlgoDB relation URL strings to ``[property(, qualifier)]``
         lists; qualifier is either a Wikibase item ID or ``'forward'``/``'backward'``.
     '''
-    mathalgodb = get_mathalgodb()
-    items = get_items()
-    properties = get_properties()
+    mathalgodb          = get_mathalgodb()
+    publication_mapping = get_publication_mapping()
+    items               = get_items()
+    properties          = get_properties()
     relations = {
         # Map MathModDB Relation on Wikibase Property + Qualifier Item
         mathalgodb.get(key='manifests')['url']: [
@@ -68,31 +69,31 @@ def get_relations():
         mathalgodb.get(key='implemented_by')['url']: [
             properties['implemented by']
         ],
-        mathalgodb.get(key='documents')['url']: [
+        publication_mapping.get(key='documents')['url']: [
             properties['described by source'],
             items['documentation']
         ],
-        mathalgodb.get(key='invents')['url']: [
+        publication_mapping.get(key='invents')['url']: [
             properties['described by source'],
             items['invention']
         ],
-        mathalgodb.get(key='studies')['url']: [
+        publication_mapping.get(key='studies')['url']: [
             properties['described by source'],
             items['study']
         ],
-        mathalgodb.get(key='surveys')['url']: [
+        publication_mapping.get(key='surveys')['url']: [
             properties['described by source'],
             items['review']
         ],
-        mathalgodb.get(key='uses')['url']: [
+        publication_mapping.get(key='uses')['url']: [
             properties['described by source'],
             items['use']
         ],
-        mathalgodb.get(key='applies')['url']: [
+        publication_mapping.get(key='applies')['url']: [
             properties['described by source'],
             items['application']
         ],
-        mathalgodb.get(key='analyzes')['url']: [
+        publication_mapping.get(key='analyzes')['url']: [
             properties['described by source'],
             items['analysis']
         ],
@@ -233,7 +234,8 @@ preview_relations = [
         "relation": "P2A",
         "old_name": "ARelatant",
         "new_name": "RelationA",
-        "encryption": "A"
+        "encryption": "A",
+        "mapping": "publication",
     },
     {
         "from_idx": "publication",
@@ -243,6 +245,7 @@ preview_relations = [
         "relation": "P2BS",
         "old_name": "BSRelatant",
         "new_name": "RelationBS",
-        "encryption": ["B", "S"]
+        "encryption": ["B", "S"],
+        "mapping": "publication",
     }
 ]

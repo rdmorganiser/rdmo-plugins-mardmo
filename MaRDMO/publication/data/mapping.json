@@ -1,0 +1,9 @@
+[
+{"key": "analyzes", "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/analyzes", "label": "analyzes"},
+{"key": "applies",  "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/applies",  "label": "applies"},
+{"key": "documents","url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/documents","label": "documents"},
+{"key": "invents",  "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/invents",  "label": "invents"},
+{"key": "studies",  "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/studies",  "label": "studies"},
+{"key": "surveys",  "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/surveys",  "label": "surveys"},
+{"key": "uses",     "url": "https://rdmo.mardi4nfdi.de/terms/options/mardmo/uses",     "label": "uses"}
+]

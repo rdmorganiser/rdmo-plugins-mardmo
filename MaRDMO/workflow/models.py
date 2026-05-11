@@ -82,6 +82,7 @@ class ProcessStep:
     uses_algorithm: list[ProcessStepUsage] = field(default_factory=list)
     uses_method: list[ProcessStepUsage] = field(default_factory=list)
     field_of_work: list[Relatant] = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
 
     @classmethod
     def from_query(cls, raw_data: list) -> 'ProcessStep':
@@ -115,6 +116,9 @@ class ProcessStep:
             ),
             field_of_work=split_value(
                 data=data, key='field_of_work', transform=Relatant.from_query
+            ),
+            publications=split_value(
+                data=data, key='publication', transform=Relatant.from_query
             ),
         )
 
@@ -164,6 +168,7 @@ class Hardware:
 
     nodes: Optional[str] = None
     cpu: list[CpuEntry] = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
 
     @classmethod
     def from_query(cls, raw_data: dict) -> 'Hardware':
@@ -185,6 +190,9 @@ class Hardware:
         return cls(
             nodes=data.get('number_of_nodes', {}).get('value') or None,
             cpu=split_value(data=data, key='cpu', transform=CpuEntry.from_query),
+            publications=split_value(
+                data=data, key='publication', transform=Relatant.from_query
+            ),
         )
 
 
@@ -210,6 +218,7 @@ class Workflow:
     contains_process_step: list[Relatant] = field(default_factory=list)
     contains_workflow: list[Relatant] = field(default_factory=list)
     contained_in_workflow: list[Relatant] = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
 
     @classmethod
     def from_query_batch(cls, raw_data: list) -> 'dict[str, Workflow]':
@@ -255,6 +264,9 @@ class Workflow:
             contained_in_workflow=split_value(
                 data=data, key='contained_in_workflow', transform=Relatant.from_query
             ),
+            publications=split_value(
+                data=data, key='publication', transform=Relatant.from_query
+            ),
         )
 
 
@@ -268,6 +280,7 @@ class DataSet:
     proprietary: Optional[str] = None
     to_publish: list = field(default_factory=list)
     to_archive: list = field(default_factory=list)
+    publications: list[Relatant] = field(default_factory=list)
 
     @classmethod
     def from_query(cls, raw_data: dict) -> 'DataSet':
@@ -301,4 +314,7 @@ class DataSet:
             ),
             to_publish=get_option_text_pair(data, options, 'publish', 'DOI', 'URL'),
             to_archive=get_option_text_pair(data, options, 'archive', 'end_time'),
+            publications=split_value(
+                data=data, key='publication', transform=Relatant.from_query
+            ),
         )

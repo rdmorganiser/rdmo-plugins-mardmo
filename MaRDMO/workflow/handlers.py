@@ -307,6 +307,8 @@ class Information(BaseInformation):
                     'relatant': f'{self.base}{workflow_q["IntraClassElement"]["uri"]}',
                 })
 
+            self._hydrate_publications(project, data.publications, catalog, visited)
+
             self._hydrate_relatants(
                 project=project, data=data, prop_keys=['contains_process_step'],
                 spec=_RelatantSpec(
@@ -371,6 +373,8 @@ class Information(BaseInformation):
                         info={'text': cpu.count,
                               'set_prefix': f"{set_index}|0", 'set_index': i})
                 self.processor_cores(cpu_value)
+
+            self._hydrate_publications(project, data.publications, catalog, visited)
 
     def _fill_data_set_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Data Set pages with a single SPARQL query per source.
@@ -443,6 +447,8 @@ class Information(BaseInformation):
                     uri=f'{self.base}{data_set_q["To Archive"]["uri"]}',
                     info={'text': data.to_archive[1][:4], 'option': data.to_archive[0],
                           'set_prefix': set_index})
+
+            self._hydrate_publications(project, data.publications, catalog, visited)
 
     def _fill_process_step_batch(self, project, items, catalog='', visited=None):
         '''Hydrate multiple Process Step pages with a single SPARQL query per source.
@@ -583,3 +589,5 @@ class Information(BaseInformation):
                 props={'keys': PROPS['PS2F']},
                 index={'set_prefix': set_index},
                 statement={'relatant': f'{self.base}{process_step["RFRelatant"]["uri"]}'})
+
+            self._hydrate_publications(project, data.publications, catalog, visited)

@@ -90,14 +90,14 @@
             "collection_index": true,
             "external_id": true
         },
-        "P2WE": {
+        "P2IWE": {
             "key1": "publication",
             "key2": "P2E",
             "uri": "domain/publication/remaining-workflow-entity-relation",
             "set_prefix": true,
             "set_index": true
         },
-        "WorkflowEntityRelatant": {
+        "IWERelatant": {
             "key1": "publication",
             "key2": "EntityRelatant",
             "uri": "domain/publication/remaining-workflow-entity-relatant",

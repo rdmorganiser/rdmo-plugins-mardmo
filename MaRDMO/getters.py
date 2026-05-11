@@ -10,6 +10,7 @@ Provides:
 
 - ``get_mathmoddb``              — return a :class:`~.helpers.PropertyRegistry` for MathModDB
 - ``get_mathalgodb``             — return a :class:`~.helpers.PropertyRegistry` for MathAlgoDB
+- ``get_publication_mapping``    — return a :class:`~.helpers.PropertyRegistry` for shared publication roles
 - ``get_options``                — return the RDMO options dict from the app config
 - ``get_items``                  — return the Wikibase items dict from the app config
 - ``get_properties``             — return the Wikibase properties dict from the app config
@@ -56,6 +57,17 @@ def get_mathalgodb():
     '''
     return PropertyRegistry(
         apps.get_app_config("MaRDMO").mathalgodb
+    )
+
+def get_publication_mapping():
+    '''Return a :class:`~.helpers.PropertyRegistry` for the shared publication role options.
+
+    Returns:
+        :class:`~.helpers.PropertyRegistry` wrapping
+        :attr:`~MaRDMO.apps.MaRDMOConfig.publication_mapping`.
+    '''
+    return PropertyRegistry(
+        apps.get_app_config("MaRDMO").publication_mapping
     )
 
 def get_options():

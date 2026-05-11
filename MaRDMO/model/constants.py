@@ -13,7 +13,7 @@ Provides:
 '''
 
 from ..constants import BASE_URI, SECTION_MAP_BASE
-from ..getters import get_items, get_mathmoddb, get_properties, get_questions
+from ..getters import get_items, get_mathmoddb, get_properties, get_publication_mapping, get_questions
 
 # Data Properties Label
 data_properties_label = {
@@ -278,9 +278,10 @@ def get_relations():
         Dict mapping MathModDB relation URL strings to ``[property(, qualifier)]``
         lists; qualifier is either a Wikibase item ID or ``'forward'``/``'backward'``.
     '''
-    mathmoddb = get_mathmoddb()
-    items = get_items()
-    properties = get_properties()
+    mathmoddb           = get_mathmoddb()
+    publication_mapping = get_publication_mapping()
+    items               = get_items()
+    properties          = get_properties()
     relations = {
         # Map MathModDB Relation on Wikibase Property + Qualifier Item
         mathmoddb.get(key='assumes')['url']: [
@@ -350,23 +351,23 @@ def get_relations():
             properties['contains'],
             items['strong formulation']
         ],
-        mathmoddb.get(key='documents')['url']: [
+        publication_mapping.get(key='documents')['url']: [
             properties['described by source'],
             items['documentation']
         ],
-        mathmoddb.get(key='invents')['url']: [
+        publication_mapping.get(key='invents')['url']: [
             properties['described by source'],
             items['invention']
         ],
-        mathmoddb.get(key='studies')['url']: [
+        publication_mapping.get(key='studies')['url']: [
             properties['described by source'],
             items['study']
         ],
-        mathmoddb.get(key='surveys')['url']: [
+        publication_mapping.get(key='surveys')['url']: [
             properties['described by source'],
             items['review']
         ],
-        mathmoddb.get(key='uses')['url']: [
+        publication_mapping.get(key='uses')['url']: [
             properties['described by source'],
             items['use']
         ],
@@ -625,6 +626,7 @@ preview_relations = [
         "formulation": False,
         "task": False,
         "assumption": False,
+        "mapping": "publication",
     },
 ]
 

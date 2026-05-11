@@ -10,12 +10,13 @@ Provides:
   ``publication_delete`` handler methods; routed via ``router.py``
 '''
 
+from dataclasses import replace
+
 from ..constants import BASE_URI
 from ..getters import (
     get_items,
-    get_mathmoddb,
-    get_mathalgodb,
     get_properties,
+    get_publication_mapping,
     get_questions,
     get_sparql_query,
     get_url
@@ -25,6 +26,7 @@ from ..adders import add_basics, add_references, add_relations_flexible
 
 from .constants import (
     PROPS,
+    ROUTING,
     ITEMINFOS,
     CITATIONINFOS,
     LANGUAGES,
@@ -35,16 +37,24 @@ from .utils import clean_background_data
 from .models import Publication
 
 
+def _filter_pub_by_class(data, class_set):
+    '''Return a copy of *data* with every relation field filtered to entities in *class_set*.'''
+    fields = ['analyzes', 'applies', 'documents', 'invents', 'studies', 'surveys', 'uses']
+    return replace(data, **{
+        f: [v for v in getattr(data, f) if v.item_class in class_set]
+        for f in fields
+    })
+
+
 class Information:
     '''Class containing functions, querying external sources for specific
        entities and integrating the related metadata into the questionnaire.'''
 
     def __init__(self):
-        '''Load publication questions, ontology registries, and the base URI.'''
-        self.questions = get_questions('publication')
-        self.mathalgodb = get_mathalgodb()
-        self.mathmoddb = get_mathmoddb()
-        self.base = BASE_URI
+        '''Load publication questions, publication role mapping, and the base URI.'''
+        self.questions           = get_questions('publication')
+        self.publication_mapping = get_publication_mapping()
+        self.base                = BASE_URI
 
     def citation(self, instance):
         '''Handle a Publication ID-field save: populate citation metadata from the
@@ -136,39 +146,19 @@ class Information:
         if source != 'mardi':
             return
 
-        # For Models: add Publication–Entity Relations
-        if catalog.endswith(('mardmo-model-catalog', 'mardmo-model-basics-catalog')):
-            add_relations_flexible(
-                project   = project,
-                data      = data,
-                props     = {'keys': PROPS['P2ME'], 'mapping': self.mathmoddb},
-                index     = {'set_prefix': set_index},
-                statement = {
-                    'relation': f'{BASE_URI}{publication["P2ME"]["uri"]}',
-                    'relatant': f'{BASE_URI}{publication["ModelEntityRelatant"]["uri"]}',
-                },
-            )
+        catalog_slug = catalog.rsplit('/', 1)[-1]
+        items        = get_items()
 
-        # For Algorithms: add Publication–Algorithm and Publication–Benchmark/Software Relations
-        if catalog.endswith('mardmo-algorithm-catalog'):
+        for rule in ROUTING.get(catalog_slug, []):
+            class_set = {f"mardi:{items[c]}" for c in rule['classes']}
             add_relations_flexible(
                 project   = project,
-                data      = data,
-                props     = {'keys': PROPS['P2A'], 'mapping': self.mathalgodb},
+                data      = _filter_pub_by_class(data, class_set),
+                props     = {'keys': PROPS[rule['props']], 'mapping': getattr(self, rule['mapping'])},
                 index     = {'set_prefix': set_index},
                 statement = {
-                    'relation': f'{BASE_URI}{publication["P2A"]["uri"]}',
-                    'relatant': f'{BASE_URI}{publication["ARelatant"]["uri"]}',
-                },
-            )
-            add_relations_flexible(
-                project   = project,
-                data      = data,
-                props     = {'keys': PROPS['P2BS'], 'mapping': self.mathalgodb},
-                index     = {'set_prefix': set_index},
-                statement = {
-                    'relation': f'{BASE_URI}{publication["P2BS"]["uri"]}',
-                    'relatant': f'{BASE_URI}{publication["BSRelatant"]["uri"]}',
+                    'relation': f'{BASE_URI}{publication[rule["relation"]]["uri"]}',
+                    'relatant': f'{BASE_URI}{publication[rule["relatant"]]["uri"]}',
                 },
             )
 

@@ -9,9 +9,76 @@ the publication constants do not depend on the live RDMO database state.
 '''
 
 PROPS = {
-    'P2ME': ['documents','invents','studies','surveys','uses'],
-    'P2A': ['analyzes','applies','invents','studies','surveys'],
-    'P2BS': ['documents', 'uses']
+    'P2ME':  ['documents', 'invents', 'studies', 'surveys', 'uses'],
+    'P2A':   ['analyzes', 'applies', 'invents', 'studies', 'surveys'],
+    'P2BS':  ['documents', 'uses'],
+    'P2IWE': ['analyzes', 'applies', 'documents', 'invents', 'studies', 'surveys', 'uses'],
+}
+
+ROUTING = {
+    'mardmo-model-catalog': [
+        {
+            'props': 'P2ME',
+            'classes': [
+                'mathematical model', 'computational task', 'mathematical expression',
+                'research problem', 'academic discipline', 'quantity', 'kind of quantity',
+            ],
+            'mapping': 'publication_mapping',
+            'relation': 'P2ME',
+            'relatant': 'ModelEntityRelatant',
+        },
+    ],
+    'mardmo-model-basics-catalog': [
+        {
+            'props': 'P2ME',
+            'classes': [
+                'mathematical model', 'computational task', 'mathematical expression',
+                'research problem', 'academic discipline', 'quantity', 'kind of quantity',
+            ],
+            'mapping': 'publication_mapping',
+            'relation': 'P2ME',
+            'relatant': 'ModelEntityRelatant',
+        },
+    ],
+    'mardmo-algorithm-catalog': [
+        {
+            'props': 'P2A',
+            'classes': ['algorithm'],
+            'mapping': 'publication_mapping',
+            'relation': 'P2A',
+            'relatant': 'ARelatant',
+        },
+        {
+            'props': 'P2BS',
+            'classes': ['software', 'benchmark'],
+            'mapping': 'publication_mapping',
+            'relation': 'P2BS',
+            'relatant': 'BSRelatant',
+        },
+    ],
+    'mardmo-interdisciplinary-workflow-catalog': [
+        {
+            'props': 'P2A',
+            'classes': ['algorithm'],
+            'mapping': 'publication_mapping',
+            'relation': 'P2A',
+            'relatant': 'ARelatant',
+        },
+        {
+            'props': 'P2BS',
+            'classes': ['software', 'computer hardware'],
+            'mapping': 'publication_mapping',
+            'relation': 'P2BS',
+            'relatant': 'HSRelatant',
+        },
+        {
+            'props': 'P2IWE',
+            'classes': ['research workflow', 'process step', 'data set'],
+            'mapping': 'publication_mapping',
+            'relation': 'P2IWE',
+            'relatant': 'IWERelatant',
+        },
+    ],
 }
 
 # URI mappings for item infos
