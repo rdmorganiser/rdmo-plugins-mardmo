@@ -1,9 +1,11 @@
 SELECT ?doi ?label ?description
-       (GROUP_CONCAT(DISTINCT CONCAT(?inv, " || ", ?invl, " || ", ?invd); SEPARATOR=" <|> ") AS ?invents)    
-       (GROUP_CONCAT(DISTINCT CONCAT(?doc, " || ", ?docl, " || ", ?docd); SEPARATOR=" <|> ") AS ?documents)
-       (GROUP_CONCAT(DISTINCT CONCAT(?stu, " || ", ?stul, " || ", ?stud); SEPARATOR=" <|> ") AS ?studies)
-       (GROUP_CONCAT(DISTINCT CONCAT(?rev, " || ", ?revl, " || ", ?revd); SEPARATOR=" <|> ") AS ?surveys)
-       (GROUP_CONCAT(DISTINCT CONCAT(?use, " || ", ?usel, " || ", ?used); SEPARATOR=" <|> ") AS ?uses)    
+       (GROUP_CONCAT(DISTINCT CONCAT(?inv, " || ", ?invl, " || ", ?invd, " || ", ?inv_class); SEPARATOR=" <|> ") AS ?invents)
+       (GROUP_CONCAT(DISTINCT CONCAT(?doc, " || ", ?docl, " || ", ?docd, " || ", ?doc_class); SEPARATOR=" <|> ") AS ?documents)
+       (GROUP_CONCAT(DISTINCT CONCAT(?stu, " || ", ?stul, " || ", ?stud, " || ", ?stu_class); SEPARATOR=" <|> ") AS ?studies)
+       (GROUP_CONCAT(DISTINCT CONCAT(?rev, " || ", ?revl, " || ", ?revd, " || ", ?rev_class); SEPARATOR=" <|> ") AS ?surveys)
+       (GROUP_CONCAT(DISTINCT CONCAT(?use, " || ", ?usel, " || ", ?used, " || ", ?use_class); SEPARATOR=" <|> ") AS ?uses)
+       (GROUP_CONCAT(DISTINCT CONCAT(?ana, " || ", ?anal, " || ", ?anad, " || ", ?ana_class); SEPARATOR=" <|> ") AS ?analyzes)
+       (GROUP_CONCAT(DISTINCT CONCAT(?app, " || ", ?appl, " || ", ?appd, " || ", ?app_class); SEPARATOR=" <|> ") AS ?applies)
 
 WHERE {{ VALUES ?publication {{ wd:{0} }}
 
@@ -11,19 +13,22 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
     ?invraw p:{described by source} ?statement1.
     ?statement1 ps:{described by source} ?publication.
     BIND(CONCAT("mardi:", STRAFTER(STR(?invraw), STR(wd:))) AS ?inv)
-                 
+
     OPTIONAL {{
       ?invraw rdfs:label ?invlraw.
       FILTER (lang(?invlraw) = 'en')
     }}
     BIND(COALESCE(?invlraw, "No Label Provided!") AS ?invl)
-                
+
     OPTIONAL {{
       ?invraw schema:description ?invdraw
       FILTER (lang(?invdraw) = 'en')
     }}
     BIND(COALESCE(?invdraw, "No Description Provided!") AS ?invd)
-                
+
+    OPTIONAL {{ ?invraw wdt:{instance of} ?inv_type_raw. }}
+    BIND(IF(BOUND(?inv_type_raw), CONCAT("mardi:", STRAFTER(STR(?inv_type_raw), STR(wd:))), "") AS ?inv_class)
+
     ?statement1 pq:{object has role} wd:{invention}.
   }}
 
@@ -31,19 +36,22 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
     ?docraw p:{described by source} ?statement2.
     ?statement2 ps:{described by source} ?publication.
     BIND(CONCAT("mardi:", STRAFTER(STR(?docraw), STR(wd:))) AS ?doc)
-                 
+
     OPTIONAL {{
       ?docraw rdfs:label ?doclraw.
       FILTER (lang(?doclraw) = 'en')
     }}
     BIND(COALESCE(?doclraw, "No Label Provided!") AS ?docl)
-                
+
     OPTIONAL {{
       ?docraw schema:description ?docdraw
       FILTER (lang(?docdraw) = 'en')
     }}
     BIND(COALESCE(?docdraw, "No Description Provided!") AS ?docd)
-                
+
+    OPTIONAL {{ ?docraw wdt:{instance of} ?doc_type_raw. }}
+    BIND(IF(BOUND(?doc_type_raw), CONCAT("mardi:", STRAFTER(STR(?doc_type_raw), STR(wd:))), "") AS ?doc_class)
+
     ?statement2 pq:{object has role} wd:{documentation}.
   }}
 
@@ -51,19 +59,22 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
     ?sturaw p:{described by source} ?statement3.
     ?statement3 ps:{described by source} ?publication.
     BIND(CONCAT("mardi:", STRAFTER(STR(?sturaw), STR(wd:))) AS ?stu)
-                 
+
     OPTIONAL {{
       ?sturaw rdfs:label ?stulraw.
       FILTER (lang(?stulraw) = 'en')
     }}
     BIND(COALESCE(?stulraw, "No Label Provided!") AS ?stul)
-    
+
     OPTIONAL {{
       ?sturaw schema:description ?studraw
       FILTER (lang(?studraw) = 'en')
     }}
     BIND(COALESCE(?studraw, "No Description Provided!") AS ?stud)
-    
+
+    OPTIONAL {{ ?sturaw wdt:{instance of} ?stu_type_raw. }}
+    BIND(IF(BOUND(?stu_type_raw), CONCAT("mardi:", STRAFTER(STR(?stu_type_raw), STR(wd:))), "") AS ?stu_class)
+
     ?statement3 pq:{object has role} wd:{study}.
   }}
 
@@ -71,19 +82,22 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
     ?revraw p:{described by source} ?statement4.
     ?statement4 ps:{described by source} ?publication.
     BIND(CONCAT("mardi:", STRAFTER(STR(?revraw), STR(wd:))) AS ?rev)
-                 
+
     OPTIONAL {{
       ?revraw rdfs:label ?revlraw.
       FILTER (lang(?revlraw) = 'en')
     }}
     BIND(COALESCE(?revlraw, "No Label Provided!") AS ?revl)
-    
+
     OPTIONAL {{
       ?revraw schema:description ?revdraw
       FILTER (lang(?revdraw) = 'en')
     }}
     BIND(COALESCE(?revdraw, "No Description Provided!") AS ?revd)
-    
+
+    OPTIONAL {{ ?revraw wdt:{instance of} ?rev_type_raw. }}
+    BIND(IF(BOUND(?rev_type_raw), CONCAT("mardi:", STRAFTER(STR(?rev_type_raw), STR(wd:))), "") AS ?rev_class)
+
     ?statement4 pq:{object has role} wd:{review}.
   }}
 
@@ -91,34 +105,83 @@ WHERE {{ VALUES ?publication {{ wd:{0} }}
     ?useraw p:{described by source} ?statement5.
     ?statement5 ps:{described by source} ?publication.
     BIND(CONCAT("mardi:", STRAFTER(STR(?useraw), STR(wd:))) AS ?use)
-                 
+
     OPTIONAL {{
       ?useraw rdfs:label ?uselraw.
       FILTER (lang(?uselraw) = 'en')
     }}
     BIND(COALESCE(?uselraw, "No Label Provided!") AS ?usel)
-    
+
     OPTIONAL {{
       ?useraw schema:description ?usedraw
       FILTER (lang(?usedraw) = 'en')
     }}
     BIND(COALESCE(?usedraw, "No Description Provided!") AS ?used)
-    
-    ?statement5 pq:{object has role} wd:{use}.
-  }} 
 
-  OPTIONAL {{ 
+    OPTIONAL {{ ?useraw wdt:{instance of} ?use_type_raw. }}
+    BIND(IF(BOUND(?use_type_raw), CONCAT("mardi:", STRAFTER(STR(?use_type_raw), STR(wd:))), "") AS ?use_class)
+
+    ?statement5 pq:{object has role} wd:{use}.
+  }}
+
+  OPTIONAL {{
+    ?anaraw p:{described by source} ?statement6.
+    ?statement6 ps:{described by source} ?publication.
+    BIND(CONCAT("mardi:", STRAFTER(STR(?anaraw), STR(wd:))) AS ?ana)
+
+    OPTIONAL {{
+      ?anaraw rdfs:label ?analraw.
+      FILTER (lang(?analraw) = 'en')
+    }}
+    BIND(COALESCE(?analraw, "No Label Provided!") AS ?anal)
+
+    OPTIONAL {{
+      ?anaraw schema:description ?anadraw
+      FILTER (lang(?anadraw) = 'en')
+    }}
+    BIND(COALESCE(?anadraw, "No Description Provided!") AS ?anad)
+
+    OPTIONAL {{ ?anaraw wdt:{instance of} ?ana_type_raw. }}
+    BIND(IF(BOUND(?ana_type_raw), CONCAT("mardi:", STRAFTER(STR(?ana_type_raw), STR(wd:))), "") AS ?ana_class)
+
+    ?statement6 pq:{object has role} wd:{analysis}.
+  }}
+
+  OPTIONAL {{
+    ?appraw p:{described by source} ?statement7.
+    ?statement7 ps:{described by source} ?publication.
+    BIND(CONCAT("mardi:", STRAFTER(STR(?appraw), STR(wd:))) AS ?app)
+
+    OPTIONAL {{
+      ?appraw rdfs:label ?applraw.
+      FILTER (lang(?applraw) = 'en')
+    }}
+    BIND(COALESCE(?applraw, "No Label Provided!") AS ?appl)
+
+    OPTIONAL {{
+      ?appraw schema:description ?appdraw
+      FILTER (lang(?appdraw) = 'en')
+    }}
+    BIND(COALESCE(?appdraw, "No Description Provided!") AS ?appd)
+
+    OPTIONAL {{ ?appraw wdt:{instance of} ?app_type_raw. }}
+    BIND(IF(BOUND(?app_type_raw), CONCAT("mardi:", STRAFTER(STR(?app_type_raw), STR(wd:))), "") AS ?app_class)
+
+    ?statement7 pq:{object has role} wd:{application}.
+  }}
+
+  OPTIONAL {{
     ?publication wdt:{DOI} ?doi.
   }}
 
-  SERVICE wikibase:label {{ 
-    bd:serviceParam wikibase:language "en,mul". 
+  SERVICE wikibase:label {{
+    bd:serviceParam wikibase:language "en,mul".
     ?publication rdfs:label ?labelraw.
     ?publication schema:description ?descriptionraw.
   }}
 
   BIND(COALESCE(?labelraw, "No Label Provided!") AS ?label)
   BIND(COALESCE(?descriptionraw, "No Description Provided!") AS ?description)
-  
+
 }}
 GROUP BY ?doi ?label ?description
