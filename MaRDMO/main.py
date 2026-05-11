@@ -331,7 +331,7 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 status=400
             )
 
-        question_set, PrepareClass = entry
+        question_set, PrepareClass, _ = entry
         questions = get_questions(question_set) | get_questions('publication')
         answers = process_question_dict(
             project=self.project,
