@@ -74,6 +74,7 @@ OPTIONSET_PROVIDERS = [
     ('RelatedAlgorithmWithCreation', _('Options for related Algorithms with Creation'), 'MaRDMO.workflow.providers.RelatedAlgorithmWithCreation'),
     ('ProcessStep', _('Options for Process Step'), 'MaRDMO.workflow.providers.ProcessStep'),
     ('Workflow', _('Options for Workflows'), 'MaRDMO.workflow.providers.Workflow'),
+    ('RelatedWorkflowWithoutCreation', _('Options for related Workflows without Creation'), 'MaRDMO.workflow.providers.RelatedWorkflowWithoutCreation'),
     ('RelatedStepWithCreation', _('Options for related Process Steps with Creation'), 'MaRDMO.workflow.providers.RelatedStepWithCreation'),
     ('RelatedProgrammingLanguageWithCreation', _('Options for related Programming Languages with Creation'), 'MaRDMO.workflow.providers.RelatedProgrammingLanguageWithCreation'),
     ('RelatedCPUModelWithCreation', _('Options for related CPU Modelss with Creation'), 'MaRDMO.workflow.providers.RelatedCPUModelWithCreation'),
@@ -111,7 +112,7 @@ OPTIONSET_PROVIDERS = [
     ('Benchmark', _('Options for Benchmarks'), 'MaRDMO.algorithm.providers.Benchmark'),
     ('RelatedBenchmarkWithCreation', _('Options for related Benchmarks with Creation'), 'MaRDMO.algorithm.providers.RelatedBenchmarkWithCreation'),
     ('RelatedBenchmarkOrSoftwareWithoutCreation', _('Options for related Benchmarks or Software without Creation'), 'MaRDMO.algorithm.providers.RelatedBenchmarkOrSoftwareWithoutCreation'),
-]
+    ]
 
 
 ```
