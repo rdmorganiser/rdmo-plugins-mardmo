@@ -151,7 +151,7 @@ WHERE {{
         ?id p:{described by source} ?statement_p .
         ?statement_p ps:{described by source} ?pubraw .
         ?statement_p pq:{object has role} ?role .
-        VALUES ?role {{ wd:{invention} wd:{review} wd:{study} }}
+        VALUES ?role {{ wd:{analysis} wd:{application} wd:{invention} wd:{review} wd:{study} }}
         BIND(CONCAT("mardi:", STRAFTER(STR(?pubraw), STR(wd:))) AS ?pub)
 
         OPTIONAL {{

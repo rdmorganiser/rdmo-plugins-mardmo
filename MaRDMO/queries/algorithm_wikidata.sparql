@@ -109,7 +109,7 @@ WHERE {{
         ?id p:P1343 ?statement_p .
         ?statement_p ps:P1343 ?pubraw .
         ?statement_p pq:P3831 ?role .
-        VALUES ?role {{ wd:Q12579633 wd:Q265158 wd:Q1298668 }}
+        VALUES ?role {{ wd:Q217602 wd:Q166142 wd:Q12579633 wd:Q265158 wd:Q1298668 }}
         BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
 
         OPTIONAL {{
