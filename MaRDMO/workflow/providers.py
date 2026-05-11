@@ -7,7 +7,6 @@ instruments, data sets, process steps, and related mathematical models.
 
 Provides:
 
-- :class:`MaRDIAndWikidataSearch`  — generic entity search across MaRDI Portal and Wikidata
 - :class:`MainMathematicalModel`   — look up the main mathematical model for a workflow
 - :class:`Method`                  — numerical/analytical method lookup; refresh on select
 - :class:`RelatedMethod`           — method lookup with optional user creation
@@ -29,34 +28,6 @@ from ..helpers import define_setup
 from ..queries import query_sources, query_sources_with_user_additions
 
 _ITEMS = get_items()
-
-
-class MaRDIAndWikidataSearch(Provider):
-    '''General Provider (MaRDI Portal / Wikidata),
-       No User Creation, No Refresh Upon Selection
-    '''
-
-    search = True
-
-    def get_options(self, project, search=None, user=None, site=None):
-        '''Query external knowledge-graph source(s) and return matching options.
-
-        Args:
-            project: RDMO project instance (used for user-entry lookups when applicable).
-            search:  Search string entered by the user; returns empty list when
-                     fewer than 3 characters.
-            user:    Requesting user (unused).
-            site:    Current site (unused).
-
-        Returns:
-            List of ``{"id": …, "text": …}`` option dicts sorted by relevance.
-        '''
-        if not search or len(search) < 3:
-            return []
-
-        return query_sources(
-            search = search
-        )
 
 
 class MathematicalModel(Provider):
