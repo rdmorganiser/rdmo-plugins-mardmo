@@ -5,7 +5,10 @@ into a :class:`~MaRDMO.payload.GeneratePayload` ready for submission to the
 MaRDI Portal Wikibase instance.
 '''
 
-from .constants import preview_relations, REPRODUCIBILITY
+import logging
+import time
+
+from .constants import get_relations, preview_relations
 
 from ..getters import (
     get_items,
@@ -13,25 +16,30 @@ from ..getters import (
     get_mathmoddb,
     get_options,
     get_properties,
+    get_publication_mapping,
     get_url
 )
 from ..helpers import collect_items_without_section, entity_relations, entity_relations_grouped, unique_items
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
-class PrepareWorkflow:
+from ..publication.worker import PublicationExport
+
+
+class PrepareWorkflow(PublicationExport):
     '''Prepare interdisciplinary workflow answers for preview and export.
 
-    Loads Wikibase vocabulary (items and properties) on instantiation so
-    they are available to both :meth:`preview` and :meth:`export`.
+    Inherits publication export helpers from
+    :class:`~MaRDMO.publication.worker.PublicationExport` and extends them
+    with workflow-specific relation mapping and Wikibase payload generation.
     '''
 
     def __init__(self):
-        '''Initialise with Wikibase items and properties from MaRDMOConfig.'''
-        self.items = get_items()
-        self.properties = get_properties()
-        self.mathmoddb = get_mathmoddb()
-        self.mathalgodb = get_mathalgodb()
+        '''Initialise with Wikibase vocabulary and ontology registries.'''
+        super().__init__()
+        self.mathmoddb           = get_mathmoddb()
+        self.mathalgodb          = get_mathalgodb()
+        self.publication_mapping = get_publication_mapping()
 
     def preview(self, answers):
         '''Enrich the answers dict with derived display structures for the preview template.
@@ -85,7 +93,8 @@ class PrepareWorkflow:
                 },
                 assumption = False,
                 mapping = (
-                    self.mathmoddb if relation.get('mapping') == 'mathmoddb'
+                    self.mathmoddb           if relation.get('mapping') == 'mathmoddb'
+                    else self.publication_mapping if relation.get('mapping') == 'publication'
                     else self.mathalgodb
                 )
             )
@@ -223,787 +232,188 @@ class PrepareWorkflow:
             user_items = items,
             url = url,
             wikibase = {
-                'items': get_items(),
+                'items':      get_items(),
                 'properties': get_properties(),
+                'relations':  get_relations(),
             }
         )
 
-        # Load Options
-        options = get_options()
-
-        # Add / Retrieve Components of Interdisciplinary Workflow Item
         payload.process_items()
 
-        ### Add additional Software Information
-        for software in data.get('software', {}).values():
-
-            # Continue if no ID exists
-            if not software.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(software)
-
-            # Add Class
-            payload.add_answer(
-                    verb=self.properties['instance of'],
-                    object_and_type=[
-                        self.items['software'],
-                        'wikibase-item',
-                    ]
-                )
-
-            # Add References of the Software
-            for reference in software.get('Reference', {}).values():
-                if reference[0] == options['DOI']:
-                    payload.add_answer(
-                        verb=self.properties['DOI'],
-                        object_and_type=[
-                            reference[1],
-                            'external-id',
-                        ]
-                    )
-                elif reference[0] == options['SWMATH']:
-                    payload.add_answer(
-                        verb=self.properties['swMath work ID'],
-                        object_and_type=[
-                            reference[1],
-                            'external-id',
-                        ]
-                    )
-                elif reference[0] == options['SOURCECODE_URL']:
-                    payload.add_answer(
-                        verb=self.properties['source code reposiory URL'],
-                        object_and_type=[
-                            reference[1],
-                            'url',
-                        ]
-                    )
-                elif reference[0] == options['DESCRIPTION_URL']:
-                    payload.add_answer(
-                        verb=self.properties['described at URL'],
-                        object_and_type=[
-                            reference[1],
-                            'url',
-                        ]
-                    )
-
-            # Add Programming Languages
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['programmed in'],
-                    'relatant': 'programminglanguage'
-                }
-            )
-
-            # Add Dependencies
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['depends on software'],
-                    'relatant': 'dependency'
-                }
-            )
-
-            # Add Source Code Repository
-            if software.get('Published', [''])[0] == options['YesText']:
-                payload.add_answer(
-                    verb=self.properties['source code repository URL'],
-                    object_and_type=[
-                        software['Published'][1],
-                        'url',
-                    ]
-                )
-
-            # Add Documentation / Manual
-            if software.get('Documented', [''])[0] == options['YesText']:
-                payload.add_answer(
-                    verb=self.properties['user manual URL'],
-                    object_and_type=[
-                        software['Documented'][1],
-                        'url',
-                    ]
-                )
-
-        ### Add additional Hardware Information
-        for hardware in data.get('hardware', {}).values():
-
-            # Continue if no ID exists
-            if not hardware.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(hardware)
-
-            # Add Class
-            payload.add_answer(
-                verb=self.properties['instance of'],
-                object_and_type=[
-                    self.items['computer hardware'],
-                    'wikibase-item',
-                ]
-            )
-
-            # Add CPU
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['CPU'],
-                    'relatant': 'cpu'
-                }
-            )
-
-            # Add Number of Computing Nodes
-            if hardware['Nodes']:
-                payload.add_answer(
-                    verb=self.properties['has part(s)'],
-                    object_and_type=[
-                        self.items['compute node'],
-                        'wikibase-item',
-                    ],
-                    qualifier = [
-                                    {
-                                        "property": {
-                                            "id": self.properties['quantity_property'],
-                                        },
-                                        "value": {
-                                            "type": "value",
-                                            "content": {
-                                                "amount": f"+{hardware['Nodes']}",
-                                                "unit": "1",
-                                            },
-                                        },
-                                    }
-                                ]
-                )
-
-            # Add Number of Processor Cores
-            if hardware['Cores']:
-                payload.add_answer(
-                    verb=self.properties['number of processor cores'],
-                    object_and_type=[
-                        {
-                            "amount": f"+{hardware['Cores']}",
-                            "unit":"1"
-                        },
-                        'quantity'
-                    ]
-                )
-
-        ### Add additional Dataset Information
-        for dataset in data.get('dataset', {}).values():
-
-            # Continue if no ID exists
-            if not dataset.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(dataset)
-
-            # Add Class
-            payload.add_answer(
-                verb=self.properties['instance of'],
-                object_and_type=[
-                    self.items['data set'],
-                    'wikibase-item',
-                ]
-            )
-
-            # Size of the data set
-            if dataset.get('Size'):
-                if dataset['Size'][0] == options['kilobyte']:
-                    verb = self.properties['data size']
-                    object = {
-                        "amount": f"+{dataset['Size'][1]}",
-                        "unit": f"{get_url('mardi', 'uri')}/entity/{self.items['kilobyte']}"
-                    }
-                elif dataset['Size'][0] == options['megabyte']:
-                    verb = self.properties['data size']
-                    object = {
-                        "amount": f"+{dataset['Size'][1]}",
-                        "unit": f"{get_url('mardi', 'uri')}/entity/{self.items['megabyte']}"
-                    }
-                elif dataset['Size'][0] == options['gigabyte']:
-                    verb = self.properties['data size']
-                    object = {
-                        "amount": f"+{dataset['Size'][1]}",
-                        "unit": f"{get_url('mardi', 'uri')}/entity/{self.items['gigabyte']}"
-                    }
-                elif dataset['Size'][0] == options['terabyte']:
-                    verb = self.properties['data size']
-                    object = {
-                        "amount": f"+{dataset['Size'][1]}",
-                        "unit": f"{get_url('mardi', 'uri')}/entity/{self.items['terabyte']}"
-                    }
-                elif dataset['Size'][0] == options['items']:
-                    verb = self.properties['number of records']
-                    object = {
-                        "amount": f"+{dataset['Size'][1]}","unit":"1"
-                    }
-
-                payload.add_answer(
-                    verb=verb,
-                    object_and_type=[
-                        object,
-                        'quantity',
-                    ]
-                )
-
-            # Add File Format
-            if dataset.get('FileFormat'):
-                payload.add_answer(
-                    verb=self.properties['file extension'],
-                    object_and_type=[
-                        dataset['FileFormat'],
-                        'string',
-                    ]
-                )
-
-            # Add binary or text data
-            if dataset.get('BinaryText'):
-                if dataset['BinaryText'] == options['binary']:
-                    payload.add_answer(
-                        verb=self.properties['instance of'],
-                        object_and_type=[
-                            self.items['binary data'],
-                            'wikibase-item',
-                        ]
-                    )
-                elif dataset['BinaryText'] == options['text']:
-                    payload.add_answer(
-                        verb=self.properties['instance of'],
-                        object_and_type=[
-                            self.items['text data'],
-                            'wikibase-item',
-                        ]
-                    )
-
-            # Data Set Proprietary
-            if dataset.get('Proprietary'):
-                if dataset['Proprietary'] == options['Yes']:
-                    payload.add_answer(
-                        verb=self.properties['instance of'],
-                        object_and_type=[
-                            self.items['proprietary information'],
-                            'wikibase-item',
-                        ]
-                    )
-                elif dataset['Proprietary'] == options['No']:
-                    payload.add_answer(
-                        verb=self.properties['instance of'],
-                        object_and_type=[
-                            self.items['open data'],
-                            'wikibase-item',
-                        ]
-                    )
-
-            # Data Set to Publish
-            if dataset.get('ToPublish'):
-                if dataset['ToPublish'].get(0, ['',''])[0] == options['Yes']:
-                    payload.add_answer(
-                        verb=self.properties['mandates'],
-                        object_and_type=[
-                            self.items['data publishing'],
-                            'wikibase-item',
-                        ]
-                    )
-                    if dataset['ToPublish'].get(1, ['',''])[0] == options['DOI']:
-                        payload.add_answer(
-                            verb=self.properties['DOI'],
-                            object_and_type=[
-                                dataset['ToPublish'][1][1],
-                                'external-id',
-                            ]
-                        )
-                    if dataset['ToPublish'].get(2, ['',''])[0] == options['URL']:
-                        payload.add_answer(
-                            verb=self.properties['URL'],
-                            object_and_type=[
-                                dataset['ToPublish'][2][2],
-                                'url',
-                            ]
-                        )
-
-            # Data Set To Archive
-            if dataset.get('ToArchive'):
-                if dataset['ToArchive'][0] == options['YesText']:
-                    qualifier = []
-                    if dataset['ToArchive'][1]:
-                        qualifier = payload.add_qualifier(
-                            self.properties['end time'],
-                            'time',
-                            {
-                                "time": f"+{dataset['ToArchive'][1]}-00-00T00:00:00Z",
-                                "precision": 9,
-                                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
-                            }
-                        )
-                    payload.add_answer(
-                            verb=self.properties['mandates'],
-                            object_and_type=[
-                                self.items['research data archiving'],
-                                'wikibase-item',
-                            ],
-                            qualifier=qualifier
-                        )
-
-        ### Add Process Step Information
-        for processstep in data.get('processstep', {}).values():
-
-            # Continue if no ID exists
-            if not processstep.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(processstep)
-
-            # Add Class
-            payload.add_answer(
-                verb=self.properties['instance of'],
-                object_and_type=[
-                    self.items['process step'],
-                    'wikibase-item',
-                ]
-            )
-
-            # Add Input Data Sets
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['input data set'],
-                    'relatant': 'input'
-                }
-            )
-
-            # Add Output Data Sets
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['output data set'],
-                    'relatant': 'output'
-                }
-            )
-
-            # Add applied Methods
-            for method in processstep.get('method', {}).values():
-                # Continue if no ID exists
-                if not method.get('ID'):
-                    continue
-                # Get Entry Key
-                method_item = payload.get_item_key(method, 'object')
-                # Get Qualifier
-                qualifier = []
-                for parameter in method.get('Parameter', {}).values():
-                    qualifier.extend(
-                        payload.add_qualifier(
-                            self.properties['comment'],
-                            'string',
-                            parameter
-                        )
-                    )
-                # Add to Payload
-                payload.add_answer(
-                            verb=self.properties['uses'],
-                            object_and_type=[
-                                method_item,
-                                'wikibase-item',
-                            ],
-                            qualifier=qualifier
-                        )
-
-            # Add Software Environment
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['platform'], 
-                    'relatant': 'environmentSoftware'
-                },
-                qualifier = payload.add_qualifier(
-                    self.properties['object has role'],
-                    'wikibase-item',
-                    self.items['software']
-                )
-            )
-
-            # Add Instrument Environment
-            payload.add_single_relation(
-                statement = {
-                    'relation': self.properties['platform'], 
-                    'relatant': 'environmentInstrument'
-                },
-                qualifier = payload.add_qualifier(
-                    self.properties['object has role'],
-                    'wikibase-item',
-                    self.items['research tool']
-                )
-            )
-
-            # Add Disciplines (math and non-math)
-            for discipline in processstep.get('discipline', {}).values():
-                # Check if new ID exists
-                if 'msc:' in discipline.get('ID'):
-                    _, id = discipline['ID'].split(':')
-                    payload.add_answer(
-                        verb=self.properties['MSC ID'],
-                        object_and_type=[
-                            id,
-                            'external-id',
-                        ]
-                    )
-                else:
-                    # Get Discipline Key
-                    discipline_item = payload.get_item_key(discipline, 'object')
-                    # Add to Payload
-                    payload.add_answer(
-                        verb=self.properties['field of work'],
-                        object_and_type=[
-                            discipline_item,
-                            'wikibase-item',
-                        ]
-                    )
-
-        for publication in data.get('publication', {}).values():
-
-            # Continue if no ID exists
-            if not publication.get('ID'):
-                continue
-
-            # Get Item Key
-            payload.get_item_key(publication)
-
-            if 'mardi' not in publication['ID']:
-
-                # Set and add the Class of the Publication
-                if publication.get('entrytype') == 'scholarly article':
-                    pclass = self.items['scholarly article']
-                else:
-                    pclass = self.items['publication']
-
-                payload.add_answer(
-                    verb=self.properties['instance of'],
-                    object_and_type=[
-                        pclass,
-                        'wikibase-item',
-                    ]
-                )
-
-                # Add Publication Profile
-                payload.add_answer(
-                        verb = self.properties["MaRDI profile type"],
-                        object_and_type = [
-                            self.items["MaRDI publication profile"],
-                            "wikibase-item"
-                        ],
-                    )
-
-                # Add the DOI of the Publication
-                if publication.get('reference', {}).get(0):
-                    payload.add_answer(
-                        verb=self.properties['DOI'],
-                        object_and_type=[
-                            publication['reference'][0][1],
-                            'external-id',
-                        ]
-                    )
-
-                # Add the Title of the Publication
-                if publication.get('title'):
-                    payload.add_answer(
-                        verb=self.properties['title'],
-                        object_and_type=[
-                            {"text": publication['title'], "language": "en"},
-                            'monolingualtext',
-                        ]
-                    )
-
-                # Add the Volume of the Publication
-                if publication.get('volume'):
-                    payload.add_answer(
-                        verb=self.properties['volume'],
-                        object_and_type=[
-                            publication['volume'],
-                            'string',
-                        ]
-                    )
-
-                # Add the Issue of the Publication
-                if publication.get('issue'):
-                    payload.add_answer(
-                        verb=self.properties['issue'],
-                        object_and_type=[
-                            publication['issue'],
-                            'string',
-                        ]
-                    )
-
-                # Add the Page(s) of the Publication
-                if publication.get('page'):
-                    payload.add_answer(
-                        verb=self.properties['page(s)'],
-                        object_and_type=[
-                            publication['page'],
-                            'string',
-                        ]
-                    )
-
-                # Add the Date of the Publication
-                if publication.get('date'):
-                    payload.add_answer(
-                        verb=self.properties['publication date'],
-                        object_and_type=[
-                            {
-                                "time": f"+{publication['date']}T00:00:00Z",
-                                "precision": 11,
-                                "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
-                            },
-                            'time',
-                        ]
-                    )
-
-                # Add the Language of the Publication
-                payload.add_single_relation(
-                    statement = {
-                        'relation': self.properties['language of work or name'],
-                        'relatant': 'language'
-                    }
-                )
-
-                # Add the Journal of the Publication
-                payload.add_single_relation(
-                    statement = {
-                        'relation': self.properties['published in'],
-                        'relatant': 'journal'
-                    }
-                )
-
-                # Add the Authors of the Publication
-                payload.add_single_relation(
-                    statement = {
-                        'relation': self.properties['author'],
-                        'relatant': 'author'
-                    },
-                    alt_statement = {
-                        'relation': self.properties['author name string'], 
-                        'relatant': 'Name'
-                    }
-                )
-
-        # Add Interdisciplinary Workflow Information
-        workflow = {
-            'ID': 'not found',
-            'Name': '',
-            'Description': data.get('workflow', {}).get('objective')
-        }
-
-        # Get Item Key
-        payload.get_item_key(workflow)
-
-        # Add Class
-        payload.add_answer(
-            verb=self.properties['instance of'],
-            object_and_type=[
-                self.items['research workflow'],
-                'wikibase-item',
-            ]
+        self._export_workflows(
+            payload = payload,
+            data    = data,
+        )
+        self._export_processsteps(
+            payload      = payload,
+            processsteps = data.get('processstep', {}),
+        )
+        self._export_algorithms(
+            payload    = payload,
+            algorithms = data.get('algorithm', {}),
+        )
+        self._export_softwares(
+            payload   = payload,
+            softwares = data.get('software', {}),
+        )
+        self._export_hardwares(
+            payload   = payload,
+            hardwares = data.get('hardware', {}),
+        )
+        self._export_datasets(
+            payload  = payload,
+            datasets = data.get('dataset', {}),
+        )
+        self._export_cpus(
+            payload = payload,
+            cpus    = data.get('cpu', {}),
+        )
+        self._export_programming_languages(
+            payload              = payload,
+            programminglanguages = data.get('programminglanguage', {}),
+        )
+        self._export_methods(
+            payload = payload,
+            methods = data.get('method', {}),
+        )
+        self._export_instruments(
+            payload     = payload,
+            instruments = data.get('instrument', {}),
+        )
+        self._export_algorithmic_tasks(
+            payload           = payload,
+            algorithmic_tasks = data.get('algorithmictask', {}),
+        )
+        self._export_academic_disciplines(
+            payload              = payload,
+            academic_disciplines = data.get('academicdiscipline', {}),
+        )
+        self._export_authors(
+            payload      = payload,
+            publications = data.get('publication', {}),
+        )
+        self._export_journals(
+            payload      = payload,
+            publications = data.get('publication', {}),
+        )
+        self._export_publications(
+            payload      = payload,
+            publications = data.get('publication', {}),
+            relations    = [('P2A', 'ARelatant'), ('P2BS', 'HSRelatant'), ('P2IWE', 'IWERelatant')],
         )
 
-        # Procedure Description to Workflow
-        if data.get('workflow', {}).get('descriptionLong'):
-            payload.add_answer(
-                verb=self.properties['description'],
-                object_and_type=[
-                    data['workflow']['descriptionLong'],
-                    'string',
-                ]
-            )
-
-        # Add Reproducibility Aspects
-        for key, value in REPRODUCIBILITY.items():
-            if data.get('reproducibility', {}).get(key) == options['Yes']:
-                qualifier = []
-                if data['reproducibility'].get(f'{key}condition'):
-                    qualifier.extend(
-                        payload.add_qualifier(
-                            self.properties['comment'],
-                            'string',
-                            data['reproducibility'][f'{key}condition']
-                        )
-                    )
-                payload.add_answer(
-                    verb=self.properties['instance of'],
-                    object_and_type=[
-                        self.items[value],
-                        'wikibase-item',
-                    ],
-                    qualifier=qualifier
-                )
-
-        # Add Transferability Aspects
-        if data.get('reproducibility', {}).get('transferability'):
-            qualifier = []
-            for value in data['reproducibility']['transferability'].values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['comment'],
-                        'string',
-                        value
-                    )
-                )
-            payload.add_answer(
-                verb=self.properties['instance of'],
-                object_and_type=[
-                    self.items['transferable research workflow'],
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
-        # Add Model and Task the Workflow Uses
-        if data.get('model'):
-            #Continue if ID exists
-            if data['model'].get('ID'):
-                # Get Item Key
-                model_item = payload.get_item_key(data['model'], 'object')
-                # Add Statement with Qualifier
-                qualifier = []
-                for task in data['model'].get('task', {}).values():
-                    qualifier.extend(
-                        payload.add_qualifier(
-                            self.properties['used by'],
-                            'wikibase-item',
-                            payload.get_item_key(task, 'object')
-                        )
-                    )
-                payload.add_answer(
-                    verb=self.properties['uses'],
-                    object_and_type=[
-                        model_item,
-                        'wikibase-item',
-                    ],
-                    qualifier=qualifier
-                )
-
-        # Add Software the Workflow uses
-        for value in data.get('software', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            software_item = payload.get_item_key(value, 'object')
-            # Add Statement with Qualifier
-            qualifier = []
-            for hardware in data.get('hardware', {}).values():
-                for software in hardware.get('software', {}).values():
-                    if (software.get('ID'), software.get('Name'), software.get('Description')) == (value['ID'], value['Name'], value['Description']):
-                        hardware_item = payload.get_item_key(hardware, 'object')
-                        qualifier.extend(payload.add_qualifier(self.properties['platform'], 'wikibase-item', hardware_item))
-            if value.get('Version'):
-                qualifier = payload.add_qualifier(
-                    self.properties['software version identifier'],
-                    'string',
-                    value['Version']
-                )
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    software_item,
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
-        # Add Hardware the Workflow Uses
-        for value in data.get('hardware', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            hardware_item = payload.get_item_key(value, 'object')
-            # Add Satement with Qualifier
-            qualifier = []
-            for compiler in value.get('compiler', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['uses'],
-                        'wikibase-item',
-                        payload.get_item_key(compiler, 'object')
-                    )
-                )
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    hardware_item,
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
-        # Add Data Sets the Workflow Uses
-        for value in data.get('dataset', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            dataset_item = payload.get_item_key(value, 'object')
-            # Add Statement
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    dataset_item,
-                    'wikibase-item',
-                ]
-            )
-
-        # Add Process Steps the Workflow Uses
-        for value in data.get('processstep', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            processstep_item = payload.get_item_key(value, 'object')
-            # Add Statement with Qualifier
-            qualifier = []
-            for parameter in value.get('parameter', {}).values():
-                qualifier.extend(
-                    payload.add_qualifier(
-                        self.properties['comment'],
-                        'string',
-                        parameter
-                    )
-                )
-            payload.add_answer(
-                verb=self.properties['uses'],
-                object_and_type=[
-                    processstep_item,
-                    'wikibase-item',
-                ],
-                qualifier=qualifier
-            )
-
-        # Add Publications related to the Workflow
-        for value in data.get('publication', {}).values():
-            # Continue if no ID exists
-            if not value.get('ID'):
-                continue
-            # Get Item Key
-            publication_item = payload.get_item_key(value, 'object')
-            # Add Statement
-            payload.add_answer(
-                verb=self.properties['cites work'],
-                object_and_type=[
-                    publication_item,
-                    'wikibase-item',
-                ]
-            )
-
-        # Construct Item Payloads
         payload.add_item_payload()
 
-        # If Relations are added, check if they exist
         if any(key.startswith('RELATION') for key in payload.get_dictionary()):
-
-            # Generate SPARQL Check Query
             query = payload.build_relation_check_query()
 
-            # Perform Check Query for Relations
-            check = query_sparql(query, get_url('mardi', 'sparql'))
+            check = None
+            for attempt in range(2):
+                try:
+                    check = query_sparql(
+                        query           = query,
+                        sparql_endpoint = get_url('mardi', 'sparql'),
+                    )
+                    break
+                except Exception as e:
+                    logging.warning("SPARQL query attempt %s failed: %s", attempt + 1, e)
+                    if attempt == 0:
+                        time.sleep(1)
+            if not check:
+                check = [{}]
 
-            # Add Check Results
-            payload.add_check_results(check)
+            payload.add_check_results(check=check)
 
         return payload.get_dictionary(), payload.dependency
+
+    # ------------------------------------------------------------------
+    # Entity export helpers
+    # ------------------------------------------------------------------
+
+    def _export_workflows(self, payload, data: dict):
+        '''Export the top-level research workflow item.
+
+        Creates the workflow item (instance of: research workflow), adds a
+        long description, all reproducibility aspects (from REPRODUCIBILITY
+        constant) with optional condition qualifiers, and transferability with
+        qualifiers.  Then links the workflow to its mathematical model with
+        computational-task qualifiers, used software (with hardware-platform
+        and version qualifiers), used hardware (with compiler qualifiers),
+        used data sets, process steps (with parameter qualifiers), and cited
+        publications.
+        '''
+        pass
+
+    def _export_processsteps(self, payload, processsteps: dict):
+        '''Export each process step item.
+
+        Sets instance of: process step, then adds input/output data-set
+        relations, applied methods with parameter qualifiers, software
+        environment (platform relation with object-has-role: software
+        qualifier) and instrument environment (platform relation with
+        object-has-role: research tool qualifier), and field-of-work using
+        MSC external-id or a Wikibase item for each discipline.
+        '''
+        pass
+
+    def _export_algorithms(self, payload, algorithms: dict):
+        '''Export each algorithm item.
+
+        Placeholder — algorithm export for the workflow catalog is not yet
+        implemented.
+        '''
+        pass
+
+    def _export_softwares(self, payload, softwares: dict):
+        '''Export each software item.
+
+        Sets instance of: software, adds DOI / swMath-work-ID /
+        source-code-repository-URL / described-at-URL references, adds
+        programming-language relation, dependency relation, source-code-
+        repository-URL (if published), and user-manual-URL (if documented).
+        '''
+        pass
+
+    def _export_hardwares(self, payload, hardwares: dict):
+        '''Export each hardware item.
+
+        Sets instance of: computer hardware, adds CPU relation, number-of-
+        compute-nodes (has-part: compute node with quantity qualifier), and
+        number-of-processor-cores (quantity).
+        '''
+        pass
+
+    def _export_datasets(self, payload, datasets: dict):
+        '''Export each data set item.
+
+        Sets instance of: data set, adds data-size (with unit from
+        kilobyte/megabyte/gigabyte/terabyte options) or number-of-records,
+        file-extension, binary/text classification, proprietary/open-data
+        classification, data-publishing mandate (with optional DOI and URL),
+        and research-data-archiving mandate (with optional end-time qualifier).
+        '''
+        pass
+
+    def _export_cpus(self, payload, cpus: dict):
+        '''Export each CPU item collected from hardware sections.'''
+        pass
+
+    def _export_programming_languages(self, payload, programminglanguages: dict):
+        '''Export each programming language item collected from software sections.'''
+        pass
+
+    def _export_methods(self, payload, methods: dict):
+        '''Export each experimental method item collected from process-step sections.'''
+        pass
+
+    def _export_instruments(self, payload, instruments: dict):
+        '''Export each instrument item collected from process-step sections.'''
+        pass
+
+    def _export_algorithmic_tasks(self, payload, algorithmic_tasks: dict):
+        '''Export each algorithmic task item collected from algorithm sections.'''
+        pass
+
+    def _export_academic_disciplines(self, payload, academic_disciplines: dict):
+        '''Export each academic discipline item collected from process-step sections.'''
+        pass
