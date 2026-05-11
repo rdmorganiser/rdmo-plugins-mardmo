@@ -5,6 +5,7 @@ SELECT
     ?cpu_id, " || ", ?cpul, " || ", ?cpud,
     " || ", COALESCE(STR(?cpu_count), "")
 ); separator=" <|> ") AS ?cpu)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
 
 WHERE {{
 
@@ -27,6 +28,21 @@ WHERE {{
         OPTIONAL {{
             ?statement pq:P1114 ?cpu_count.
         }}
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{ wd:Q788790 wd:Q1724915 }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?pubraw rdfs:label ?publraw .
+            ?pubraw schema:description ?pubdraw .
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
     }}
 }}
 

@@ -8,6 +8,7 @@ SELECT
 (GROUP_CONCAT(DISTINCT CONCAT(?ps, " || ", ?psl, " || ", ?psd); separator=" <|> ") AS ?contains_process_step)
 (GROUP_CONCAT(DISTINCT CONCAT(?conw, " || ", ?conwl, " || ", ?conwd); separator=" <|> ") AS ?contains_workflow)
 (GROUP_CONCAT(DISTINCT CONCAT(?coniw, " || ", ?coniwl, " || ", ?coniwd); separator=" <|> ") AS ?contained_in_workflow)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
 
 WHERE {{
 
@@ -88,6 +89,24 @@ WHERE {{
 
         BIND(COALESCE(?coniwlraw, "No Label Provided!") AS ?coniwl)
         BIND(COALESCE(?coniwdraw, "No Description Provided!") AS ?coniwd)
+    }}
+
+    OPTIONAL {{
+        ?id p:P1343 ?statement_p .
+        ?statement_p ps:P1343 ?pubraw .
+        ?statement_p pq:P3831 ?role .
+        VALUES ?role {{
+            wd:Q217602 wd:Q166142 wd:Q12579633
+            wd:Q1298668 wd:Q265158 wd:Q788790 wd:Q1724915
+        }}
+        BIND(REPLACE(STR(?pubraw), "http://www.wikidata.org/entity/", "wikidata:") AS ?pub)
+        SERVICE wikibase:label {{
+            bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE],mul" .
+            ?pubraw rdfs:label ?publraw .
+            ?pubraw schema:description ?pubdraw .
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
     }}
 
 }}

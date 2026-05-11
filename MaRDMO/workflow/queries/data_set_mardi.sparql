@@ -3,6 +3,7 @@ SELECT
 (CONCAT("mardi:", STRAFTER(STR(?id), STR(wd:))) AS ?qid)
 ?size_value ?size_unit ?size_record ?file_format
 ?DOI ?URL ?end_time
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
 (COALESCE(?bot_binary, ?bot_text,    "") AS ?binary_or_text)
 (COALESCE(?prop_yes,   ?prop_no,     "") AS ?proprietary)
 (COALESCE(?pub_raw,    "NoText")        AS ?publish)
@@ -52,6 +53,27 @@ WHERE {{
         OPTIONAL {{
             ?statementNode2 pq:{end time} ?end_time.
         }}
+    }}
+
+    OPTIONAL {{
+        ?id p:{described by source} ?statement_p .
+        ?statement_p ps:{described by source} ?pubraw .
+        ?statement_p pq:{object has role} ?role .
+        VALUES ?role {{
+            wd:{analysis} wd:{application} wd:{documentation}
+            wd:{invention} wd:{study} wd:{review} wd:{use}
+        }}
+        BIND(CONCAT("mardi:", STRAFTER(STR(?pubraw), STR(wd:))) AS ?pub)
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw .
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw .
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
     }}
 }}
 

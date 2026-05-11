@@ -6,6 +6,7 @@ SELECT
     ?cpu_id, " || ", ?cpul, " || ", ?cpud,
     " || ", COALESCE(STR(?cpu_count), "")
 ); separator=" <|> ") AS ?cpu)
+(GROUP_CONCAT(DISTINCT CONCAT(?pub, " || ", ?publ, " || ", ?pubd); separator=" <|> ") AS ?publication)
 
 WHERE {{
 
@@ -38,6 +39,24 @@ WHERE {{
             ?statement pq:{quantity_property} ?cpu_count.
         }}
 
+    }}
+
+    OPTIONAL {{
+        ?id p:{described by source} ?statement_p .
+        ?statement_p ps:{described by source} ?pubraw .
+        ?statement_p pq:{object has role} ?role .
+        VALUES ?role {{ wd:{documentation} wd:{use} }}
+        BIND(CONCAT("mardi:", STRAFTER(STR(?pubraw), STR(wd:))) AS ?pub)
+        OPTIONAL {{
+            ?pubraw rdfs:label ?publraw .
+            FILTER (lang(?publraw) = 'en')
+        }}
+        BIND(COALESCE(?publraw, "No Label Provided!") AS ?publ)
+        OPTIONAL {{
+            ?pubraw schema:description ?pubdraw .
+            FILTER (lang(?pubdraw) = 'en')
+        }}
+        BIND(COALESCE(?pubdraw, "No Description Provided!") AS ?pubd)
     }}
 }}
 
