@@ -13,7 +13,8 @@ Provides:
 '''
 
 from ..constants import BASE_URI
-from ..getters import get_items, get_options, get_properties, get_publication_mapping, get_questions
+from ..getters import get_options, get_questions
+from ..publication.constants import get_publication_relations
 
 SECTION_MAP = {
     'workflow':    'Interdisciplinary Workflow',
@@ -90,47 +91,8 @@ def get_uri_prefix_map():
 
 
 def get_relations():
-    '''Build the relation mapping for the Workflow Documentation.
-
-    Maps each publication-role option URL to the corresponding Wikibase
-    property and qualifier item used when writing statements to the MaRDI Portal.
-
-    Returns:
-        Dict mapping publication-role URL strings to ``[property, qualifier_item]`` lists.
-    '''
-    publication_mapping = get_publication_mapping()
-    items               = get_items()
-    properties          = get_properties()
-    return {
-        publication_mapping.get(key='analyzes')['url']: [
-            properties['described by source'],
-            items['analysis']
-        ],
-        publication_mapping.get(key='applies')['url']: [
-            properties['described by source'],
-            items['application']
-        ],
-        publication_mapping.get(key='documents')['url']: [
-            properties['described by source'],
-            items['documentation']
-        ],
-        publication_mapping.get(key='invents')['url']: [
-            properties['described by source'],
-            items['invention']
-        ],
-        publication_mapping.get(key='studies')['url']: [
-            properties['described by source'],
-            items['study']
-        ],
-        publication_mapping.get(key='surveys')['url']: [
-            properties['described by source'],
-            items['review']
-        ],
-        publication_mapping.get(key='uses')['url']: [
-            properties['described by source'],
-            items['use']
-        ],
-    }
+    '''Return the workflow relation mapping — delegates to the shared publication roles.'''
+    return get_publication_relations()
 
 
 # Dictionary with list of property names

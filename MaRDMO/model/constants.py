@@ -13,7 +13,8 @@ Provides:
 '''
 
 from ..constants import BASE_URI, SECTION_MAP_BASE
-from ..getters import get_items, get_mathmoddb, get_properties, get_publication_mapping, get_questions
+from ..getters import get_items, get_mathmoddb, get_properties, get_questions
+from ..publication.constants import get_publication_relations
 
 # Data Properties Label
 data_properties_label = {
@@ -278,11 +279,11 @@ def get_relations():
         Dict mapping MathModDB relation URL strings to ``[property(, qualifier)]``
         lists; qualifier is either a Wikibase item ID or ``'forward'``/``'backward'``.
     '''
-    mathmoddb           = get_mathmoddb()
-    publication_mapping = get_publication_mapping()
-    items               = get_items()
-    properties          = get_properties()
+    mathmoddb  = get_mathmoddb()
+    items      = get_items()
+    properties = get_properties()
     relations = {
+        **get_publication_relations(),
         # Map MathModDB Relation on Wikibase Property + Qualifier Item
         mathmoddb.get(key='assumes')['url']: [
             properties['assumes']
@@ -350,26 +351,6 @@ def get_relations():
         mathmoddb.get(key='contains_strong_formulation')['url']: [
             properties['contains'],
             items['strong formulation']
-        ],
-        publication_mapping.get(key='documents')['url']: [
-            properties['described by source'],
-            items['documentation']
-        ],
-        publication_mapping.get(key='invents')['url']: [
-            properties['described by source'],
-            items['invention']
-        ],
-        publication_mapping.get(key='studies')['url']: [
-            properties['described by source'],
-            items['study']
-        ],
-        publication_mapping.get(key='surveys')['url']: [
-            properties['described by source'],
-            items['review']
-        ],
-        publication_mapping.get(key='uses')['url']: [
-            properties['described by source'],
-            items['use']
         ],
         # Map MathModDB Relation on Wikibase Property + Direction
         mathmoddb.get(key='specialized_by')['url']: [

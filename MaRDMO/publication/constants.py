@@ -4,9 +4,58 @@ Defines the property-to-predicate mappings (``PROPS``), item-info dicts
 (``ITEMINFOS``, ``CITATIONINFOS``), and lookup tables for journals, authors,
 and languages that the publication worker and handlers consume.
 
-These constants are imported directly; no factory functions are needed because
-the publication constants do not depend on the live RDMO database state.
+Also provides ``get_publication_relations()`` — the single authoritative
+source for the shared publication-role → Wikibase-property mapping used by
+the model, algorithm, and workflow ``get_relations()`` functions.
 '''
+
+from ..getters import get_items, get_properties, get_publication_mapping
+
+
+def get_publication_relations():
+    '''Return the shared publication-role → Wikibase property+qualifier mapping.
+
+    Used by the model, algorithm, and workflow ``get_relations()`` functions so
+    the mapping is defined exactly once.
+
+    Returns:
+        Dict mapping each ``mardmo/`` publication-role URL to a
+        ``[property, qualifier_item]`` list.
+    '''
+    publication_mapping = get_publication_mapping()
+    items               = get_items()
+    properties          = get_properties()
+    return {
+        publication_mapping.get(key='analyzes')['url']: [
+            properties['described by source'],
+            items['analysis']
+        ],
+        publication_mapping.get(key='applies')['url']: [
+            properties['described by source'],
+            items['application']
+        ],
+        publication_mapping.get(key='documents')['url']: [
+            properties['described by source'],
+            items['documentation']
+        ],
+        publication_mapping.get(key='invents')['url']: [
+            properties['described by source'],
+            items['invention']
+        ],
+        publication_mapping.get(key='studies')['url']: [
+            properties['described by source'],
+            items['study']
+        ],
+        publication_mapping.get(key='surveys')['url']: [
+            properties['described by source'],
+            items['review']
+        ],
+        publication_mapping.get(key='uses')['url']: [
+            properties['described by source'],
+            items['use']
+        ],
+    }
+
 
 PROPS = {
     'P2ME':  ['documents', 'invents', 'studies', 'surveys', 'uses'],
