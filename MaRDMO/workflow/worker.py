@@ -252,9 +252,15 @@ class PrepareWorkflow(PublicationExport):
             payload    = payload,
             algorithms = data.get('algorithm', {}),
         )
+        algo_software_keys = {
+            (item.get('ID', ''), item.get('Name', ''), item.get('Description', ''))
+            for algo in data.get('algorithm', {}).values()
+            for item in algo.get('SRelatant', {}).values()
+        }
         self._export_softwares(
-            payload   = payload,
-            softwares = data.get('software', {}),
+            payload           = payload,
+            softwares         = data.get('software', {}),
+            algo_software_keys = algo_software_keys,
         )
         self._export_hardwares(
             payload   = payload,
@@ -359,20 +365,104 @@ class PrepareWorkflow(PublicationExport):
     def _export_algorithms(self, payload, algorithms: dict):
         '''Export each algorithm item.
 
-        Placeholder — algorithm export for the workflow catalog is not yet
-        implemented.
+        Sets instance of: algorithm (community: MathAlgoDB, profile: MaRDI
+        algorithm profile), links to its algorithmic tasks via solved-by
+        (reverse) and to implementing software via implemented-by.
+        No algorithm-to-algorithm intra-class relations are exported for the
+        workflow catalog.
         '''
-        pass
+        for entry in algorithms.values():
+            if not entry.get("ID"):
+                continue
 
-    def _export_softwares(self, payload, softwares: dict):
+            payload.get_item_key(value=entry)
+
+            self._add_common_metadata(
+                payload      = payload,
+                community    = self.items["MathAlgoDB"],
+                qclass       = self.items["algorithm"],
+                profile_type = "MaRDI algorithm profile",
+            )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["solved by"],
+                    'relatant': "PRelatant"
+                },
+                reverse = True
+            )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["implemented by"],
+                    'relatant': "SRelatant"
+                }
+            )
+
+    def _export_softwares(self, payload, softwares: dict, algo_software_keys: set):
         '''Export each software item.
 
-        Sets instance of: software, adds DOI / swMath-work-ID /
-        source-code-repository-URL / described-at-URL references, adds
-        programming-language relation, dependency relation, source-code-
-        repository-URL (if published), and user-manual-URL (if documented).
+        Software linked to an algorithm via "implemented by" receives community
+        MathAlgoDB and the MaRDI software profile; all other software receives
+        only the profile.  No benchmark (tested-by) relation is exported for
+        the workflow catalog.
         '''
-        pass
+        for entry in softwares.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(value=entry)
+
+            entry_key = (entry.get('ID', ''), entry.get('Name', ''), entry.get('Description', ''))
+            if entry_key in algo_software_keys:
+                self._add_common_metadata(
+                    payload      = payload,
+                    community    = self.items["MathAlgoDB"],
+                    qclass       = self.items["software"],
+                    profile_type = "MaRDI software profile",
+                )
+            else:
+                self._add_common_metadata(
+                    payload      = payload,
+                    qclass       = self.items["software"],
+                    profile_type = "MaRDI software profile",
+                )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["programmed in"],
+                    'relatant': "programminglanguage"
+                }
+            )
+
+            payload.add_single_relation(
+                statement = {
+                    'relation': self.properties["depends on software"],
+                    'relatant': "dependency"
+                }
+            )
+
+            if entry.get("reference"):
+                if entry['reference'].get(0):
+                    payload.add_answer(
+                        verb = self.properties["DOI"],
+                        object_and_type = [entry["reference"][0][1], "external-id"],
+                    )
+                if entry['reference'].get(1):
+                    payload.add_answer(
+                        verb = self.properties["swMath work ID"],
+                        object_and_type = [entry["reference"][1][1], "external-id"],
+                    )
+                if entry['reference'].get(2):
+                    payload.add_answer(
+                        verb = self.properties["described at URL"],
+                        object_and_type = [entry["reference"][2][1], "URL"],
+                    )
+                if entry['reference'].get(3):
+                    payload.add_answer(
+                        verb = self.properties["source code repository URL"],
+                        object_and_type = [entry["reference"][3][1], "URL"],
+                    )
 
     def _export_hardwares(self, payload, hardwares: dict):
         '''Export each hardware item.
@@ -381,7 +471,61 @@ class PrepareWorkflow(PublicationExport):
         compute-nodes (has-part: compute node with quantity qualifier), and
         number-of-processor-cores (quantity).
         '''
-        pass
+        for entry in hardwares.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(value=entry)
+
+            self._add_common_metadata(
+                payload = payload,
+                qclass  = self.items["computer hardware"],
+            )
+
+            nodes = str(entry.get('nodes', '')).strip()
+            if nodes.isdigit():
+                payload.add_answer(
+                    verb = self.properties["number of compute nodes"],
+                    object_and_type = [
+                        {"amount": f"+{nodes}", "unit": "1"},
+                        "quantity",
+                    ],
+                )
+
+            for idx, cpu_entry in entry.get('cpu', {}).items():
+                if not cpu_entry.get('ID'):
+                    continue
+
+                # Add number of processor cores as a statement on the CPU item
+                cores = str(entry.get('cores', {}).get(idx, '')).strip()
+                if cores.isdigit():
+                    payload.get_item_key(cpu_entry)
+                    payload.add_answer(
+                        verb = self.properties["number of processor cores"],
+                        object_and_type = [
+                            {"amount": f"+{cores}", "unit": "1"},
+                            "quantity",
+                        ],
+                    )
+                    payload.get_item_key(value=entry)
+
+                # Add CPU relation with count qualifier on the hardware item
+                cpu_item = payload.get_item_key(cpu_entry, 'object')
+                if cpu_item not in payload.get_dictionary():
+                    continue
+                qualifiers = []
+                count = str(entry.get('number-of-cpu', {}).get(idx, '')).strip()
+                if count.isdigit():
+                    qualifiers += payload.add_qualifier(
+                        self.properties["quantity_property"],
+                        "quantity",
+                        {"amount": f"+{count}", "unit": "1"},
+                    )
+                payload.add_answer(
+                    verb = self.properties["CPU"],
+                    object_and_type = [cpu_item, "wikibase-item"],
+                    qualifier = qualifiers,
+                )
 
     def _export_datasets(self, payload, datasets: dict):
         '''Export each data set item.
@@ -572,9 +716,11 @@ class PrepareWorkflow(PublicationExport):
                 value = entry
             )
 
-            payload.add_answer(
-                verb = self.properties["instance of"],
-                object_and_type = [self.items["algorithmic task"], "wikibase-item"],
+            self._add_common_metadata(
+                payload = payload,
+                community = self.items["MathAlgoDB"],
+                qclass =self.items["algorithmic task"],
+                profile_type = "MaRDI task profile",
             )
 
     def _export_academic_disciplines(self, payload, academic_disciplines: dict):
