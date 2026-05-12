@@ -392,28 +392,202 @@ class PrepareWorkflow(PublicationExport):
         classification, data-publishing mandate (with optional DOI and URL),
         and research-data-archiving mandate (with optional end-time qualifier).
         '''
-        pass
+        options = get_options()
+
+        for entry in datasets.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(value=entry)
+
+            self._add_common_metadata(
+                payload      = payload,
+                qclass       = self.items["data set"],
+                profile_type = "MaRDI data set profile",
+            )
+
+            if entry.get("Size"):
+                unit_map = {
+                    options["kilobyte"]: self.items["kilobyte"],
+                    options["megabyte"]: self.items["megabyte"],
+                    options["gigabyte"]: self.items["gigabyte"],
+                    options["terabyte"]: self.items["terabyte"],
+                }
+                size_unit = entry["Size"][0]
+                size_val  = entry["Size"][1]
+                if size_unit in unit_map:
+                    payload.add_answer(
+                        verb = self.properties["data size"],
+                        object_and_type = [
+                            {
+                                "amount": f"+{size_val}",
+                                "unit": f"{get_url('mardi', 'entity_uri')}/entity/{unit_map[size_unit]}",
+                            },
+                            "quantity",
+                        ],
+                    )
+                elif size_unit == options["items"]:
+                    payload.add_answer(
+                        verb = self.properties["number of records"],
+                        object_and_type = [
+                            {"amount": f"+{size_val}", "unit": "1"},
+                            "quantity",
+                        ],
+                    )
+
+            if entry.get("FileFormat"):
+                payload.add_answer(
+                    verb = self.properties["file extension"],
+                    object_and_type = [entry["FileFormat"], "string"],
+                )
+
+            if entry.get("BinaryText"):
+                if entry["BinaryText"] == options["binary"]:
+                    payload.add_answer(
+                        verb = self.properties["instance of"],
+                        object_and_type = [self.items["binary data"], "wikibase-item"],
+                    )
+                elif entry["BinaryText"] == options["text"]:
+                    payload.add_answer(
+                        verb = self.properties["instance of"],
+                        object_and_type = [self.items["text data"], "wikibase-item"],
+                    )
+
+            if entry.get("Proprietary"):
+                if entry["Proprietary"] == options["Yes"]:
+                    payload.add_answer(
+                        verb = self.properties["instance of"],
+                        object_and_type = [self.items["proprietary information"], "wikibase-item"],
+                    )
+                elif entry["Proprietary"] == options["No"]:
+                    payload.add_answer(
+                        verb = self.properties["instance of"],
+                        object_and_type = [self.items["open data"], "wikibase-item"],
+                    )
+
+            if entry.get("ToPublish"):
+                if entry["ToPublish"][0] == options["YesText"]:
+                    payload.add_answer(
+                        verb = self.properties["mandates"],
+                        object_and_type = [self.items["data publishing"], "wikibase-item"],
+                    )
+                    val = entry["ToPublish"][1] if len(entry["ToPublish"]) > 1 else ""
+                    if val.startswith("10."):
+                        payload.add_answer(
+                            verb = self.properties["DOI"],
+                            object_and_type = [val, "external-id"],
+                        )
+                    elif val.startswith(("http://", "https://")):
+                        payload.add_answer(
+                            verb = self.properties["URL"],
+                            object_and_type = [val, "url"],
+                        )
+
+            if entry.get("ToArchive"):
+                if entry["ToArchive"][0] == options["YesText"]:
+                    qualifier = []
+                    if entry["ToArchive"][1]:
+                        qualifier = payload.add_qualifier(
+                            self.properties["end time"],
+                            "time",
+                            {
+                                "time": f"+{entry['ToArchive'][1]}-00-00T00:00:00Z",
+                                "precision": 9,
+                                "calendarmodel": "http://www.wikidata.org/entity/Q1985727",
+                            },
+                        )
+                    payload.add_answer(
+                        verb = self.properties["mandates"],
+                        object_and_type = [self.items["research data archiving"], "wikibase-item"],
+                        qualifier = qualifier,
+                    )
 
     def _export_cpus(self, payload, cpus: dict):
         '''Export each CPU item collected from hardware sections.'''
-        pass
+        for entry in cpus.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["CPU model"], "wikibase-item"],
+            )
 
     def _export_programming_languages(self, payload, programminglanguages: dict):
         '''Export each programming language item collected from software sections.'''
-        pass
+        for entry in programminglanguages.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["programming language"], "wikibase-item"],
+            )
 
     def _export_methods(self, payload, methods: dict):
         '''Export each experimental method item collected from process-step sections.'''
-        pass
+        for entry in methods.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["method"], "wikibase-item"],
+            )
 
     def _export_instruments(self, payload, instruments: dict):
         '''Export each instrument item collected from process-step sections.'''
-        pass
+        for entry in instruments.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["research tool"], "wikibase-item"],
+            )
 
     def _export_algorithmic_tasks(self, payload, algorithmic_tasks: dict):
         '''Export each algorithmic task item collected from algorithm sections.'''
-        pass
+        for entry in algorithmic_tasks.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["algorithmic task"], "wikibase-item"],
+            )
 
     def _export_academic_disciplines(self, payload, academic_disciplines: dict):
         '''Export each academic discipline item collected from process-step sections.'''
-        pass
+        for entry in academic_disciplines.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(
+                value = entry
+            )
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["academic discipline"], "wikibase-item"],
+            )
