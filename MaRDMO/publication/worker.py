@@ -161,6 +161,40 @@ class PublicationExport:
         self.properties = get_properties()
         self.items = get_items()
 
+    def _add_common_metadata(self, payload, qclass, profile_type=None, community=None, description_long=False):
+        '''Add instance-of and optional community, MaRDI-profile-type, and description statements.
+
+        Args:
+            payload:          :class:`~MaRDMO.payload.GeneratePayload` instance.
+            qclass:           Wikibase QID for the ``instance of`` target class.
+            profile_type:     Label key for the MaRDI profile type item; skipped when ``None``.
+            community:        Wikibase QID for the community item; skipped when ``None``.
+            description_long: When ``True``, add a ``description`` statement from the item's
+                              ``descriptionLong`` field.
+        '''
+        payload.add_answer(
+            verb = self.properties["instance of"],
+            object_and_type = [qclass, "wikibase-item"],
+        )
+
+        if community is not None:
+            payload.add_answer(
+                verb = self.properties["community"],
+                object_and_type = [community, "wikibase-item"],
+            )
+
+        if profile_type is not None:
+            payload.add_answer(
+                verb = self.properties["MaRDI profile type"],
+                object_and_type = [self.items[profile_type], "wikibase-item"],
+            )
+
+        if description_long:
+            payload.add_answers(
+                mardmo_property = "descriptionLong",
+                wikibase_property = "description",
+            )
+
     def _export_journals(self, payload, publications: dict):
         '''Add journal item entries (instance-of + ISSN) for all publications.
 
@@ -173,19 +207,18 @@ class PublicationExport:
                 if not entry.get("ID") or entry.get("ID") == 'no journal found':
                     continue
 
-                payload.get_item_key(
-                value = entry
-                )
+                payload.get_item_key(value=entry)
 
-                payload.add_answer(
-                    verb = self.properties["instance of"],
-                    object_and_type = [self.items["scientific journal"], "wikibase-item"],
+                self._add_common_metadata(
+                    payload=payload,
+                    qclass=self.items["scientific journal"],
+                    profile_type="MaRDI journal profile",
                 )
 
                 if entry.get('issn'):
                     payload.add_answer(
-                        verb = self.properties["ISSN"],
-                        object_and_type = [entry["issn"], "external-id"],
+                        verb=self.properties["ISSN"],
+                        object_and_type=[entry["issn"], "external-id"],
                     )
 
     def _export_authors(self, payload, publications: dict):
@@ -200,18 +233,12 @@ class PublicationExport:
                 if not entry.get("ID") or entry.get("ID") == 'no author found':
                     continue
 
-                payload.get_item_key(
-                value = entry
-                )
+                payload.get_item_key(value=entry)
 
-                payload.add_answer(
-                    verb = self.properties["instance of"],
-                    object_and_type = [self.items["human"], "wikibase-item"],
-                )
-
-                payload.add_answer(
-                    verb = self.properties["MaRDI profile type"],
-                    object_and_type = [self.items["Person"], "wikibase-item"],
+                self._add_common_metadata(
+                    payload=payload,
+                    qclass=self.items["human"],
+                    profile_type="MaRDI person profile",
                 )
 
                 if entry.get('orcid'):
@@ -252,25 +279,17 @@ class PublicationExport:
             # Only add class, profile, and DOI for non-MaRDI items
             if "mardi" not in entry["ID"]:
 
-                 # Set and add Publication Class
-                if entry.get("entrytype") == "scholarly article":
-                    pclass = self.items["scholarly article"]
-                else:
-                    pclass = self.items["publication"]
-
-                payload.add_answer(
-                    verb = self.properties["instance of"],
-                    object_and_type = [pclass, "wikibase-item"],
+                pclass = (
+                    self.items["scholarly article"]
+                    if entry.get("entrytype") == "scholarly article"
+                    else self.items["publication"]
                 )
 
-                # Add Publication Profile
-                payload.add_answer(
-                        verb = self.properties["MaRDI profile type"],
-                        object_and_type = [
-                            self.items["MaRDI publication profile"],
-                            "wikibase-item"
-                        ],
-                    )
+                self._add_common_metadata(
+                    payload=payload,
+                    qclass=pclass,
+                    profile_type="MaRDI publication profile",
+                )
 
                 # Add DOI
                 if entry.get("reference", {}).get(0):

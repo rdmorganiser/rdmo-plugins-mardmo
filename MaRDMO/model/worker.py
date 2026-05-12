@@ -256,34 +256,6 @@ class PrepareModel(PublicationExport):
     # ---------------------------
     # Shared helper
     # ---------------------------
-    def _add_common_metadata(self, payload, qclass, profile_type):
-        '''Add instance-of, community, and MaRDI-profile-type statements to the current item.
-
-        Args:
-            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
-            qclass:       Wikibase QID for the ``instance of`` target class.
-            profile_type: Label key for the MaRDI profile type item.
-        '''
-        payload.add_answer(
-            verb = self.properties["instance of"],
-            object_and_type = [qclass, "wikibase-item"],
-        )
-
-        payload.add_answer(
-            verb = self.properties["community"],
-            object_and_type = [self.items["MathModDB"], "wikibase-item"],
-        )
-
-        payload.add_answer(
-            verb = self.properties["MaRDI profile type"],
-            object_and_type = [self.items[profile_type], "wikibase-item"],
-        )
-
-        payload.add_answers(
-            mardmo_property = "descriptionLong",
-            wikibase_property = "description",
-        )
-
     # ---------------------------
     # Entity export helpers
     # ---------------------------
@@ -298,7 +270,9 @@ class PrepareModel(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["academic discipline"],
+                community = self.items["MathModDB"],
+                description_long = True,
+                qclass =self.items["academic discipline"],
                 profile_type = "MaRDI research field profile",
             )
 
@@ -324,7 +298,9 @@ class PrepareModel(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["research problem"],
+                community = self.items["MathModDB"],
+                description_long = True,
+                qclass =self.items["research problem"],
                 profile_type = "MaRDI research problem profile",
             )
 
@@ -358,7 +334,9 @@ class PrepareModel(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["mathematical model"],
+                community = self.items["MathModDB"],
+                description_long = True,
+                qclass =self.items["mathematical model"],
                 profile_type = "MaRDI model profile",
             )
 
@@ -412,7 +390,9 @@ class PrepareModel(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["computational task"],
+                community = self.items["MathModDB"],
+                description_long = True,
+                qclass =self.items["computational task"],
                 profile_type = "MaRDI task profile",
             )
 
@@ -457,7 +437,9 @@ class PrepareModel(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["mathematical expression"],
+                community = self.items["MathModDB"],
+                description_long = True,
+                qclass =self.items["mathematical expression"],
                 profile_type = "MaRDI formula profile",
             )
 

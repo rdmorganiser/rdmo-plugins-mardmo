@@ -185,34 +185,6 @@ class PrepareAlgorithm(PublicationExport):
         return payload.get_dictionary(), payload.dependency
 
     # ---------------------------
-    # Shared helper
-    # ---------------------------
-    def _add_common_metadata(self, payload, qclass, profile_type):
-        '''Add instance-of, community, and (for non-benchmarks) MaRDI-profile-type statements.
-
-        Args:
-            payload:      :class:`~MaRDMO.payload.GeneratePayload` instance.
-            qclass:       Wikibase QID for the ``instance of`` target class.
-            profile_type: Label key for the MaRDI profile type item; skipped
-                          when *qclass* is the benchmark item QID.
-        '''
-        payload.add_answer(
-            verb = self.properties["instance of"],
-            object_and_type = [qclass, "wikibase-item"],
-        )
-
-        payload.add_answer(
-            verb = self.properties["community"],
-            object_and_type = [self.items["MathAlgoDB"], "wikibase-item"],
-        )
-
-        if qclass != self.items["benchmark"]:
-            payload.add_answer(
-                verb = self.properties["MaRDI profile type"],
-                object_and_type = [self.items[profile_type], "wikibase-item"],
-            )
-
-    # ---------------------------
     # Entity export helpers
     # ---------------------------
     def _export_algorithms(self, payload, algorithms: dict):
@@ -226,7 +198,8 @@ class PrepareAlgorithm(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["algorithm"],
+                community = self.items["MathAlgoDB"],
+                qclass =self.items["algorithm"],
                 profile_type = "MaRDI algorithm profile",
             )
 
@@ -263,7 +236,8 @@ class PrepareAlgorithm(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
-                qclass = self.items["algorithmic task"],
+                community = self.items["MathAlgoDB"],
+                qclass =self.items["algorithmic task"],
                 profile_type = "MaRDI task profile",
             )
 
@@ -359,8 +333,8 @@ class PrepareAlgorithm(PublicationExport):
 
             self._add_common_metadata(
                 payload = payload,
+                community = self.items["MathAlgoDB"],
                 qclass = self.items["benchmark"],
-                profile_type = "MaRDI benchmark profile",
             )
 
             if entry.get("reference"):
