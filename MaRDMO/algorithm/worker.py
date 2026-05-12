@@ -269,13 +269,15 @@ class PrepareAlgorithm(PublicationExport):
             if entry_key in algo_software_keys:
                 self._add_common_metadata(
                     payload = payload,
+                    community = self.items["MathAlgoDB"],
                     qclass = self.items["software"],
                     profile_type = "MaRDI software profile",
                 )
             else:
-                payload.add_answer(
-                    verb = self.properties["instance of"],
-                    object_and_type = [self.items["software"], "wikibase-item"],
+                self._add_common_metadata(
+                    payload = payload,
+                    qclass = self.items["software"],
+                    profile_type = "MaRDI software profile",
                 )
 
             payload.add_single_relation(
