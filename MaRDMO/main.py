@@ -172,14 +172,25 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
     def submit(self):
         '''Dispatch the form submission to the catalog-appropriate export handler.
 
-        Handles the cancel action (redirects to the project page), then routes
-        to :meth:`_submit_catalog` based on the active project catalog.
+        Handles the cancel action, checks OAuth2 credentials, then routes to
+        :meth:`_submit_catalog` based on the active project catalog.
 
         Returns:
             HTTP redirect or rendered response from the selected submit method.
         '''
         if 'cancel' in self.request.POST:
             return redirect('project', self.project.id)
+
+        if not (self.oauth2_client_id and self.oauth2_client_secret):
+            return render(
+                self.request,
+                'core/error.html',
+                {
+                    'title': _('Missing Credentials'),
+                    'errors': [_('Credentials for MaRDI Portal are missing!')]
+                },
+                status=200
+            )
 
         catalog_slug = str(self.project.catalog).rsplit('/', 1)[-1]
 
@@ -199,28 +210,17 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
     def _submit_catalog(self, catalog_slug):
         '''Validate and submit documentation for any supported catalog.
 
-        Checks OAuth2 credentials, runs the catalog-appropriate consistency
-        checks, assembles the Wikibase payload, and delegates to
-        :meth:`~.oauth2.OauthProviderMixin.post` for the authenticated upload.
+        Runs the catalog-appropriate consistency checks, assembles the Wikibase
+        payload, and delegates to :meth:`~.oauth2.OauthProviderMixin.post` for
+        the authenticated upload.
 
         Args:
             catalog_slug: Trailing slug of the active catalog URI.
 
         Returns:
-            HTTP response — either an error page (missing credentials or failed
-            checks) or a redirect to the OAuth authorization flow.
+            HTTP response — either an error page (failed checks) or a redirect
+            to the OAuth authorization flow.
         '''
-        if not (self.oauth2_client_id and self.oauth2_client_secret):
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Missing Credentials'),
-                    'errors': [_('Credentials for MaRDI Portal are missing!')]
-                },
-                status=200
-            )
-
         answers, __ = self.get_post_data()
 
         __, prepare_class, check_method = _CATALOG_PREPARE_MAP[catalog_slug]
