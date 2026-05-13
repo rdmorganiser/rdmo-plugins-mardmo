@@ -19,7 +19,7 @@ from ..getters import (
     get_publication_mapping,
     get_url
 )
-from ..helpers import collect_items_without_section, entity_relations, entity_relations_grouped, unique_items
+from ..helpers import collect_items_without_section, entity_relations, entity_relations_grouped, is_valid_url, unique_items
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
@@ -194,6 +194,7 @@ class PrepareWorkflow(PublicationExport):
         answers['instrument'] = collect_items_without_section(answers, 'processstep', 'IRelatant')
 
         options = get_options()
+
         for ds_data in answers.get('dataset', {}).values():
             size = ds_data.get('Size')
             if size and size[0] and size[1]:
@@ -210,6 +211,34 @@ class PrepareWorkflow(PublicationExport):
             if archive and archive[0] and archive[1]:
                 val = str(archive[1]).strip()
                 ds_data['archive_year_valid'] = len(val) == 4 and val.isdigit()
+            publish = ds_data.get('ToPublish')
+            if publish and len(publish) > 1 and publish[1]:
+                val = str(publish[1]).strip()
+                if not val.startswith('10.'):
+                    ds_data['publish_url_valid'] = is_valid_url(val)
+
+        for sw_data in answers.get('software', {}).values():
+            ref = sw_data.get('reference', {})
+            if ref.get(2) and ref[2][1]:
+                sw_data['ref_desc_url_valid'] = is_valid_url(ref[2][1])
+            if ref.get(3) and ref[3][1]:
+                sw_data['ref_repo_url_valid'] = is_valid_url(ref[3][1])
+
+        for ps_data in answers.get('processstep', {}).values():
+            for pair in ps_data.get('algorithm_software_pairs', []):
+                pair['software_doc_url_invalid'] = {
+                    idx
+                    for idx, entry in pair.get('software_doc', {}).items()
+                    if entry and entry[0] == options['URL'] and entry[1]
+                    and not is_valid_url(entry[1])
+                }
+            for pair in ps_data.get('method_instrument_pairs', []):
+                pair['method_doc_url_invalid'] = {
+                    idx
+                    for idx, entry in pair.get('method_doc', {}).items()
+                    if entry and entry[0] == options['URL'] and entry[1]
+                    and not is_valid_url(entry[1])
+                }
 
         return answers
 

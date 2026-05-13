@@ -8,11 +8,11 @@
         {% else %}<b>DOI</b>: <strong style="color:red;">MISSING DOI VALUE</strong> <br>{% endif %}
     {% endif %}
     {% if reference.0 == option.DESCRIPTION_URL %}
-        {% if reference.1 %}<b>Described at URL</b>: {{ reference.1 }} <br>
+        {% if reference.1 %}<b>Described at URL</b>: {{ reference.1 }}{% if ref_desc_url_valid == False %} <strong style="color:red;">INVALID URL FORMAT</strong>{% endif %} <br>
         {% else %}<b>Described at URL</b>: <strong style="color:red;">MISSING DESCRIPTION URL VALUE</strong> <br>{% endif %}
     {% endif %}
     {% if reference.0 == option.SOURCECODE_URL %}
-        {% if reference.1 %}<b>Source Code URL</b>: {{ reference.1 }} <br>
+        {% if reference.1 %}<b>Source Code URL</b>: {{ reference.1 }}{% if ref_repo_url_valid == False %} <strong style="color:red;">INVALID URL FORMAT</strong>{% endif %} <br>
         {% else %}<b>Source Code URL</b>: <strong style="color:red;">MISSING SOURCE CODE URL VALUE</strong> <br>{% endif %}
     {% endif %}
 {% empty %}

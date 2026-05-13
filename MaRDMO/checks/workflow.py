@@ -4,6 +4,7 @@ from rdmo.domain.models import Attribute
 
 from ..constants import BASE_URI, CATALOG_WORKFLOW
 from ..getters import get_options
+from ..helpers import is_valid_url
 
 
 class WorkflowMixin:
@@ -275,6 +276,12 @@ class WorkflowMixin:
                             'Software', page_name,
                             f'{label} selected, but no {noun} provided!'
                         ))
+                    elif noun == 'URL' and ref.get(idx) and ref[idx][1]:
+                        if not is_valid_url(ref[idx][1]):
+                            self.err.append(self._error(
+                                'Software', page_name,
+                                f'Invalid {label}: must start with http:// or https://'
+                            ))
 
     def hardware(self, project, data):
         '''Check Hardware documentation completeness.
@@ -392,6 +399,17 @@ class WorkflowMixin:
             if not ivalue.get('ToPublish') or not ivalue['ToPublish'][0]:
                 self.err.append(self._error(
                     'Data Set', page_name, 'Missing Data Set Publication Statement'
+                ))
+            elif (
+                ivalue['ToPublish'][0] == options['YesText']
+                and len(ivalue['ToPublish']) > 1
+                and ivalue['ToPublish'][1]
+                and not str(ivalue['ToPublish'][1]).startswith('10.')
+                and not is_valid_url(ivalue['ToPublish'][1])
+            ):
+                self.err.append(self._error(
+                    'Data Set', page_name,
+                    'Invalid Publication URL: must start with http:// or https://'
                 ))
 
             to_archive = ivalue.get('ToArchive')

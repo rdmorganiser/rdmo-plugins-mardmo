@@ -19,6 +19,7 @@ Contains:
 
 from typing import Callable, Optional, Any
 from collections import defaultdict, deque
+from urllib.parse import urlparse
 
 from rdmo.projects.models import Value
 from rdmo.domain.models import Attribute
@@ -93,6 +94,22 @@ def topological_order(direct_dependencies: dict[str, set[str]]) -> list[str]:
             if in_degree[dependent] == 0:
                 queue.append(dependent)
     return order
+
+def is_valid_url(url: str) -> bool:
+    '''Return ``True`` if *url* is a Wikibase-conformant HTTP/HTTPS URL.
+
+    Args:
+        url: String to validate.
+
+    Returns:
+        ``True`` when *url* has ``http`` or ``https`` scheme and a non-empty
+        netloc; ``False`` otherwise.
+    '''
+    try:
+        result = urlparse(url)
+        return bool(result.scheme in ('http', 'https') and result.netloc)
+    except Exception:
+        return False
 
 def is_cyclic(dependencies: dict[str, set[str]]) -> bool:
     '''Return ``True`` if the dependency graph contains a cycle (Kahn's algorithm).

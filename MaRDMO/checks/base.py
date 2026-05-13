@@ -10,6 +10,7 @@ from ..constants import (
     CATALOG_MODEL_BASICS, CATALOG_WORKFLOW,
 )
 from ..getters import get_mathmoddb, get_mathalgodb, get_options
+from ..helpers import is_valid_url
 
 
 class ChecksBase:
@@ -138,6 +139,11 @@ class ChecksBase:
                 self.err.append(self._error(
                     'Process Step', page_name,
                     f'Missing {context_label} {label}'
+                ))
+            elif entry[0] == options['URL'] and not is_valid_url(entry[1]):
+                self.err.append(self._error(
+                    'Process Step', page_name,
+                    f'Invalid {context_label} URL: must start with http:// or https://'
                 ))
 
     def _check_flexible(

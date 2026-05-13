@@ -16,7 +16,7 @@ import time
 from .constants import get_relations, preview_relations
 
 from ..getters import get_items, get_mathalgodb, get_properties, get_publication_mapping, get_url
-from ..helpers import collect_items_without_section, entity_relations, unique_items
+from ..helpers import collect_items_without_section, entity_relations, is_valid_url, unique_items
 from ..payload import GeneratePayload
 from ..queries import query_sparql
 
@@ -77,6 +77,21 @@ class PrepareAlgorithm(PublicationExport):
         answers['programminglanguage'] = collect_items_without_section(
             answers, 'software', 'programminglanguage'
         )
+
+        # URL validity flags for software and benchmark reference URLs
+        for sw_data in answers.get('software', {}).values():
+            ref = sw_data.get('reference', {})
+            if ref.get(2) and ref[2][1]:
+                sw_data['ref_desc_url_valid'] = is_valid_url(ref[2][1])
+            if ref.get(3) and ref[3][1]:
+                sw_data['ref_repo_url_valid'] = is_valid_url(ref[3][1])
+
+        for bm_data in answers.get('benchmark', {}).values():
+            ref = bm_data.get('reference', {})
+            if ref.get(2) and ref[2][1]:
+                bm_data['ref_desc_url_valid'] = is_valid_url(ref[2][1])
+            if ref.get(3) and ref[3][1]:
+                bm_data['ref_repo_url_valid'] = is_valid_url(ref[3][1])
 
         return answers
 

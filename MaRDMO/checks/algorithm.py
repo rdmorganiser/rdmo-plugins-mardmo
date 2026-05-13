@@ -3,6 +3,7 @@
 from rdmo.domain.models import Attribute
 
 from ..constants import BASE_URI, CATALOG_ALGORITHM
+from ..helpers import is_valid_url
 
 
 class AlgorithmMixin:
@@ -134,6 +135,13 @@ class AlgorithmMixin:
                                 message = f'{label} selected, but no {noun} provided!'
                             )
                         )
+                    elif noun == 'URL' and ref.get(idx) and ref[idx][1]:
+                        if not is_valid_url(ref[idx][1]):
+                            self.err.append(self._error(
+                                section = 'Software',
+                                page    = page_name,
+                                message = f'Invalid {label}: must start with http:// or https://'
+                            ))
 
     def benchmark(self, project, data):
         '''Check Benchmark documentation completeness.
@@ -170,6 +178,13 @@ class AlgorithmMixin:
                                 message = f'{label} selected, but no {noun} provided!'
                             )
                         )
+                    elif noun == 'URL' and ref.get(idx) and ref[idx][1]:
+                        if not is_valid_url(ref[idx][1]):
+                            self.err.append(self._error(
+                                section = 'Benchmark',
+                                page    = page_name,
+                                message = f'Invalid {label}: must start with http:// or https://'
+                            ))
 
     # -------------------------------------------------------------------------
     # Run method
