@@ -8,7 +8,7 @@ MaRDI Portal Wikibase instance.
 import logging
 import time
 
-from .constants import get_relations, preview_relations
+from .constants import get_relations, preview_relations, REPRODUCIBILITY
 
 from ..getters import (
     get_items,
@@ -370,14 +370,97 @@ class PrepareWorkflow(PublicationExport):
 
         Creates the workflow item (instance of: research workflow), adds a
         long description, all reproducibility aspects (from REPRODUCIBILITY
-        constant) with optional condition qualifiers, and transferability with
-        qualifiers.  Then links the workflow to its mathematical model with
-        computational-task qualifiers, used software (with hardware-platform
-        and version qualifiers), used hardware (with compiler qualifiers),
-        used data sets, process steps (with parameter qualifiers), and cited
-        publications.
+        constant) with optional comment qualifiers, and transferability with
+        comment qualifiers.  Then links the workflow to its mathematical model
+        with computational-task (used-by) qualifiers, contains process steps,
+        and workflow-to-workflow intra-class relations.
         '''
-        pass
+        options = get_options()
+
+        for entry in data.get('workflow', {}).values():
+            if not entry.get('ID'):
+                continue
+
+            payload.get_item_key(value=entry)
+
+            self._add_common_metadata(
+                payload      = payload,
+                qclass       = self.items["research workflow"],
+                profile_type = "MaRDI workflow profile",
+                description_long = True,
+            )
+
+            # Research objective
+            if entry.get('objective'):
+                payload.add_answer(
+                    verb            = self.properties["problem statement"],
+                    object_and_type = [entry['objective'], "string"],
+                )
+
+            # Reproducibility aspects
+            for key, repro_class in REPRODUCIBILITY.items():
+                for val in entry.get(key, {}).values():
+                    if not (val and val[0] == options['YesLargeText']):
+                        continue
+                    qualifiers = []
+                    if val[1]:
+                        qualifiers += payload.add_qualifier(
+                            self.properties["comment"], "string", val[1]
+                        )
+                    payload.add_answer(
+                        verb            = self.properties["instance of"],
+                        object_and_type = [self.items[repro_class], "wikibase-item"],
+                        qualifier       = qualifiers,
+                    )
+
+            # Transferability
+            transferability = entry.get('transferability', {})
+            if transferability:
+                qualifiers = []
+                for coll_dict in transferability.values():
+                    for val in coll_dict.values():
+                        if val and val[1]:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["comment"], "string", val[1]
+                            )
+                payload.add_answer(
+                    verb            = self.properties["instance of"],
+                    object_and_type = [self.items["transferable research workflow"], "wikibase-item"],
+                    qualifier       = qualifiers,
+                )
+
+            # Mathematical model → uses, with computational task qualifiers
+            for set_idx, model_item in entry.get('model', {}).items():
+                if not model_item.get('ID'):
+                    continue
+                model_key = payload.get_item_key(model_item, 'object')
+                if model_key not in payload.get_dictionary():
+                    continue
+                qualifiers = []
+                for task_item in entry.get('task', {}).get(set_idx, {}).values():
+                    if not task_item.get('ID'):
+                        continue
+                    task_key = payload.get_item_key(task_item, 'object')
+                    if task_key not in payload.get_dictionary():
+                        continue
+                    qualifiers += payload.add_qualifier(
+                        self.properties["used by"], "wikibase-item", task_key
+                    )
+                payload.add_answer(
+                    verb            = self.properties["uses"],
+                    object_and_type = [model_key, "wikibase-item"],
+                    qualifier       = qualifiers,
+                )
+
+            # Process steps
+            payload.add_single_relation(
+                statement = {'relation': self.properties["contains"], 'relatant': "PSRelatant"}
+            )
+
+            # Workflow–Workflow intra-class relations
+            payload.add_multiple_relation(
+                statement = {'relation': "IntraClassRelation", 'relatant': "IntraClassElement"}
+            )
 
     def _export_processsteps(self, payload, processsteps: dict):
         '''Export each process step item.
