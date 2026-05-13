@@ -358,9 +358,121 @@ class PrepareWorkflow(PublicationExport):
         environment (platform relation with object-has-role: software
         qualifier) and instrument environment (platform relation with
         object-has-role: research tool qualifier), and field-of-work using
-        MSC external-id or a Wikibase item for each discipline.
+        a Wikibase item for each discipline.
         '''
-        pass
+        options = get_options()
+
+        for entry in processsteps.values():
+            if not entry.get("ID"):
+                continue
+
+            payload.get_item_key(value=entry)
+
+            payload.add_answer(
+                verb = self.properties["instance of"],
+                object_and_type = [self.items["process step"], "wikibase-item"],
+            )
+
+            payload.add_single_relation(
+                statement = {'relation': self.properties["input data set"], 'relatant': "IDSRelatant"}
+            )
+            payload.add_single_relation(
+                statement = {'relation': self.properties["output data set"], 'relatant': "ODSRelatant"}
+            )
+
+            # Algorithms: one 'uses' statement per (set_idx, collection_idx)
+            for set_idx, algo_items in entry.get('ARelatant', {}).items():
+                qualifiers = []
+
+                sw = entry.get('SRelatant', {}).get(set_idx)
+                if sw and sw.get('ID'):
+                    sw_key = payload.get_item_key(sw, 'object')
+                    if sw_key in payload.get_dictionary():
+                        qualifiers += payload.add_qualifier(
+                            self.properties["platform"], "wikibase-item", sw_key
+                        )
+
+                hw = entry.get('HRelatant', {}).get(set_idx)
+                if hw and hw.get('ID'):
+                    hw_key = payload.get_item_key(hw, 'object')
+                    if hw_key in payload.get_dictionary():
+                        qualifiers += payload.add_qualifier(
+                            self.properties["platform"], "wikibase-item", hw_key
+                        )
+
+                for param in entry.get('algorithm-parameter', {}).get(set_idx, {}).values():
+                    if param and param[1]:
+                        qualifiers += payload.add_qualifier(
+                            self.properties["comment"], "string", param[1]
+                        )
+
+                for doc in entry.get('software-documentation', {}).get(set_idx, {}).values():
+                    if doc and len(doc) > 1 and doc[1]:
+                        if doc[0] == options['DOI']:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["DOI"], "external-id", doc[1]
+                            )
+                        elif doc[0] == options['URL']:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["URL"], "url", doc[1]
+                            )
+
+                for algo_item in algo_items.values():
+                    if not algo_item.get('ID'):
+                        continue
+                    algo_key = payload.get_item_key(algo_item, 'object')
+                    if algo_key not in payload.get_dictionary():
+                        continue
+                    payload.add_answer(
+                        verb = self.properties["uses"],
+                        object_and_type = [algo_key, "wikibase-item"],
+                        qualifier = qualifiers,
+                    )
+
+            # Methods: one 'uses' statement per (set_idx, collection_idx)
+            for set_idx, meth_items in entry.get('MRelatant', {}).items():
+                qualifiers = []
+
+                instr = entry.get('IRelatant', {}).get(set_idx)
+                if instr and instr.get('ID'):
+                    instr_key = payload.get_item_key(instr, 'object')
+                    if instr_key in payload.get_dictionary():
+                        qualifiers += payload.add_qualifier(
+                            self.properties["platform"], "wikibase-item", instr_key
+                        )
+
+                for param in entry.get('method-parameter', {}).get(set_idx, {}).values():
+                    if param and param[1]:
+                        qualifiers += payload.add_qualifier(
+                            self.properties["comment"], "string", param[1]
+                        )
+
+                for doc in entry.get('method-documentation', {}).get(set_idx, {}).values():
+                    if doc and len(doc) > 1 and doc[1]:
+                        if doc[0] == options['DOI']:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["DOI"], "external-id", doc[1]
+                            )
+                        elif doc[0] == options['URL']:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["URL"], "url", doc[1]
+                            )
+
+                for meth_item in meth_items.values():
+                    if not meth_item.get('ID'):
+                        continue
+                    meth_key = payload.get_item_key(meth_item, 'object')
+                    if meth_key not in payload.get_dictionary():
+                        continue
+                    payload.add_answer(
+                        verb = self.properties["uses"],
+                        object_and_type = [meth_key, "wikibase-item"],
+                        qualifier = qualifiers,
+                    )
+
+            payload.add_single_relation(
+                statement = {'relation': self.properties["field of work"], 'relatant': "RFRelatant"}
+            )
 
     def _export_algorithms(self, payload, algorithms: dict):
         '''Export each algorithm item.
