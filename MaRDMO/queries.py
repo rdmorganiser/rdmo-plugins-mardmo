@@ -14,7 +14,7 @@ from django.core.cache import cache
 
 import requests
 
-from .getters import get_url, get_user_entries
+from .getters import get_properties, get_url, get_user_entries
 from .helpers import extract_parts, rank_by_search_term
 
 logger = logging.getLogger(__name__)
@@ -369,9 +369,11 @@ def query_user_entries(project, setup):
 def query_api_per_class(search_term: str, item_class) -> list[dict]:
     '''Search the MaRDI portal for items belonging to one or more Wikibase classes.
 
-    Performs a MediaWiki full-text search filtered by ``haswbstatement:P31=QID``
-    (combined with ``|`` for multiple classes), then fetches English labels and
-    descriptions for the matching QIDs via ``wbgetentities``.
+    Performs a MediaWiki full-text search filtered by
+    ``haswbstatement:<instance-of>=QID`` (combined with ``|`` for multiple
+    classes), then fetches English labels and descriptions for the matching
+    QIDs via ``wbgetentities``.  The "instance of" property ID is read from
+    the configured ``properties.json`` so it works across portals.
 
     Args:
         search_term: Free-text search string (appended with ``*`` for prefix matching).
@@ -385,7 +387,8 @@ def query_api_per_class(search_term: str, item_class) -> list[dict]:
     if isinstance(item_class, str):
         item_class = [item_class]
 
-    class_filter = '|'.join(f'P31={qid}' for qid in item_class)
+    instance_of  = get_properties()['instance of']
+    class_filter = '|'.join(f'{instance_of}={qid}' for qid in item_class)
     api_url      = get_url('mardi', 'api')
 
     try:
