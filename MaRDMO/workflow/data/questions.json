@@ -364,6 +364,7 @@
             "uri": "domain/processstep/method-relatant",
             "set_prefix": true,
             "set_index": true,
+            "collection_index": true,
             "external_id": true
         },
         "Method-Parameter": {
