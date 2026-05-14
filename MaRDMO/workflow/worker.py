@@ -8,7 +8,7 @@ MaRDI Portal Wikibase instance.
 import logging
 import time
 
-from .constants import get_relations, preview_relations, REPRODUCIBILITY
+from .constants import get_relations, preview_relations, REPRODUCIBILITY, IRREPRODUCIBILITY
 
 from ..getters import (
     get_items,
@@ -398,20 +398,26 @@ class PrepareWorkflow(PublicationExport):
                 )
 
             # Reproducibility aspects
-            for key, repro_class in REPRODUCIBILITY.items():
+            for key in REPRODUCIBILITY:
                 for val in entry.get(key, {}).values():
-                    if not (val and val[0] == options['YesLargeText']):
+                    if not val:
                         continue
-                    qualifiers = []
-                    if val[1]:
-                        qualifiers += payload.add_qualifier(
-                            self.properties["comment"], "string", val[1]
+                    if val[0] == options['YesLargeText']:
+                        qualifiers = []
+                        if val[1]:
+                            qualifiers += payload.add_qualifier(
+                                self.properties["comment"], "string", val[1]
+                            )
+                        payload.add_answer(
+                            verb            = self.properties["instance of"],
+                            object_and_type = [self.items[REPRODUCIBILITY[key]], "wikibase-item"],
+                            qualifier       = qualifiers,
                         )
-                    payload.add_answer(
-                        verb            = self.properties["instance of"],
-                        object_and_type = [self.items[repro_class], "wikibase-item"],
-                        qualifier       = qualifiers,
-                    )
+                    elif val[0] == options['No']:
+                        payload.add_answer(
+                            verb            = self.properties["instance of"],
+                            object_and_type = [self.items[IRREPRODUCIBILITY[key]], "wikibase-item"],
+                        )
 
             # Transferability
             transferability = entry.get('transferability', {})

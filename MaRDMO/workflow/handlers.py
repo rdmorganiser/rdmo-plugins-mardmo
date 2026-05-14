@@ -288,6 +288,12 @@ class Information(BaseInformation):
                         info={'option': self.options['YesLargeText'],
                               'text': comment or '',
                               'set_prefix': f"{set_index}|0"})
+                elif value == 'No':
+                    value_editor(
+                        project=project,
+                        uri=f'{self.base}{workflow_q[q_key]["uri"]}',
+                        info={'option': self.options['No'],
+                              'set_prefix': f"{set_index}|0"})
 
             if data.transferable == 'Yes':
                 for i, comment in enumerate(data.transferable_comment):

@@ -38,7 +38,11 @@ WHERE {{
             ?stmt_math pq:{comment} ?math_comment_raw.
         }}
     }}
-    BIND(IF(BOUND(?stmt_math), "Yes", "No") AS ?mathematical)
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_math_no.
+        ?stmt_math_no ps:{instance of} wd:{mathematically irreproducible research workflow}.
+    }}
+    BIND(IF(BOUND(?stmt_math), "Yes", IF(BOUND(?stmt_math_no), "No", "")) AS ?mathematical)
     BIND(COALESCE(?math_comment_raw, "") AS ?mathematical_comment)
 
     OPTIONAL {{
@@ -48,7 +52,11 @@ WHERE {{
             ?stmt_runtime pq:{comment} ?runtime_comment_raw.
         }}
     }}
-    BIND(IF(BOUND(?stmt_runtime), "Yes", "No") AS ?runtime)
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_runtime_no.
+        ?stmt_runtime_no ps:{instance of} wd:{runtime irreproducible research workflow}.
+    }}
+    BIND(IF(BOUND(?stmt_runtime), "Yes", IF(BOUND(?stmt_runtime_no), "No", "")) AS ?runtime)
     BIND(COALESCE(?runtime_comment_raw, "") AS ?runtime_comment)
 
     OPTIONAL {{
@@ -58,7 +66,11 @@ WHERE {{
             ?stmt_result pq:{comment} ?result_comment_raw.
         }}
     }}
-    BIND(IF(BOUND(?stmt_result), "Yes", "No") AS ?result)
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_result_no.
+        ?stmt_result_no ps:{instance of} wd:{result irreproducible research workflow}.
+    }}
+    BIND(IF(BOUND(?stmt_result), "Yes", IF(BOUND(?stmt_result_no), "No", "")) AS ?result)
     BIND(COALESCE(?result_comment_raw, "") AS ?result_comment)
 
     OPTIONAL {{
@@ -68,7 +80,11 @@ WHERE {{
             ?stmt_origplat pq:{comment} ?origplat_comment_raw.
         }}
     }}
-    BIND(IF(BOUND(?stmt_origplat), "Yes", "No") AS ?originalplatform)
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_origplat_no.
+        ?stmt_origplat_no ps:{instance of} wd:{original platform irreproducible research workflow}.
+    }}
+    BIND(IF(BOUND(?stmt_origplat), "Yes", IF(BOUND(?stmt_origplat_no), "No", "")) AS ?originalplatform)
     BIND(COALESCE(?origplat_comment_raw, "") AS ?originalplatform_comment)
 
     OPTIONAL {{
@@ -78,7 +94,11 @@ WHERE {{
             ?stmt_otherplat pq:{comment} ?otherplat_comment_raw.
         }}
     }}
-    BIND(IF(BOUND(?stmt_otherplat), "Yes", "No") AS ?otherplatform)
+    OPTIONAL {{
+        ?id p:{instance of} ?stmt_otherplat_no.
+        ?stmt_otherplat_no ps:{instance of} wd:{cross-platform irreproducible research workflow}.
+    }}
+    BIND(IF(BOUND(?stmt_otherplat), "Yes", IF(BOUND(?stmt_otherplat_no), "No", "")) AS ?otherplatform)
     BIND(COALESCE(?otherplat_comment_raw, "") AS ?otherplatform_comment)
 
     OPTIONAL {{

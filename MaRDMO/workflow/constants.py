@@ -124,12 +124,20 @@ def order_to_publish():
 
 #Dictionary For Reproducibility
 REPRODUCIBILITY = {
-    'mathematical': 'mathematically reproducible research workflow',
-    'runtime': 'runtime reproducible research workflow',
-    'result': 'result reproducible research workflow',
+    'mathematical':    'mathematically reproducible research workflow',
+    'runtime':         'runtime reproducible research workflow',
+    'result':          'result reproducible research workflow',
     'originalplatform': 'original platform reproducible research workflow',
-    'otherplatform': 'cross-platform reproducible research workflow'
-    }
+    'otherplatform':   'cross-platform reproducible research workflow',
+}
+
+IRREPRODUCIBILITY = {
+    'mathematical':    'mathematically irreproducible research workflow',
+    'runtime':         'runtime irreproducible research workflow',
+    'result':          'result irreproducible research workflow',
+    'originalplatform': 'original platform irreproducible research workflow',
+    'otherplatform':   'cross-platform irreproducible research workflow',
+}
 
 # Parameter for Entity relations
 preview_relations = [
