@@ -966,7 +966,7 @@ class GeneratePayload:
                     [
                         self.wikibase['properties']['MaRDI profile type'],
                         'wikibase-item',
-                        self.wikibase['items']['Person']
+                        self.wikibase['items']['MaRDI person profile']
                     ]
                 )
         if id_type == 'no journal found':
