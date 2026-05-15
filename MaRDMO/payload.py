@@ -208,6 +208,8 @@ class GeneratePayload:
         elif data_type == 'string':
             escaped_value = value.replace("'", "\\'")
             formatted_value = f"'{escaped_value}'"
+        elif data_type in ('url', 'URL'):
+            formatted_value = f'<{value}>'
         elif data_type == 'quantity':
             formatted_value = f"'{value}'^^<http://www.w3.org/2001/XMLSchema#decimal>"
         elif data_type == 'time':
@@ -219,7 +221,8 @@ class GeneratePayload:
             escaped_value = value.replace("\\", "\\\\").replace("\"", "\\\"")
             formatted_value = f"'{escaped_value}'^^<http://www.w3.org/1998/Math/MathML>"
         else:
-            formatted_value = f"'{value}'"
+            escaped_value = value.replace("'", "\\'")
+            formatted_value = f"'{escaped_value}'"
         return formatted_value
 
     def _build_qualifier_triples(self, qualifiers, idx):
@@ -235,16 +238,32 @@ class GeneratePayload:
             SPARQL triple-pattern string (may be empty when *qualifiers* is empty).
         '''
         triples = ''
-        for q in qualifiers:
+        for q_idx, q in enumerate(qualifiers):
             q_prop = q['property']['id']
             q_value = q['value']['content']
             q_data_type = q['property']['data_type']
-            if q_value in self.state.dictionary and 'id' in self.state.dictionary[q_value]:
+            if isinstance(q_value, str) and q_value in self.state.dictionary and 'id' in self.state.dictionary[q_value]:
                 q_value = self.state.dictionary[q_value]['id']
-            triples += (
-                f'    ?statement{idx} pq:{q_prop} '
-                f'{self._sparql_value(q_value, q_data_type)} .\n'
-            )
+                if not q_value:
+                    continue
+            if isinstance(q_value, dict):
+                if q_data_type == 'quantity':
+                    amount = q_value.get('amount', '').replace("'", "\\'")
+                    triples += (
+                        f'    ?statement{idx} pqv:{q_prop} ?qval{idx}_{q_idx} .\n'
+                        f"    ?qval{idx}_{q_idx} wikibase:quantityAmount '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
+                    )
+                elif q_data_type == 'time':
+                    time_str = q_value.get('time', '').replace("'", "\\'")
+                    triples += (
+                        f'    ?statement{idx} pqv:{q_prop} ?qval{idx}_{q_idx} .\n'
+                        f"    ?qval{idx}_{q_idx} wikibase:timeValue '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
+                    )
+            else:
+                triples += (
+                    f'    ?statement{idx} pq:{q_prop} '
+                    f'{self._sparql_value(q_value, q_data_type)} .\n'
+                )
         return triples
 
     def _build_relation_block(self, idx, entry):
@@ -268,26 +287,46 @@ class GeneratePayload:
         prop_id = statement['property']['id']
         value = statement['value']['content']
         data_type = statement['property']['data_type']
-
-        if value in self.state.dictionary and 'id' in self.state.dictionary[value]:
+        if isinstance(value, str) and value in self.state.dictionary and 'id' in self.state.dictionary[value]:
             value = self.state.dictionary[value]['id']
+        if isinstance(value, str) and not value:
+            return None, None
 
         subject = f'wd:{target_item_id}'
-        value_str = self._sparql_value(value, data_type)
         qualifiers = statement.get('qualifiers', [])
         qual_triples = self._build_qualifier_triples(qualifiers, idx)
 
-        block = {
-            'optional': (
+        if isinstance(value, dict):
+            if data_type == 'quantity':
+                amount = value.get('amount', '').replace("'", "\\'")
+                val_lines = (
+                    f'  ?statement{idx} psv:{prop_id} ?sval{idx} .\n'
+                    f"  ?sval{idx} wikibase:quantityAmount '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
+                )
+            elif data_type == 'time':
+                time_str = value.get('time', '').replace("'", "\\'")
+                val_lines = (
+                    f'  ?statement{idx} psv:{prop_id} ?sval{idx} .\n'
+                    f"  ?sval{idx} wikibase:timeValue '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
+                )
+            else:
+                return None, None
+            optional = (
+                f'OPTIONAL {{\n'
+                f'  {subject} p:{prop_id} ?statement{idx} .\n'
+                f'{val_lines}'
+                f'{qual_triples if qualifiers else ""}}}'
+            )
+        else:
+            value_str = self._sparql_value(value, data_type)
+            optional = (
                 f'OPTIONAL {{\n'
                 f'  {subject} p:{prop_id} ?statement{idx} .\n'
                 f'  ?statement{idx} ps:{prop_id} {value_str} .\n'
                 f'{qual_triples if qualifiers else ""}}}'
-            ),
-            'bind': f'BIND(BOUND(?statement{idx}) AS ?RELATION{idx})'
-        }
+            )
 
-        return block['optional'], block['bind']
+        return optional, f'BIND(BOUND(?statement{idx}) AS ?RELATION{idx})'
 
     def _find_key_by_values(self, id_value, name_value, description_value):
         '''Look up the ``"Item<n>"`` key matching the given ID, Name, and Description.
