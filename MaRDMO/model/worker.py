@@ -489,7 +489,7 @@ class PrepareModel(PublicationExport):
                 value = entry
             )
 
-            if entry.get("QorQK") == self.mathmoddb.get(label='Quantity')['url']:
+            if entry.get("QorQK") == self.mathmoddb.get(key='Quantity')['label']:
                 self._add_common_metadata(
                     payload = payload,
                     qclass = self.items["quantity"],
@@ -497,7 +497,7 @@ class PrepareModel(PublicationExport):
                 )
                 qtype = "quantity"
 
-            elif entry.get("QorQK") == self.mathmoddb.get(label='Quantity Kind')['url']:
+            elif entry.get("QorQK") == self.mathmoddb.get(key='QuantityKind')['label']:
                 self._add_common_metadata(
                     payload = payload,
                     qclass = self.items["kind of quantity"],
