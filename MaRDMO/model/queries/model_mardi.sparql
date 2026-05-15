@@ -10,7 +10,7 @@ SELECT
 (GROUP_CONCAT(DISTINCT ?descriptionLong; SEPARATOR=" <|> ") AS ?description_long)
 (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=" <|> ") AS ?aliases)
 (GROUP_CONCAT(DISTINCT CONCAT(?rp, " || ", ?rpl, " || ", ?rpd); SEPARATOR=" <|> ") AS ?models)
-(GROUP_CONCAT(DISTINCT CONCAT(?ass, " || ", ?assl, " || ", ?assd, " |  >|< ", ?assq); SEPARATOR=" <|> ") AS ?assumes)
+(GROUP_CONCAT(DISTINCT CONCAT(?ass, " || ", ?assl, " || ", ?assd, " ||  >|< ", ?assq); SEPARATOR=" <|> ") AS ?assumes)
 (GROUP_CONCAT(DISTINCT CONCAT(?conf, " || ", ?confl, " || ", ?confd, " || ", ?confq, " >|< ", ?confq2); SEPARATOR=" <|> ") AS ?contains_formulation)
 (GROUP_CONCAT(DISTINCT CONCAT(?ta, " || ", ?tal, " || ", ?tad); SEPARATOR=" <|> ") AS ?used_by)
 (GROUP_CONCAT(DISTINCT CONCAT(?sbm, " || ", ?sbml, " || ", ?sbmd, " || ", ?sbmq); SEPARATOR=" <|> ") AS ?specialized_by)
