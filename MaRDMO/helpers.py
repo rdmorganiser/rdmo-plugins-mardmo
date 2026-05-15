@@ -837,7 +837,7 @@ def replace_in_dict(d, target, replacement):
         return d.replace(target, replacement)
     return d
 
-def collect_items_without_section(data, parent_key, child_key):
+def collect_items_without_section(data, parent_key, child_key, nested=False):
     '''Collect and deduplicate child items that have no dedicated questionnaire section.
 
     Gathers all entries stored under *child_key* on every parent entity in
@@ -849,6 +849,10 @@ def collect_items_without_section(data, parent_key, child_key):
         data:       Top-level answers dict.
         parent_key: Key of the parent entity group (e.g. ``"software"``).
         child_key:  Key of the inline child collection (e.g. ``"programminglanguage"``).
+        nested:     When ``True``, treat the child collection as doubly nested
+                    ``{outer_idx: {inner_idx: item}}`` rather than the default
+                    ``{idx: item}``.  Use this for keys like ``MRelatant`` where
+                    multiple items can appear per outer index.
 
     Returns:
         Dict mapping ``0, 1, 2, …`` to the deduplicated child item dicts.
@@ -856,7 +860,13 @@ def collect_items_without_section(data, parent_key, child_key):
     seen = set()
     result = {}
     for entity in data.get(parent_key, {}).values():
-        for item in entity.get(child_key, {}).values():
+        col = entity.get(child_key, {})
+        items = (
+            item
+            for inner in col.values()
+            for item in inner.values()
+        ) if nested else col.values()
+        for item in items:
             key = (item.get('ID', ''), item.get('Name', ''), item.get('Description', ''))
             if key not in seen:
                 seen.add(key)
