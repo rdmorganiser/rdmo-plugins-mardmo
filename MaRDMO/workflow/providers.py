@@ -10,7 +10,7 @@ Provides:
 - :class:`MainMathematicalModel`   — look up the main mathematical model for a workflow
 - :class:`Method`                  — numerical/analytical method lookup; refresh on select
 - :class:`RelatedMethod`           — method lookup with optional user creation
-- :class:`WorkflowTask`            — task/computation step lookup; refresh on save (depends on selected model)
+- :class:`WorkflowTask`            — task lookup; refresh on save (depends on selected model)
 - :class:`Hardware`                — hardware platform lookup; refresh on select
 - :class:`Instrument`              — scientific instrument lookup; refresh on select
 - :class:`DataSet`                 — data set lookup; refresh on select
@@ -234,7 +234,7 @@ class RelatedStepWithCreation(Provider):
             return []
 
         setup = define_setup(
-            query_attributes = ['process-step'],
+            query_attributes = ['processstep'],
             creation = True,
             item_class = [
                 _ITEMS['process step']
@@ -525,7 +525,7 @@ class RelatedDataSetWithCreation(Provider):
 
         setup = define_setup(
             creation = True,
-            query_attributes = ['data-set'],
+            query_attributes = ['dataset'],
             item_class = _ITEMS['data set'],
         )
 
@@ -601,7 +601,7 @@ class RelatedHardwareOrSoftwareWithoutCreation(Provider):
             project = project,
             setup = setup
         )
-    
+
 class RelatedWorkflowEntityWithoutCreation(Provider):
     '''Interdisciplinary Workflow, Process Step, and Data Set  Provider 
        (MaRDI Portal / Wikidata), No User Creation, No Refresh Upon Selection
@@ -628,7 +628,7 @@ class RelatedWorkflowEntityWithoutCreation(Provider):
 
         # Define the query_setup
         setup = define_setup(
-            query_attributes = ['workflow', 'process-step', 'data-set'],
+            query_attributes = ['workflow', 'processstep', 'dataset'],
             sources = ['mardi'],
             item_class = [
                 _ITEMS['research workflow'],
