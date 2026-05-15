@@ -10,4 +10,3 @@
 
 ## Workers
 ::: MaRDMO.search.worker
-

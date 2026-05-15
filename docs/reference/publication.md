@@ -19,4 +19,3 @@
 
 ## Utils
 ::: MaRDMO.publication.utils
-

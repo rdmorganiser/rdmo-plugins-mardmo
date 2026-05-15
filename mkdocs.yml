@@ -12,10 +12,22 @@ plugins:
 
 nav:
   - Home: index.md
+  - Vocabulary: vocabulary.md
+  - Concepts:
+      - Dynamic Providers: concepts/providers.md
+      - Handlers: concepts/handlers.md
+      - Publications: concepts/publication.md
+      - Export Pipeline: concepts/export.md
   - Reference:
-      - MaRDMO: reference/mardmo.md
-      - Model: reference/model.md
-      - Algorithm: reference/algorithm.md
-      - Workflow: reference/workflow.md
-      - Publication: reference/publication.md
-      - Search: reference/search.md
+      - Core:
+          - Entry Points: reference/mardmo.md
+          - Checks: reference/checks.md
+          - Payload: reference/payload.md
+          - Data Access: reference/data.md
+          - Utilities: reference/helpers.md
+      - Submodules:
+          - Model: reference/model.md
+          - Algorithm: reference/algorithm.md
+          - Workflow: reference/workflow.md
+          - Publication: reference/publication.md
+          - Search: reference/search.md
