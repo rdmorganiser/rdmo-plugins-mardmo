@@ -13,7 +13,7 @@ Provides:
 '''
 
 from ..constants import BASE_URI
-from ..getters import get_options, get_questions
+from ..getters import get_mathmoddb, get_options, get_properties, get_questions
 from ..publication.constants import get_publication_relations
 
 SECTION_MAP = {
@@ -91,8 +91,24 @@ def get_uri_prefix_map():
 
 
 def get_relations():
-    '''Return the workflow relation mapping — delegates to the shared publication roles.'''
-    return get_publication_relations()
+    '''Return the workflow relation mapping.
+
+    Extends the shared publication-role mapping with the workflow intra-class
+    relations (contains / contained in) from MathModDB.
+    '''
+    mathmoddb  = get_mathmoddb()
+    properties = get_properties()
+    return {
+        **get_publication_relations(),
+        mathmoddb.get(key='contains_workflow')['url']: [
+            properties['contains'],
+            'forward'
+        ],
+        mathmoddb.get(key='contained_in_workflow')['url']: [
+            properties['contains'],
+            'backward'
+        ],
+    }
 
 
 # Dictionary with list of property names
