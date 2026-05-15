@@ -19,7 +19,10 @@ from ..getters import (
     get_publication_mapping,
     get_url
 )
-from ..helpers import collect_items_without_section, entity_relations, entity_relations_grouped, is_valid_url, unique_items
+from ..helpers import (
+    collect_items_without_section, entity_relations, entity_relations_grouped,
+    is_valid_url, unique_items,
+)
 from ..queries import query_sparql
 from ..payload import GeneratePayload
 
@@ -124,7 +127,9 @@ class PrepareWorkflow(PublicationExport):
             hardware = ps_data.get('RelationH', {})
             software_doc = ps_data.get('software-documentation', {})
             algo_params = ps_data.get('algorithm-parameter', {})
-            all_indices = sorted(set(algo_by_set) | set(software) | set(hardware) | set(software_doc))
+            all_indices = sorted(
+                set(algo_by_set) | set(software) | set(hardware) | set(software_doc)
+            )
             ps_data['algorithm_software_pairs'] = [
                 {
                     'primary':       algo_by_set.get(idx, []),
@@ -177,9 +182,15 @@ class PrepareWorkflow(PublicationExport):
                     'name':        cpu_dict.get(idx, {}).get('Name'),
                     'description': cpu_dict.get(idx, {}).get('Description'),
                     'count':       count_dict.get(idx),
-                    'count_valid': str(count_dict.get(idx, '')).strip().isdigit() if count_dict.get(idx) else False,
+                    'count_valid': (
+                        str(count_dict.get(idx, '')).strip().isdigit()
+                        if count_dict.get(idx) else False
+                    ),
                     'cores':       cores_dict.get(idx),
-                    'cores_valid': str(cores_dict.get(idx, '')).strip().isdigit() if cores_dict.get(idx) else False,
+                    'cores_valid': (
+                        str(cores_dict.get(idx, '')).strip().isdigit()
+                        if cores_dict.get(idx) else False
+                    ),
                 }
                 for idx in all_indices
             ]
@@ -187,11 +198,21 @@ class PrepareWorkflow(PublicationExport):
             hw_data['nodes_valid'] = str(nodes).strip().isdigit() if nodes else False
 
         answers['cpu'] = collect_items_without_section(answers, 'hardware', 'cpu')
-        answers['programminglanguage'] = collect_items_without_section(answers, 'software', 'programminglanguage')
-        answers['algorithmictask'] = collect_items_without_section(answers, 'algorithm', 'PRelatant')
-        answers['academicdiscipline'] = collect_items_without_section(answers, 'processstep', 'RFRelatant')
-        answers['method'] = collect_items_without_section(answers, 'processstep', 'MRelatant')
-        answers['instrument'] = collect_items_without_section(answers, 'processstep', 'IRelatant')
+        answers['programminglanguage'] = collect_items_without_section(
+            answers, 'software', 'programminglanguage'
+        )
+        answers['algorithmictask'] = collect_items_without_section(
+            answers, 'algorithm', 'PRelatant'
+        )
+        answers['academicdiscipline'] = collect_items_without_section(
+            answers, 'processstep', 'RFRelatant'
+        )
+        answers['method'] = collect_items_without_section(
+            answers, 'processstep', 'MRelatant', nested=True
+        )
+        answers['instrument'] = collect_items_without_section(
+            answers, 'processstep', 'IRelatant'
+        )
 
         options = get_options()
 
@@ -334,7 +355,9 @@ class PrepareWorkflow(PublicationExport):
         self._export_publications(
             payload      = payload,
             publications = data.get('publication', {}),
-            relations    = [('P2A', 'ARelatant'), ('P2BS', 'HSRelatant'), ('P2IWE', 'IWERelatant')],
+            relations    = [
+                ('P2A', 'ARelatant'), ('P2BS', 'HSRelatant'), ('P2E', 'EntityRelatant'),
+            ],
         )
 
         payload.add_item_payload()
@@ -431,7 +454,9 @@ class PrepareWorkflow(PublicationExport):
                             )
                 payload.add_answer(
                     verb            = self.properties["instance of"],
-                    object_and_type = [self.items["transferable research workflow"], "wikibase-item"],
+                    object_and_type = [
+                        self.items["transferable research workflow"], "wikibase-item",
+                    ],
                     qualifier       = qualifiers,
                 )
 
@@ -492,10 +517,14 @@ class PrepareWorkflow(PublicationExport):
             )
 
             payload.add_single_relation(
-                statement = {'relation': self.properties["input data set"], 'relatant': "IDSRelatant"}
+                statement = {
+                    'relation': self.properties["input data set"], 'relatant': "IDSRelatant",
+                }
             )
             payload.add_single_relation(
-                statement = {'relation': self.properties["output data set"], 'relatant': "ODSRelatant"}
+                statement = {
+                    'relation': self.properties["output data set"], 'relatant': "ODSRelatant",
+                }
             )
 
             # Algorithms: one 'uses' statement per (set_idx, collection_idx)
@@ -685,12 +714,12 @@ class PrepareWorkflow(PublicationExport):
                     )
                 if entry['reference'].get(2):
                     payload.add_answer(
-                        verb = self.properties["described at URL"],
+                        verb = self.properties["source code repository URL"],
                         object_and_type = [entry["reference"][2][1], "URL"],
                     )
                 if entry['reference'].get(3):
                     payload.add_answer(
-                        verb = self.properties["source code repository URL"],
+                        verb = self.properties["described at URL"],
                         object_and_type = [entry["reference"][3][1], "URL"],
                     )
 
@@ -795,7 +824,10 @@ class PrepareWorkflow(PublicationExport):
                         object_and_type = [
                             {
                                 "amount": f"+{size_val}",
-                                "unit": f"{get_url('mardi', 'entity_uri')}/entity/{unit_map[size_unit]}",
+                                "unit": (
+                                    f"{get_url('mardi', 'entity_uri')}"
+                                    f"/entity/{unit_map[size_unit]}"
+                                ),
                             },
                             "quantity",
                         ],

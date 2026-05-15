@@ -32,20 +32,20 @@ def get_size(data, options):
 
     return [unit, value] if unit and value else []
 
-def get_option_text_pair(data, options, option_key, *value_keys):
+def get_option_text_pair(data, options, opt_key, *value_keys):
     '''Resolve an option label and the first available text value from a SPARQL result dict.
 
     Args:
         data:       SPARQL result row dict with nested ``{"value": ...}`` entries.
         options:    Options dict mapping RDMO option URIs to string values.
-        option_key: Key whose resolved option URI is looked up in *options*.
+        opt_key: Key whose resolved option URI is looked up in *options*.
         *value_keys: One or more keys tried left-to-right for the text value;
                     the first non-empty one is used.
 
     Returns:
         ``[option_label, text]`` if the option is set; ``[]`` otherwise.
     '''
-    option_label = options[data[option_key]['value']] if data.get(option_key, {}).get('value') else ''
+    option_label = options[data[opt_key]['value']] if data.get(opt_key, {}).get('value') else ''
     text = next(
         (data.get(k, {}).get('value', '') for k in value_keys if data.get(k, {}).get('value')),
         ''

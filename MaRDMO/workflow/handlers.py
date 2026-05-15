@@ -9,7 +9,10 @@ from functools import partial
 
 from ..handler_base import BaseInformation, _RelatantSpec, _fetch_by_source
 from ..constants import BASE_URI
-from ..getters import get_items, get_mathalgodb, get_mathmoddb, get_options, get_properties, get_questions, get_sparql_query, get_url
+from ..getters import (
+    get_items, get_mathalgodb, get_mathmoddb, get_options,
+    get_properties, get_questions, get_sparql_query, get_url,
+)
 from ..helpers import value_editor
 from ..adders import add_basics, add_relations_flexible, add_relations_static
 from ..queries import query_sparql
@@ -121,7 +124,7 @@ class Information(BaseInformation):
         Args:
             instance: RDMO :class:`~rdmo.projects.models.Value` that was just saved.
         '''
-        
+
         if not instance.external_id:
             return
 
@@ -129,7 +132,7 @@ class Information(BaseInformation):
 
         if not tasks:
             return
-        
+
         for idx, (identifier, label, description) in enumerate(tasks):
             value_editor(
                 project = instance.project,
@@ -533,11 +536,15 @@ class Information(BaseInformation):
                 project=project, data=data,
                 props={'keys': PROPS['PS2A']},
                 index={'set_prefix': f'{set_index}|0'},
-                statement={'relatant': f'{self.base}{process_step["Algorithm"]["uri"]}',
-                           'platform': f'{self.base}{process_step["Software"]["uri"]}',
-                           'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
-                           'documentation': f'{self.base}{process_step["Software-Documentation"]["uri"]}',
-                           'parameter': f'{self.base}{process_step["Algorithm-Parameter"]["uri"]}'})
+                statement={
+                    'relatant':      f'{self.base}{process_step["Algorithm"]["uri"]}',
+                    'platform':      f'{self.base}{process_step["Software"]["uri"]}',
+                    'hardware':      f'{self.base}{process_step["Hardware"]["uri"]}',
+                    'documentation': (
+                        f'{self.base}{process_step["Software-Documentation"]["uri"]}'
+                    ),
+                    'parameter':     f'{self.base}{process_step["Algorithm-Parameter"]["uri"]}',
+                })
 
             self._hydrate_relatants(
                 project=project, data=data, prop_keys=PROPS['PS2A'],
@@ -584,11 +591,15 @@ class Information(BaseInformation):
                 project=project, data=data,
                 props={'keys': PROPS['PS2M']},
                 index={'set_prefix': f'{set_index}|0'},
-                statement={'relatant': f'{self.base}{process_step["Method"]["uri"]}',
-                           'platform': f'{self.base}{process_step["Instrument"]["uri"]}',
-                           'hardware': f'{self.base}{process_step["Hardware"]["uri"]}',
-                           'documentation': f'{self.base}{process_step["Method-Documentation"]["uri"]}',
-                           'parameter': f'{self.base}{process_step["Method-Parameter"]["uri"]}'})
+                statement={
+                    'relatant':      f'{self.base}{process_step["Method"]["uri"]}',
+                    'platform':      f'{self.base}{process_step["Instrument"]["uri"]}',
+                    'hardware':      f'{self.base}{process_step["Hardware"]["uri"]}',
+                    'documentation': (
+                        f'{self.base}{process_step["Method-Documentation"]["uri"]}'
+                    ),
+                    'parameter':     f'{self.base}{process_step["Method-Parameter"]["uri"]}',
+                })
 
             add_relations_static(
                 project=project, data=data,
