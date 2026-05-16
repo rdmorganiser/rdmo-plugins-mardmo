@@ -94,18 +94,18 @@ WHERE {{
     }}
 
     OPTIONAL {{ ?idraw wdt:{title} ?titleraw. }}
-    BIND(COALESCE(?titleraw, "No Title Provided!") As ?title)
+    BIND(?titleraw As ?title)
 
     OPTIONAL {{ ?idraw wdt:{publication date} ?dateraw. }}
-    BIND(COALESCE(?dateraw, "No Publication Date Provided!") As ?date)
+    BIND(?dateraw As ?date)
 
     OPTIONAL {{ ?idraw wdt:{volume} ?volumeraw. }}
-    BIND(COALESCE(?volumeraw, "No Volume Provided!") As ?volume)
+    BIND(?volumeraw As ?volume)
 
     OPTIONAL {{ ?idraw wdt:{issue} ?issueraw. }}
-    BIND(COALESCE(?issueraw, "No Issue Provided!") As ?issue)
+    BIND(?issueraw As ?issue)
 
     OPTIONAL {{ ?idraw wdt:{page(s)} ?pageraw. }}
-    BIND(COALESCE(?pageraw, "No Pages Provided!") As ?page)
+    BIND(?pageraw As ?page)
 }}
 GROUP BY ?id ?label ?description ?entrytypelabel ?journalInfo ?languagelabel ?title ?date ?volume ?issue ?page

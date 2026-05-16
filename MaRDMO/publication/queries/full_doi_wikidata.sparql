@@ -63,27 +63,27 @@ WHERE {{
         OPTIONAL {{
           ?idraw wdt:P1476 ?titleraw.
         }}
-        BIND(COALESCE(?titleraw, "No Title Provided!") As ?title)
-                        
+        BIND(?titleraw As ?title)
+
         OPTIONAL {{
           ?idraw wdt:P577 ?dateraw.
         }}
-        BIND(COALESCE(?dateraw, "No Publication Date Provided!") As ?date)
-                        
+        BIND(?dateraw As ?date)
+
         OPTIONAL {{
           ?idraw wdt:P478 ?volumeraw.
         }}
-        BIND(COALESCE(?volumeraw, "No Volume Provided!") As ?volume)
-                        
+        BIND(?volumeraw As ?volume)
+
         OPTIONAL {{
           ?idraw wdt:P433 ?issueraw.
         }}
-        BIND(COALESCE(?issueraw, "No Issue Provided!") As ?issue)
-                        
+        BIND(?issueraw As ?issue)
+
         OPTIONAL {{
           ?idraw wdt:P304 ?pageraw.
         }}
-        BIND(COALESCE(?pageraw, "No Pages Provided!") As ?page)
+        BIND(?pageraw As ?page)
       }}
     }}
   }}
