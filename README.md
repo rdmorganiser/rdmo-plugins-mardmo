@@ -62,7 +62,6 @@ OPTIONSET_PROVIDERS = [
     # Search
     ('MaRDISearch', _('Options for MaRDI Search'), 'MaRDMO.search.providers.MaRDISearch'),
     # Workflow
-    ('MaRDIAndWikidataSearch', _('Options for MaRDI and Wikidata Search'), 'MaRDMO.workflow.providers.MaRDIAndWikidataSearch'),
     ('MathematicalModelWorkflow', _('Options for Mathematical Model (Workflow)'), 'MaRDMO.workflow.providers.MathematicalModel'),
     ('TaskWorkflow', _('Options for Task (Workflow)'), 'MaRDMO.workflow.providers.Task'),
     ('Hardware', _('Options for Hardware'), 'MaRDMO.workflow.providers.Hardware'),
