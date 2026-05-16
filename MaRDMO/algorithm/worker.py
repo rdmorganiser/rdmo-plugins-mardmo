@@ -330,12 +330,12 @@ class PrepareAlgorithm(PublicationExport):
                     )
                 if entry['reference'].get(2):
                     payload.add_answer(
-                        verb = self.properties["described at URL"],
+                        verb = self.properties["source code repository URL"],
                         object_and_type = [entry["reference"][2][1], "URL"],
                     )
                 if entry['reference'].get(3):
                     payload.add_answer(
-                        verb = self.properties["source code repository URL"],
+                        verb = self.properties["described at URL"],
                         object_and_type = [entry["reference"][3][1], "URL"],
                     )
 
@@ -367,12 +367,12 @@ class PrepareAlgorithm(PublicationExport):
                     )
                 if entry['reference'].get(2):
                     payload.add_answer(
-                        verb = self.properties["described at URL"],
+                        verb = self.properties["source code repository URL"],
                         object_and_type = [entry["reference"][2][1], "URL"],
                     )
                 if entry['reference'].get(3):
                     payload.add_answer(
-                        verb = self.properties["source code repository URL"],
+                        verb = self.properties["described at URL"],
                         object_and_type = [entry["reference"][3][1], "URL"],
                     )
 
