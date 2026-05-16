@@ -104,6 +104,8 @@ class GeneratePayload:
         # Empty Statements if none provided
         if statements is None:
             statements = []
+        if description == "No Description Provided!":
+            description = ""
         # Build Item
         item = {'id': identifier,
                 'url': self._items_url(),
