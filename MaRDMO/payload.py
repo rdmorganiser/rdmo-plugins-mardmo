@@ -244,7 +244,9 @@ class GeneratePayload:
             q_prop = q['property']['id']
             q_value = q['value']['content']
             q_data_type = q['property']['data_type']
-            if isinstance(q_value, str) and q_value in self.state.dictionary and 'id' in self.state.dictionary[q_value]:
+            if (isinstance(q_value, str)
+                    and q_value in self.state.dictionary
+                    and 'id' in self.state.dictionary[q_value]):
                 q_value = self.state.dictionary[q_value]['id']
                 if not q_value:
                     continue
@@ -253,13 +255,15 @@ class GeneratePayload:
                     amount = q_value.get('amount', '').replace("'", "\\'")
                     triples += (
                         f'    ?statement{idx} pqv:{q_prop} ?qval{idx}_{q_idx} .\n'
-                        f"    ?qval{idx}_{q_idx} wikibase:quantityAmount '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
+                        f"    ?qval{idx}_{q_idx} wikibase:quantityAmount"
+                        f" '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
                     )
                 elif q_data_type == 'time':
                     time_str = q_value.get('time', '').replace("'", "\\'")
                     triples += (
                         f'    ?statement{idx} pqv:{q_prop} ?qval{idx}_{q_idx} .\n'
-                        f"    ?qval{idx}_{q_idx} wikibase:timeValue '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
+                        f"    ?qval{idx}_{q_idx} wikibase:timeValue"
+                        f" '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
                     )
             else:
                 triples += (
@@ -289,7 +293,9 @@ class GeneratePayload:
         prop_id = statement['property']['id']
         value = statement['value']['content']
         data_type = statement['property']['data_type']
-        if isinstance(value, str) and value in self.state.dictionary and 'id' in self.state.dictionary[value]:
+        if (isinstance(value, str)
+                and value in self.state.dictionary
+                and 'id' in self.state.dictionary[value]):
             value = self.state.dictionary[value]['id']
         if isinstance(value, str) and not value:
             return None, None
@@ -303,13 +309,15 @@ class GeneratePayload:
                 amount = value.get('amount', '').replace("'", "\\'")
                 val_lines = (
                     f'  ?statement{idx} psv:{prop_id} ?sval{idx} .\n'
-                    f"  ?sval{idx} wikibase:quantityAmount '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
+                    f"  ?sval{idx} wikibase:quantityAmount"
+                    f" '{amount}'^^<http://www.w3.org/2001/XMLSchema#decimal> .\n"
                 )
             elif data_type == 'time':
                 time_str = value.get('time', '').replace("'", "\\'")
                 val_lines = (
                     f'  ?statement{idx} psv:{prop_id} ?sval{idx} .\n'
-                    f"  ?sval{idx} wikibase:timeValue '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
+                    f"  ?sval{idx} wikibase:timeValue"
+                    f" '{time_str}'^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n"
                 )
             else:
                 return None, None
