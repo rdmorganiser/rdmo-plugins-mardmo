@@ -88,11 +88,11 @@ def get_relations():
         ],
         mathalgodb.get(key='has_subclass')['url']: [
             properties['subclass of'],
-            'forward'
+            'backward'
         ],
         mathalgodb.get(key='subclass_of')['url']: [
             properties['subclass of'],
-            'backward'
+            'forward'
         ],
         mathalgodb.get(key='related_to')['url']: [
             properties['similar to'],
