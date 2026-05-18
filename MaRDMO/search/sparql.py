@@ -17,6 +17,7 @@ QUERY_BASE_WORKFLOW_SEARCH = """SELECT DISTINCT ?label ?qid
 WHERE {{
   ?workflow wdt:{instance of} wd:{research workflow} ;
             rdfs:label ?label .
+  FILTER(LANG(?label) = "en")
 {0}
   BIND(STRAFTER(STR(?workflow), STR(wd:)) AS ?qid)
 }}
@@ -104,6 +105,7 @@ QUERY_BASE_MODEL_SEARCH = """SELECT DISTINCT ?label ?qid
 WHERE {{
   ?model wdt:{instance of} wd:{mathematical model} ;
          rdfs:label ?label .
+  FILTER(LANG(?label) = "en")
 {0}
   BIND(STRAFTER(STR(?model), STR(wd:)) AS ?qid)
 }}
@@ -179,6 +181,7 @@ QUERY_BASE_ALGORITHM_SEARCH = """SELECT DISTINCT ?label ?qid
 WHERE {{
   ?algo wdt:{instance of} wd:{algorithm} ;
         rdfs:label ?label .
+  FILTER(LANG(?label) = "en")
 {0}
   BIND(STRAFTER(STR(?algo), STR(wd:)) AS ?qid)
 }}
