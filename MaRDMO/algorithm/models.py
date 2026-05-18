@@ -113,4 +113,3 @@ class Problem:
         return cls(
             **problem
         )
-

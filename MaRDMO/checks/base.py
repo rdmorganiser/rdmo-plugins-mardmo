@@ -9,7 +9,7 @@ from ..constants import (
     BASE_URI, CATALOG_ALGORITHM, CATALOG_MODEL,
     CATALOG_MODEL_BASICS, CATALOG_WORKFLOW,
 )
-from ..getters import get_mathmoddb, get_mathalgodb, get_options
+from ..getters import get_mathmoddb, get_mathalgodb
 from ..helpers import is_valid_url
 
 
