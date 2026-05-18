@@ -33,7 +33,7 @@ from django.apps import apps
 from django.conf import settings
 from rdmo.domain.models import Attribute
 
-from .constants import BASE_URI
+from .constants import BASE_URI, WIKIDATA
 from .constants import flag_dict
 from .helpers import nested_set, PropertyRegistry
 
@@ -107,26 +107,36 @@ def get_questions(question_set):
     return apps.get_app_config("MaRDMO").questions[question_set]
 
 def get_url(source, url_type):
-    '''Return a configured URL for a Wikibase provider.
+    '''Return a URL for a Wikibase provider.
+
+    Wikidata URLs are taken from the internal :data:`~MaRDMO.constants.WIKIDATA`
+    constant.  All other sources are read from ``settings.MARDMO_PROVIDER``.
 
     Args:
-        source:   Provider key (e.g. ``"mardi"`` or ``"wikidata"``).
+        source:   Provider key — ``"wikidata"`` or a key in ``MARDMO_PROVIDER``.
         url_type: URL type key — one of ``"api"``, ``"sparql"``, or ``"uri"``.
 
     Returns:
-        URL string from ``settings.MARDMO_PROVIDER[source][url_type]``.
+        URL string for the requested source and type.
     '''
+    if source == 'wikidata':
+        return WIKIDATA[url_type]
     return settings.MARDMO_PROVIDER[source][url_type]
 
 def get_item_url(source):
     '''Return the base URL for browsing Wikibase items on a provider's wiki.
 
+    Wikidata URI is taken from the internal :data:`~MaRDMO.constants.WIKIDATA`
+    constant.  All other sources are read from ``settings.MARDMO_PROVIDER``.
+
     Args:
-        source: Provider key (e.g. ``"mardi"``).
+        source: Provider key — ``"wikidata"`` or a key in ``MARDMO_PROVIDER``.
 
     Returns:
         URL string ending in ``"/wiki/Item:"`` for constructing full item links.
     '''
+    if source == 'wikidata':
+        return f"{WIKIDATA['uri']}/wiki/Item:"
     return f"{settings.MARDMO_PROVIDER[source]['uri']}/wiki/Item:"
 
 @lru_cache(maxsize=None)

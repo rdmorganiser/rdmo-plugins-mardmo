@@ -144,12 +144,7 @@ MARDMO_PROVIDER = {
         'uri': 'https://portal.mardi4nfdi.de',
         'oauth2_client_id': '',
         'oauth2_client_secret': '',
-    },
-    'wikidata': {
-        'uri': 'https://www.wikidata.org',
-        'api': 'https://www.wikidata.org/w/api.php',
-        'sparql': 'https://query-main.wikidata.org/sparql'
-    },
+    }
 }
 ``` 
 Contact the MaRDI consortium for the individual credentials.

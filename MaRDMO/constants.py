@@ -18,6 +18,13 @@ CATALOG_MODEL_BASICS = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-model-
 CATALOG_ALGORITHM    = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-algorithm-catalog'
 CATALOG_WORKFLOW     = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-interdisciplinary-workflow-catalog'
 
+# Wikidata endpoint URLs (internal — not user-configurable)
+WIKIDATA = {
+    'uri':    'https://www.wikidata.org',
+    'api':    'https://www.wikidata.org/w/api.php',
+    'sparql': 'https://query-main.wikidata.org/sparql',
+}
+
 # Mapping from catalog slug to preview template
 CATALOG_TEMPLATE_MAP = {
     'mardmo-model-catalog':                      'MaRDMO/modelTemplate.html',
