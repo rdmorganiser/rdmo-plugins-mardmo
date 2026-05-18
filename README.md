@@ -161,6 +161,7 @@ python manage.py import /path/to/MaRDMO-Questionnaire/catalog/optionsets.xml
 python manage.py import /path/to/MaRDMO-Questionnaire/catalog/conditions.xml
 python manage.py import /path/to/MaRDMO-Questionnaire/catalog/mardmo-search-catalog.xml
 python manage.py import /path/to/MaRDMO-Questionnaire/catalog/mardmo-model-catalog.xml
+python manage.py import /path/to/MaRDMO-Questionnaire/catalog/mardmo-model-basic-catalog.xml
 python manage.py import /path/to/MaRDMO-Questionnaire/catalog/mardmo-interdisciplinary-workflow-catalog.xml
 python manage.py import /path/to/MaRDMO-Questionnaire/catalog/mardmo-algorithm-catalog.xml
 ```
