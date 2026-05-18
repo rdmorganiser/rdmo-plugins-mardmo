@@ -156,7 +156,8 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
                 self=self,
                 template=template,
                 answers=answers,
-                option=options
+                option=options,
+                submit_label=_('Export to MaRDI Portal'),
         )
 
         return render(
@@ -383,7 +384,8 @@ class MaRDMOQueryProvider(Export):
                 self = self,
                 template = 'MaRDMO/searchTemplate.html',
                 answers = answers,
-                option = options
+                option = options,
+                submit_label = _('Query MaRDI Portal'),
             )
 
         return render(
@@ -424,8 +426,7 @@ class MaRDMOQueryProvider(Export):
     def submit_mardmo_search(self):
         '''Execute a MaRDI Portal search and render the matching results.
 
-        Reads the search type from the answers dict and labels the result
-        source accordingly (MaRDI Portal, MathModDB KG, or MathAlgoDB KG).
+        Reads the search type from the answers dict to set the result datatype label.
 
         Returns:
             Rendered ``MaRDMO/searchResults.html`` response with the list of
@@ -435,23 +436,18 @@ class MaRDMOQueryProvider(Export):
 
         if answers['search']['options'] == options['InterdisciplinaryWorkflow']:
             datatype = "Workflow(s)"
-            source = "MaRDI Portal"
         elif answers['search']['options'] == options['MathematicalModel']:
             datatype = "Mathematical Model(s)"
-            source = "MathModDB KG"
         elif answers['search']['options'] == options['Algorithm']:
             datatype = "Algorithm(s)"
-            source = "MathAlgoDB KG"
         else:
             datatype = "Unknown"
-            source = "Unknown"
 
         return render(
             self.request,
             'MaRDMO/searchResults.html',
             {
                 'datatype': datatype,
-                'source': source,
                 'noResults': answers['no_results'],
                 'links': answers['links']
             },

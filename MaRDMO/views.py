@@ -103,7 +103,7 @@ def show_success(request, job_id):
         },
     )
 
-def render_preview(self, template, answers, option):
+def render_preview(self, template, answers, option, submit_label):
     """Render the documentation preview page.
 
     Args:
@@ -127,6 +127,7 @@ def render_preview(self, template, answers, option):
             },
             'answers': answers,
             'option': option,
+            'submit_label': submit_label,
             'mardiURI': get_item_url('mardi'),
             'wikidataURI': get_item_url('wikidata'),
         },

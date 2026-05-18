@@ -3,11 +3,13 @@
 Provides search functionality across mathematical models, algorithms, and
 interdisciplinary workflows stored in the MaRDI Portal:
 
-- :mod:`~MaRDMO.search.providers` — RDMO option provider (:class:`MaRDISearch`)
-  for searching the MaRDI Portal from any questionnaire field.
-- :mod:`~MaRDMO.search.worker` — Background worker that executes structured
-  SPARQL queries against the MaRDI Portal and returns ranked matches for
-  models, workflows, and algorithms.
+- :mod:`~MaRDMO.search.providers` — RDMO option set providers for all
+  searchable entity types (research fields, models, algorithms, software,
+  hardware, methods, instruments, data sets, research problems, computational
+  tasks, formulas, algorithmic tasks, quantities and quantity kinds).
+- :mod:`~MaRDMO.search.worker` — Background worker that builds and executes
+  SPARQL queries for the three search modes (workflow, model, algorithm) and
+  returns matching portal items.
 - :mod:`~MaRDMO.search.sparql` — Parameterised SPARQL query templates and
-  filter fragments assembled at runtime for the portal search.
+  filter fragments for all three search modes, assembled at runtime.
 """

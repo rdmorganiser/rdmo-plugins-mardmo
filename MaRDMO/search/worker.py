@@ -1,13 +1,22 @@
 '''Background worker for the cross-catalog MaRDI search questionnaire.
 
-Runs a SPARQL search against the MaRDI Portal to find mathematical models,
-workflows, and algorithms that match user-supplied criteria. Results are
-rendered as an HTML table.
+Dispatches on the selected search mode and builds a SPARQL query from the
+user-supplied filter criteria, executes it against the MaRDI Portal, and
+stores the results for the view layer to render.
+
+Three search modes are supported:
+
+- **InterdisciplinaryWorkflow** — filters: research objective, academic
+  discipline, mathematical model, algorithm, software, hardware, method,
+  instrument, data set.
+- **MathematicalModel** — filters: model properties, research problem,
+  academic discipline, computational task, formula, quantity.
+- **Algorithm** — filters: algorithmic task, software.
 
 Provides:
 
-- ``search`` — entry point that executes the portal query, formats the result
-  table, and stores it for the view layer to retrieve
+- ``search`` — entry point called by the view layer; mutates *answers* in
+  place with ``"query"``, ``"no_results"``, and ``"links"`` keys.
 '''
 
 import html
@@ -15,23 +24,27 @@ import html
 from ..getters import get_item_url, get_items, get_properties, get_url
 from ..queries import query_sparql
 from .sparql import (
-    algorithmic_problem_sparql,
-    software_sparql,
-    algorithmic_problem_filter_sparql,
-    quote_sparql,
-    quantity_sparql,
-    quantity_filter_sparql,
-    task_sparql,
-    formulation_sparql,
-    res_obj_sparql,
-    res_disc_sparql,
-    mmsio_sparql,
-    query_base_workflow,
-    query_base_model,
-    query_base_algorithm,
-    problem_sparql,
-    problem_filter_sparql,
-    field_sparql
+    QUERY_BASE_WORKFLOW_SEARCH,
+    WF_RESEARCH_OBJ_SPARQL,
+    WF_DISCIPLINE_SPARQL,
+    WF_MODEL_SPARQL,
+    WF_ALGORITHM_SPARQL,
+    WF_SOFTWARE_SPARQL,
+    WF_HARDWARE_SPARQL,
+    WF_METHOD_SPARQL,
+    WF_INSTRUMENT_SPARQL,
+    WF_DATASET_SPARQL,
+    QUERY_BASE_MODEL_SEARCH,
+    MM_PROPERTY_TO_ITEM,
+    MM_PROPERTY_SPARQL,
+    MM_PROBLEM_SPARQL,
+    MM_DISCIPLINE_SPARQL,
+    MM_TASK_SPARQL,
+    MM_FORMULA_SPARQL,
+    MM_QUANTITY_SPARQL,
+    QUERY_BASE_ALGORITHM_SEARCH,
+    ALG_TASK_SPARQL,
+    ALG_SOFTWARE_SPARQL,
 )
 
 def search(answers, options):
@@ -54,296 +67,250 @@ def search(answers, options):
     '''
     if answers['search'].get('options') == options['InterdisciplinaryWorkflow']:
 
-        # SPARQL via Research Objectives
+        s = answers['search']
+        items = get_items()
+        props = get_properties()
 
-        quote_str = ''
-        res_obj_strs = ''
+        filter_keys = [
+            'research-objective', 'academic-discipline', 'mathematical-model',
+            'algorithm', 'software', 'hardware', 'method', 'instrument', 'data-set',
+        ]
+        if not any(s.get(k) for k in filter_keys):
+            answers['query'] = 'Workflow search requested but no parameters defined.'
+            answers['no_results'] = '0'
+            answers['links'] = []
+            return answers
 
-        # If SPARQL query via research objective desired
-        if answers['search'].get('via_research_objective') == options['Yes']:
-            quote_str = quote_sparql
-            # Separate key words for SPARQL query vie research objective
-            if answers['search'].get('research_objective'):
-                for res_obj in answers['search']['research_objective'].values():
-                    # Define Filters for SPARQL queries
-                    res_obj_strs += res_obj_sparql.format(res_obj.lower())
+        parts = []
 
-        # SPARQL via Research Disciplines
-
-        res_disc_str = ''
-
-        # If SPARQL query via research discipline desired
-        if answers['search'].get('via_research_discipline') == options['Yes']:
-            # Separate disciplines for SPARQL query via research discipline
-            if answers['search'].get('research_discipline'):
-                for key in answers['search']['research_discipline'].keys():
-                    # Get ID and Name of Research Discipline
-                    identifier = answers['search']['research_discipline'][key]['ID'].split(':')[1]
-                    name = answers['search']['research_discipline'][key]['Name']
-                    answers['search']['research_discipline'][key].update({'ID': identifier})
-                    answers['search']['research_discipline'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    res_disc_str += res_disc_sparql.format(
-                        identifier.split(':')[-1],
-                        **get_items(),
-                        **get_properties()
+        for idx, keyword in enumerate(s.get('research-objective', {}).values()):
+            if keyword:
+                parts.append(
+                    f"  # research objective: {keyword}\n"
+                    + WF_RESEARCH_OBJ_SPARQL.format(
+                        idx=idx, keyword=keyword.lower(), **items, **props
                     )
+                )
 
-        # SPARQL via Mathematical Models, Methods, Softwares, Input or Output Data Sets
+        for idx, item in enumerate(s.get('academic-discipline', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # academic discipline: {item['Name']}\n"
+                + WF_DISCIPLINE_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        mmsios_str = ''
+        for idx, item in enumerate(s.get('mathematical-model', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # mathematical model: {item['Name']}\n"
+                + WF_MODEL_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        # If SPARQL query via Mathematical Models, Methods, Softwares, Input or Output Data Sets
-        if answers['search'].get('via_workflow_entity') == options['Yes']:
-            # Separate Mathematical Model, Methods, Software, Input or Output Data Sets
-            if answers['search'].get('workflow_entity'):
-                for key in answers['search']['workflow_entity'].keys():
-                    # Get ID and Name of Research Discipline
-                    identifier = answers['search']['workflow_entity'][key]['ID'].split(':')[1]
-                    name = answers['search']['workflow_entity'][key]['Name']
-                    answers['search']['workflow_entity'][key].update({'ID': identifier})
-                    answers['search']['workflow_entity'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    mmsios_str += mmsio_sparql.format(
-                        identifier.split(':')[-1],
-                        **get_items(),
-                        **get_properties()
-                    )
+        for idx, item in enumerate(s.get('algorithm', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # algorithm: {item['Name']}\n"
+                + WF_ALGORITHM_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        # Set up entire SPARQL query
+        for idx, item in enumerate(s.get('software', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # software: {item['Name']}\n"
+                + WF_SOFTWARE_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
+        for idx, item in enumerate(s.get('hardware', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # hardware: {item['Name']}\n"
+                + WF_HARDWARE_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
+        for idx, item in enumerate(s.get('method', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # method: {item['Name']}\n"
+                + WF_METHOD_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
+        for idx, item in enumerate(s.get('instrument', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # instrument: {item['Name']}\n"
+                + WF_INSTRUMENT_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
+        for idx, item in enumerate(s.get('data-set', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # data set: {item['Name']}\n"
+                + WF_DATASET_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
         query = "\n".join(
             line
-            for line in query_base_workflow.format(
-                res_disc_str,
-                mmsios_str,
-                quote_str,
-                res_obj_strs,
-                **get_items(),
-                **get_properties(),
+            for line in QUERY_BASE_WORKFLOW_SEARCH.format(
+                "\n".join(parts),
+                **items,
+                **props,
             ).splitlines()
             if line.strip()
         )
 
-        # Add Query to answer dictionary
         answers['query'] = html.escape(query).replace('\n', '<br>')
 
-        # Query MaRDI Portal
         results = query_sparql(query, get_url('mardi', 'sparql'))
-
-        # Number of Results
         answers['no_results'] = str(len(results))
 
-        # Generate Links to Wikipage and Knowledge Graoh Entry of Results
-        links=[]
+        links = []
         for result in results:
-            links.append(
-                [
-                    result["label"]["value"],
-                    f"{get_url('mardi', 'uri')}/wiki/workflow:{result['qid']['value'][1:]}",
-                    f"{get_item_url('mardi')}{result['qid']['value']}"
-                ]
-            )
-
+            links.append([
+                result["label"]["value"],
+                f"{get_item_url('mardi')}{result['qid']['value']}",
+            ])
         answers['links'] = links
 
     elif answers['search'].get('options') == options['MathematicalModel']:
 
-        # SPARQL via Research Problems
+        s = answers['search']
+        items = get_items()
+        props = get_properties()
 
-        pro_str = ''
-        pro_fil_strs = ''
+        filter_keys = [
+            'mathematical-model-properties', 'research-problem',
+            'academic-discipline', 'computational-task', 'formula', 'quantity',
+        ]
+        if not any(s.get(k) for k in filter_keys):
+            answers['query'] = 'Model search requested but no parameters defined.'
+            answers['no_results'] = '0'
+            answers['links'] = []
+            return answers
 
-        # If SPARQL query via research objective desired
-        if answers['search'].get('via_research_problem') == options['Yes']:
-            pro_str = problem_sparql.format(**get_items(), **get_properties())
-            # Separate key words for SPARQL query vie research objective
-            if answers['search'].get('research_problem'):
-                for res_pro in answers['search']['research_problem'].values():
-                    # Define Filters for SPARQL queries
-                    pro_fil_strs += problem_filter_sparql.format(res_pro.lower())
+        parts = []
 
-        # SPARQL via Research Fields
-
-        fie_str = ''
-
-        # If SPARQL query via research field desired
-        if answers['search'].get('via_research_field') == options['Yes']:
-            #fie_str = field_sparql
-            # Separate key words for SPARQL query vie research objective
-            if answers['search'].get('research_field'):
-                for key in answers['search']['research_field'].keys():
-                    # Get ID and Name of Research Field
-                    identifier = answers['search']['research_field'][key]['ID'].split(':')[1]
-                    name = answers['search']['research_field'][key]['Name']
-                    answers['search']['research_field'][key].update({'ID': identifier})
-                    answers['search']['research_field'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    fie_str += field_sparql.format(
-                        identifier,
-                        **get_items(),
-                        **get_properties()
+        for option_uri in s.get('mathematical-model-properties', {}).values():
+            uri_tail = option_uri.rsplit('/', 1)[-1]
+            item_key = MM_PROPERTY_TO_ITEM.get(uri_tail)
+            if item_key:
+                label = uri_tail.replace('-', ' ')
+                parts.append(
+                    f"  # model property: {label}\n"
+                    + MM_PROPERTY_SPARQL.format(
+                        qid=items[item_key], **items, **props
                     )
+                )
 
-        # SPARQL via Mathematical Formulations, Computational Task and Quantities
+        for idx, item in enumerate(s.get('research-problem', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # research problem: {item['Name']}\n"
+                + MM_PROBLEM_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        for_str = ''
-        ta_str = ''
-        qu_str = quantity_sparql.format(**get_items(), **get_properties())
+        for idx, item in enumerate(s.get('academic-discipline', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # academic discipline: {item['Name']}\n"
+                + MM_DISCIPLINE_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        # If SPARQL query via model entity desired
-        if answers['search'].get('via_model_entity') == options['Yes']:
-            # Via Formulations
-            if answers['search'].get('model_formulation'):
-                for key in answers['search']['model_formulation'].keys():
-                    # Get ID and Name of Formulation
-                    identifier = answers['search']['model_formulation'][key]['ID'].split(':')[1]
-                    name = answers['search']['model_formulation'][key]['Name']
-                    answers['search']['model_formulation'][key].update({'ID': identifier})
-                    answers['search']['model_formulation'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    for_str += formulation_sparql.format(
-                        identifier,
-                        **get_items(),
-                        **get_properties()
-                    )
-            # Via Computational Tasls
-            if answers['search'].get('model_task'):
-                for key in answers['search']['model_task'].keys():
-                    # Get ID and Name of Computational Task
-                    identifier = answers['search']['model_task'][key]['ID'].split(':')[1]
-                    name = answers['search']['model_task'][key]['Name']
-                    answers['search']['model_task'][key].update({'ID': identifier})
-                    answers['search']['model_task'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    ta_str += task_sparql.format(
-                        identifier,
-                        **get_items(),
-                        **get_properties()
-                    )
-            # Via Computational Tasls
-            if answers['search'].get('model_quantity'):
-                for idx, key in enumerate(answers['search']['model_quantity'].keys()):
-                    # Get ID and Name of Computational Task
-                    identifier = answers['search']['model_quantity'][key]['ID'].split(':')[1]
-                    name = answers['search']['model_quantity'][key]['Name']
-                    answers['search']['model_quantity'][key].update({'ID': identifier})
-                    answers['search']['model_quantity'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    if idx == 0:
-                        qu_str += quantity_filter_sparql.format(
-                            identifier,
-                            **get_items(),
-                            **get_properties()
-                        )
-                    else:
-                        qu_str += """\n UNION""" + quantity_filter_sparql.format(
-                            identifier,
-                            **get_items(),
-                            **get_properties()
-                        )
+        for idx, item in enumerate(s.get('computational-task', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # computational task: {item['Name']}\n"
+                + MM_TASK_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        # Set up entire SPARQL query
+        for idx, item in enumerate(s.get('formula', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # formula: {item['Name']}\n"
+                + MM_FORMULA_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
+        for idx, item in enumerate(s.get('quantity', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # quantity: {item['Name']}\n"
+                + MM_QUANTITY_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
+
         query = "\n".join(
             line
-            for line in query_base_model.format(
-                pro_str,
-                pro_fil_strs,
-                fie_str,
-                for_str,
-                ta_str,
-                qu_str,
-                **get_items(),
-                **get_properties()
+            for line in QUERY_BASE_MODEL_SEARCH.format(
+                "\n".join(parts),
+                **items,
+                **props,
             ).splitlines()
             if line.strip()
         )
 
-        # Add Query to answer dictionary
         answers['query'] = html.escape(query).replace('\n', '<br>')
 
-        # Query MathModDB
         results = query_sparql(query, get_url('mardi', 'sparql'))
-
-        # Number of Results
         answers['no_results'] = str(len(results))
 
-        # Generate Links to Entry
-        links=[]
+        links = []
         for result in results:
-            links.append(
-                [
-                    result["label"]["value"],
-                    f"{get_url('mardi', 'uri')}/wiki/model:{result['qid']['value'][1:]}",
-                    f"{get_item_url('mardi')}{result['qid']['value']}"
-                ]
-            )
-
+            links.append([
+                result["label"]["value"],
+                f"{get_item_url('mardi')}{result['qid']['value']}",
+            ])
         answers['links'] = links
 
     elif answers['search'].get('options') == options['Algorithm']:
 
-        # SPARQL via Algorithmic Problems
+        s = answers['search']
+        items = get_items()
+        props = get_properties()
 
-        apr_str = ''
-        apr_fil_strs = ''
+        filter_keys = ['algorithmic-task', 'software']
+        if not any(s.get(k) for k in filter_keys):
+            answers['query'] = (
+                'Algorithm search requested but no parameters defined.'
+            )
+            answers['no_results'] = '0'
+            answers['links'] = []
+            return answers
 
-        # If SPARQL query via research objective desired
-        if answers['search'].get('via_algorithmic_problem') == options['Yes']:
-            apr_str = algorithmic_problem_sparql
-            # Separate key words for SPARQL query vie research objective
-            if answers['search'].get('algorithmic_problem'):
-                for alg_pro in answers['search']['algorithmic_problem'].values():
-                    # Define Filters for SPARQL queries
-                    apr_fil_strs += algorithmic_problem_filter_sparql.format(alg_pro.lower())
+        parts = []
 
-        # SPARQL via Softwares
+        for idx, item in enumerate(s.get('algorithmic-task', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # algorithmic task: {item['Name']}\n"
+                + ALG_TASK_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        sof_str = ''
+        for idx, item in enumerate(s.get('software', {}).values()):
+            qid = item['ID'].split(':')[1]
+            parts.append(
+                f"  # software: {item['Name']}\n"
+                + ALG_SOFTWARE_SPARQL.format(idx=idx, qid=qid, **items, **props)
+            )
 
-        # If SPARQL query via software desired
-        if answers['search'].get('via_software') == options['Yes']:
-            # Separate key words for SPARQL query vie research objective
-            if answers['search'].get('software'):
-                for key in answers['search']['software'].keys():
-                    # Get ID and Name of Software
-                    identifier = answers['search']['software'][key]['ID'].split(':')[1]
-                    name = answers['search']['software'][key]['Name']
-                    answers['search']['software'][key].update({'ID': identifier})
-                    answers['search']['software'][key].update({'Name': name})
-                    # Define Filters for SPARQL queries
-                    sof_str += software_sparql.format(f"software:{identifier}")
-
-        # Set up entire SPARQL query
         query = "\n".join(
             line
-            for line in query_base_algorithm.format(
-                apr_str,
-                apr_fil_strs,
-                sof_str
+            for line in QUERY_BASE_ALGORITHM_SEARCH.format(
+                "\n".join(parts),
+                **items,
+                **props,
             ).splitlines()
             if line.strip()
         )
 
-        # Add Query to answer dictionary
         answers['query'] = html.escape(query).replace('\n', '<br>')
 
-        # Query MathAlgoDB
-        results = query_sparql(query, get_url('mathalgodb', 'sparql'))
-
-        # Number of Results
+        results = query_sparql(query, get_url('mardi', 'sparql'))
         answers['no_results'] = str(len(results))
 
-        # Generate Links to Entry
-        links=[]
+        links = []
         for result in results:
-            links.append(
-                [
-                    result["label"]["value"],
-                    get_url('mathalgodb', 'uri') + 'object/al:' + result["qid"]["value"],
-                    ''
-                ]
-            )
-
+            links.append([
+                result["label"]["value"],
+                f"{get_item_url('mardi')}{result['qid']['value']}",
+            ])
         answers['links'] = links
 
     return answers
