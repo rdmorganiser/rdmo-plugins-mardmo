@@ -65,6 +65,11 @@ The upload layer handles MaRDI Portal communication errors gracefully:
 | HTTP 422 `item-label-description-duplicate` | Reuse the conflicting item's QID and continue |
 | Any other HTTP error | Extract a human-readable message from the response and surface it to the user |
 
-## 9. Success Page
+## 9. Success Page and Catalog Update
 
-After all items and relations have been posted, `post_success()` compares the initial payload (before upload) with the final payload (after upload, containing real QIDs) and renders a success page listing all newly created MaRDI Portal items with clickable links.
+After all items and relations have been posted, `compare_items()` compares the initial payload (before upload) with the final payload (after upload, containing real QIDs) to identify every newly created item.  `replace_ids()` then updates all matching RDMO project Values in place:
+
+- **Wikidata items**: the `external_id` is updated from `wikidata:<QID>` to `mardi:<QID>` and `[wikidata]` is replaced by `[mardi]` in the text field.
+- **User-defined items**: Values referencing `not found` are matched by their label/description pair and updated to `mardi:<QID>`.  ID-question Values (where `text` is `"not found"`) are resolved via sibling Name/Description Values at the same set index.
+
+Finally, a success page is rendered listing all newly created MaRDI Portal items with clickable links.
