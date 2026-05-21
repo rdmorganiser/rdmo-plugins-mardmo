@@ -1030,6 +1030,7 @@ def compare_items(old, new):
             created[(label, description)] = {
                 'old_id':  old_id,
                 'new_qid': item['id'],
+                'class':   old[key].get('class', ''),
             }
     return created
 

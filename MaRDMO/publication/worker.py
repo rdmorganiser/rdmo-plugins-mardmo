@@ -208,6 +208,7 @@ class PublicationExport:
                     continue
 
                 payload.get_item_key(value=entry)
+                payload.set_class('Journal')
 
                 self._add_common_metadata(
                     payload=payload,
@@ -234,6 +235,7 @@ class PublicationExport:
                     continue
 
                 payload.get_item_key(value=entry)
+                payload.set_class('Author')
 
                 self._add_common_metadata(
                     payload=payload,
@@ -275,6 +277,7 @@ class PublicationExport:
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Publication')
 
             # Only add class, profile, and DOI for non-MaRDI items
             if "mardi" not in entry["ID"]:

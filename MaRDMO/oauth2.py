@@ -255,7 +255,7 @@ class OauthProviderMixin:
             created = compare_items(init, jsons)
             replace_ids(project, created)
             ids = [
-                [f'{label} ({desc})' if desc else label, info['new_qid']]
+                [info.get('class', ''), f'{label} ({desc})' if desc else label, info['new_qid']]
                 for (label, desc), info in created.items()
             ]
             _progress_store[job_id] = {

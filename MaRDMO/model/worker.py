@@ -267,6 +267,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Academic Discipline')
 
             self._add_common_metadata(
                 payload = payload,
@@ -295,6 +296,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Research Problem')
 
             self._add_common_metadata(
                 payload = payload,
@@ -331,6 +333,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Mathematical Model')
 
             self._add_common_metadata(
                 payload = payload,
@@ -387,6 +390,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Computational Task')
 
             self._add_common_metadata(
                 payload = payload,
@@ -434,6 +438,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Formula')
 
             self._add_common_metadata(
                 payload = payload,
@@ -488,6 +493,7 @@ class PrepareModel(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Quantity')
 
             if entry.get("QorQK") == self.mathmoddb.get(key='Quantity')['label']:
                 self._add_common_metadata(

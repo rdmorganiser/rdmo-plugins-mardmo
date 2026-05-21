@@ -400,6 +400,18 @@ class GeneratePayload:
 
         return item_key
 
+    def set_class(self, name: str) -> None:
+        '''Tag the current subject item with an entity-class label.
+
+        Used by ``_export_*`` worker methods so that :func:`~MaRDMO.helpers.compare_items`
+        can include the class in its output for grouping on the success page.
+
+        Args:
+            name: Human-readable class label (e.g. ``'Mathematical Model'``).
+        '''
+        if self.state.subject_item:
+            self.state.dictionary[self.state.subject_item]['class'] = name
+
     def add_qualifier(self, identifier, data_type, content):
         '''Build a single-qualifier list for use in :meth:`add_answer`.
 

@@ -12,6 +12,8 @@ Provides:
 - ``render_preview`` — helper that renders a Jinja2 template with questionnaire answers
 '''
 
+from collections import defaultdict
+
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, Http404
 from django.shortcuts import render
@@ -94,11 +96,28 @@ def show_success(request, job_id):
     clear_progress(job_id)
     _unregister_job_for_session(request, job_id)
 
+    # Group ids by class in a fixed display order
+    _CLASS_ORDER = [
+        'Mathematical Model', 'Research Problem', 'Formula', 'Computational Task',
+        'Quantity', 'Algorithm', 'Algorithmic Task', 'Software', 'Benchmark',
+        'Workflow', 'Process Step', 'Hardware', 'CPU Model', 'Dataset',
+        'Experimental Method', 'Experimental Equipment', 'Academic Discipline',
+        'Programming Language', 'Publication', 'Author', 'Journal',
+    ]
+    grouped = defaultdict(list)
+    for cls, name, qid in job_data["ids"]:
+        grouped[cls].append({'name': name, 'qid': qid})
+    grouped_ids = [
+        (cls, grouped[cls]) for cls in _CLASS_ORDER if cls in grouped
+    ] + [
+        (cls, items) for cls, items in grouped.items() if cls not in _CLASS_ORDER
+    ]
+
     return render(
         request,
         "MaRDMO/portalExport.html",
         {
-            "ids": job_data["ids"],
+            "grouped_ids": grouped_ids,
             "mardi_uri": get_item_url('mardi'),
         },
     )

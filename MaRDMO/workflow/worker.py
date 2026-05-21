@@ -405,6 +405,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Workflow')
 
             self._add_common_metadata(
                 payload      = payload,
@@ -510,6 +511,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Process Step')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
@@ -635,6 +637,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Algorithm')
 
             self._add_common_metadata(
                 payload      = payload,
@@ -671,6 +674,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Software')
 
             entry_key = (entry.get('ID', ''), entry.get('Name', ''), entry.get('Description', ''))
             if entry_key in algo_software_keys:
@@ -735,6 +739,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Hardware')
 
             self._add_common_metadata(
                 payload = payload,
@@ -802,6 +807,7 @@ class PrepareWorkflow(PublicationExport):
                 continue
 
             payload.get_item_key(value=entry)
+            payload.set_class('Dataset')
 
             self._add_common_metadata(
                 payload      = payload,
@@ -917,6 +923,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('CPU Model')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
@@ -932,6 +939,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Programming Language')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
@@ -947,6 +955,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Experimental Method')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
@@ -962,6 +971,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Experimental Equipment')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
@@ -977,6 +987,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Algorithmic Task')
 
             self._add_common_metadata(
                 payload = payload,
@@ -994,6 +1005,7 @@ class PrepareWorkflow(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Academic Discipline')
 
             payload.add_answer(
                 verb = self.properties["instance of"],

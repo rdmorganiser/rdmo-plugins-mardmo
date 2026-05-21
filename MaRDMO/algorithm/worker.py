@@ -210,6 +210,7 @@ class PrepareAlgorithm(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Algorithm')
 
             self._add_common_metadata(
                 payload = payload,
@@ -248,6 +249,7 @@ class PrepareAlgorithm(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Algorithmic Task')
 
             self._add_common_metadata(
                 payload = payload,
@@ -279,6 +281,7 @@ class PrepareAlgorithm(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Software')
 
             entry_key = (entry.get('ID', ''), entry.get('Name', ''), entry.get('Description', ''))
             if entry_key in algo_software_keys:
@@ -347,6 +350,7 @@ class PrepareAlgorithm(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Benchmark')
 
             self._add_common_metadata(
                 payload = payload,
@@ -384,6 +388,7 @@ class PrepareAlgorithm(PublicationExport):
             payload.get_item_key(
                 value = entry
             )
+            payload.set_class('Programming Language')
 
             payload.add_answer(
                 verb = self.properties["instance of"],
