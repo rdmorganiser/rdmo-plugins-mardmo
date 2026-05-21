@@ -35,8 +35,7 @@ from rdmo.domain.models import Attribute
 
 from .constants import BASE_URI, WIKIDATA
 from .constants import flag_dict
-from .helpers import nested_set, PropertyRegistry
-
+from .helpers import PropertyRegistry, nested_set
 def get_mathmoddb():
     '''Return a :class:`~.helpers.PropertyRegistry` for the MathModDB ontology.
 

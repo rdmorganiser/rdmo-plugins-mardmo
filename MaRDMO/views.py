@@ -107,10 +107,29 @@ def show_success(request, job_id):
     grouped = defaultdict(list)
     for cls, name, qid in job_data["ids"]:
         grouped[cls].append({'name': name, 'qid': qid})
+    # Split statements: those on newly created items vs. those on existing items
+    created_qids = {qid for cls, name, qid in job_data["ids"]}
+
+    stmt_map = defaultdict(list)
+    relation_stmts = []
+    for subj, subj_qid, prop, obj, obj_qid in job_data.get("statements", []):
+        if subj_qid in created_qids:
+            stmt_map[subj_qid].append({'prop': prop, 'obj': obj, 'obj_qid': obj_qid})
+        else:
+            relation_stmts.append({
+                'subject': subj, 'subject_qid': subj_qid,
+                'prop': prop, 'obj': obj, 'obj_qid': obj_qid,
+            })
+
+    # Attach statements to each item and group by class
+    items_by_class = defaultdict(list)
+    for cls, name, qid in job_data["ids"]:
+        items_by_class[cls].append({'name': name, 'qid': qid, 'stmts': stmt_map.get(qid, [])})
+
     grouped_ids = [
-        (cls, grouped[cls]) for cls in _CLASS_ORDER if cls in grouped
+        (cls, items_by_class[cls]) for cls in _CLASS_ORDER if cls in items_by_class
     ] + [
-        (cls, items) for cls, items in grouped.items() if cls not in _CLASS_ORDER
+        (cls, items) for cls, items in items_by_class.items() if cls not in _CLASS_ORDER
     ]
 
     return render(
@@ -118,6 +137,7 @@ def show_success(request, job_id):
         "MaRDMO/portalExport.html",
         {
             "grouped_ids": grouped_ids,
+            "relation_stmts": relation_stmts,
             "mardi_uri": get_item_url('mardi'),
         },
     )

@@ -17,7 +17,15 @@
             {% for class_name, items in grouped_ids %}
                 <p style="color:Black;font-size:22px;font-weight:bold;margin-bottom:4px">{{ class_name }}</p>
                 {% for item in items %}
-                    <p style="color:grey;font-size:18px;font-weight:bold;margin:2px 0"><a href="{{mardi_uri}}{{item.qid}}" style="color:dodgerblue;">{{item.name}}</a>&#x1F517;</p>
+                    <p style="color:grey;font-size:18px;font-weight:bold;margin:4px 0 1px 0">
+                        <a href="{{mardi_uri}}{{item.qid}}" style="color:dodgerblue;">{{item.name}}</a>&#x1F517;
+                    </p>
+                    {% for s in item.stmts %}
+                        <p style="color:#666;font-size:14px;margin:1px 0 1px 24px">
+                            <em>{{s.prop}}</em> &rarr;
+                            {% if s.obj_qid %}<a href="{{mardi_uri}}{{s.obj_qid}}" style="color:dodgerblue;">{{s.obj}}</a>{% else %}{{s.obj}}{% endif %}
+                        </p>
+                    {% endfor %}
                 {% endfor %}
                 <br>
             {% endfor %}
@@ -26,6 +34,18 @@
         <p style="color:Black;font-size:20px;;font-weight:bold">(If you defined new Relations, they were added successfully.)</p>
         <br>
         <p style="color:Black;font-size:20px;;font-weight:bold">Checkout <a href="{{mardi_uri|cut:"wiki/Item:"}}" style="color:dodgerblue;">MaRDI Portal</a>&#x1F517;</p>
+        {% endif %}
+        {% if relation_stmts %}
+            <br>
+            <p style="color:Black;font-size:40px;font-weight:bold">Relations added to MaRDI Portal!</p>
+            <br>
+            {% for r in relation_stmts %}
+                <p style="color:grey;font-size:16px;margin:3px 0">
+                    {% if r.subject_qid %}<a href="{{mardi_uri}}{{r.subject_qid}}" style="color:dodgerblue;">{{r.subject}}</a>{% else %}{{r.subject}}{% endif %}
+                    &nbsp;<em style="color:#888">{{r.prop}}</em>&nbsp;
+                    {% if r.obj_qid %}<a href="{{mardi_uri}}{{r.obj_qid}}" style="color:dodgerblue;">{{r.obj}}</a>{% else %}{{r.obj}}{% endif %}
+                </p>
+            {% endfor %}
         {% endif %}
     </p>
     </div>

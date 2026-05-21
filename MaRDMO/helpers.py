@@ -990,7 +990,7 @@ def process_question_dict(project, questions, get_answer):
 
     return answers
 
-def compare_items(old, new):
+def compare_items(old, new, wikidata_qid_prop=None):
     """Return a mapping of newly created items indexed by (label, description).
 
     Compares the ``id`` field of every ``Item*`` key: entries that had no id
@@ -1002,15 +1002,16 @@ def compare_items(old, new):
     ``wikidata:<QID>``; all others are tagged as ``not found``.
 
     Args:
-        old: Deep copy of the payload dict taken *before* posting.
-        new: Payload dict *after* posting (ids filled in by Wikibase).
+        old:                Deep copy of the payload dict taken *before* posting.
+        new:                Payload dict *after* posting (ids filled in by Wikibase).
+        wikidata_qid_prop:  Property ID string for the Wikidata QID property
+                            (e.g. ``'P123'``), used to detect Wikidata-sourced
+                            items.  Pass ``get_properties().get('Wikidata QID')``.
 
     Returns:
         Dict mapping ``(label, description)`` tuples to
         ``{'old_id': <original external id>, 'new_qid': <assigned QID>}``.
     """
-    from .getters import get_properties  # local import — avoids circular dependency
-    wikidata_qid_prop = get_properties().get('Wikidata QID')
 
     created = {}
     for key, value in old.items():
@@ -1035,6 +1036,95 @@ def compare_items(old, new):
     return created
 
 
+def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
+    """Extract newly added statements as human-readable triples after a portal export.
+
+    Covers two sources:
+
+    - ``RELATION<n>`` entries where ``exists != 'true'`` (statements posted to
+      existing items).
+    - Statements embedded in newly created ``Item<n>`` entries (items that had
+      no id before posting).
+
+    Args:
+        init:         Deep copy of the payload taken *before* posting (used to
+                      distinguish new vs. pre-existing items).
+        jsons:        Payload dict *after* posting (all ``Item<n>`` placeholders
+                      replaced with real QIDs by :func:`replace_in_dict`).
+        pid_to_name:  Dict mapping Wikibase property IDs to human-readable names
+                      (i.e. the inverse of ``get_properties()``).
+        qid_to_name:  Dict mapping Wikibase item QIDs to human-readable names
+                      (i.e. the inverse of ``get_items()``).
+
+    Returns:
+        List of ``[subject_label, subject_qid, property_name, object_label,
+        object_qid]`` lists, JSON-serializable.  ``object_qid`` is an empty
+        string for non-item value types.
+    """
+    pid_to_name = pid_to_name or {}
+    qid_to_name = qid_to_name or {}
+
+    qid_to_label = {
+        v['id']: v['label']
+        for k, v in jsons.items()
+        if k.startswith('Item') and v.get('id') and v.get('label')
+    }
+
+    def _resolve(qid):
+        return qid_to_label.get(qid) or qid_to_name.get(qid) or qid
+
+    def _format_value(datatype, value):
+        if datatype == 'wikibase-item' and isinstance(value, str):
+            return _resolve(value), value
+        if datatype == 'quantity' and isinstance(value, dict):
+            amount = value.get('amount', '')
+            unit   = value.get('unit', '')
+            return f"{amount} {unit}".strip(), ''
+        return str(value), ''
+
+    statements = []
+
+    # --- RELATION entries posted to existing items
+    for key, entry in jsons.items():
+        if not key.startswith('RELATION'):
+            continue
+        if entry.get('exists') == 'true':
+            continue
+        url = entry.get('url', '')
+        parts = url.split('/items/')
+        if len(parts) < 2:
+            continue
+        subject_qid   = parts[1].split('/')[0]
+        subject_label = _resolve(subject_qid)
+        stmt     = entry['payload']['statement']
+        prop_id  = stmt['property']['id']
+        datatype = stmt['property']['data_type']
+        value    = stmt['value']['content']
+        prop_name          = pid_to_name.get(prop_id, prop_id)
+        obj_label, obj_qid = _format_value(datatype, value)
+        statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid])
+
+    # --- Statements embedded in newly created items
+    for key, entry in jsons.items():
+        if not key.startswith('Item'):
+            continue
+        if init.get(key, {}).get('id'):  # was already on portal before posting
+            continue
+        subject_qid = entry.get('id', '')
+        if not subject_qid:
+            continue
+        subject_label = entry.get('label', subject_qid)
+        for stmt_tuple in entry.get('statements', []):
+            if len(stmt_tuple) < 3:
+                continue
+            prop_id, datatype, value = stmt_tuple[0], stmt_tuple[1], stmt_tuple[2]
+            prop_name          = pid_to_name.get(prop_id, prop_id)
+            obj_label, obj_qid = _format_value(datatype, value)
+            statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid])
+
+    return statements
+
+
 # Entity types that have dedicated ID / Name / Description question pages.
 # Used by replace_ids to locate sibling Values for 'not found' ID questions.
 _ID_ENTITY_URIS = [
@@ -1044,7 +1134,7 @@ _ID_ENTITY_URIS = [
 ]
 
 
-def replace_ids(project, created):
+def replace_ids(project, created, base_uri):
     """Update RDMO project Values after a successful portal export.
 
     For every newly created MaRDI Portal item, finds all RDMO
@@ -1062,11 +1152,12 @@ def replace_ids(project, created):
       set index.
 
     Args:
-        project: RDMO project instance whose Values should be updated.
-        created: Dict as returned by :func:`compare_items` —
-                 ``{(label, description): {'old_id': ..., 'new_qid': ...}}``.
+        project:  RDMO project instance whose Values should be updated.
+        created:  Dict as returned by :func:`compare_items` —
+                  ``{(label, description): {'old_id': ..., 'new_qid': ...}}``.
+        base_uri: RDMO base URI prefix (``BASE_URI`` from
+                  :mod:`~MaRDMO.constants`).
     """
-    from .constants import BASE_URI  # local import to avoid circular dependency
 
     # ------------------------------------------------------------------ #
     # Case A — wikidata items: one bulk query per export, matched by QID  #
@@ -1103,7 +1194,7 @@ def replace_ids(project, created):
             # B2: ID question — resolve label+description via sibling Values
             entity = next(
                 (e for e in _ID_ENTITY_URIS
-                 if v.attribute.uri == BASE_URI + f'domain/{e}/id'),
+                 if v.attribute.uri == base_uri + f'domain/{e}/id'),
                 None
             )
             if entity is None:
@@ -1116,7 +1207,7 @@ def replace_ids(project, created):
             try:
                 v_label = Value.objects.get(
                     project=project,
-                    attribute__uri=BASE_URI + f'domain/{entity}/name',
+                    attribute__uri=base_uri + f'domain/{entity}/name',
                     set_prefix=sibling_prefix,
                 ).text
             except (Value.DoesNotExist, Value.MultipleObjectsReturned):
@@ -1124,7 +1215,7 @@ def replace_ids(project, created):
             try:
                 v_desc = Value.objects.get(
                     project=project,
-                    attribute__uri=BASE_URI + f'domain/{entity}/description',
+                    attribute__uri=base_uri + f'domain/{entity}/description',
                     set_prefix=sibling_prefix,
                 ).text
             except (Value.DoesNotExist, Value.MultipleObjectsReturned):

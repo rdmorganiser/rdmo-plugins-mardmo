@@ -32,7 +32,9 @@ from django.urls import reverse
 
 from rdmo.projects.models import Project
 
-from .helpers import replace_in_dict, compare_items, replace_ids
+from .constants import BASE_URI
+from .getters import get_items, get_properties
+from .helpers import replace_in_dict, compare_items, replace_ids, collect_statements
 from .store import _register_job_for_session
 
 logger = logging.getLogger(__name__)
@@ -252,18 +254,23 @@ class OauthProviderMixin:
                 time.sleep(0.1)
 
             # --- All done
-            created = compare_items(init, jsons)
-            replace_ids(project, created)
+            wikidata_qid_prop = get_properties().get('Wikidata QID')
+            created = compare_items(init, jsons, wikidata_qid_prop)
+            replace_ids(project, created, BASE_URI)
             ids = [
                 [info.get('class', ''), f'{label} ({desc})' if desc else label, info['new_qid']]
                 for (label, desc), info in created.items()
             ]
+            pid_to_name = {qid: name for name, qid in get_properties().items()}
+            qid_to_name = {qid: name for name, qid in get_items().items()}
+            statements = collect_statements(init, jsons, pid_to_name, qid_to_name)
             _progress_store[job_id] = {
                 "progress": 100,
                 "done": True,
                 "phase": "done",
                 "error": None,
                 "ids": ids,
+                "statements": statements,
                 "redirect": request.build_absolute_uri(
                     reverse("show_success", args=[job_id])
                 ),
