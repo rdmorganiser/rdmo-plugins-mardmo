@@ -30,7 +30,9 @@ from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 
-from .helpers import replace_in_dict, compare_items
+from rdmo.projects.models import Project
+
+from .helpers import replace_in_dict, compare_items, replace_ids
 from .store import _register_job_for_session
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,7 @@ class OauthProviderMixin:
             Redirect to the OAuth authorization endpoint.
         '''
         self.store_in_session(request, 'request', ('post', jsons, dependency))
+        self.store_in_session(request, 'project_id', self.project.pk)
         return self.authorize(request)
 
     def authorize(self, request):
@@ -127,8 +130,6 @@ class OauthProviderMixin:
         access_token = response_data.get('access_token')
 
         # Retrieve the original post request data
-
-        # Retrieve the original post request data
         data = self.pop_from_session(request, 'request')
         if not data:
             return self.render_error(
@@ -151,10 +152,13 @@ class OauthProviderMixin:
             "error": None,
         }
 
+        project_id = self.pop_from_session(request, 'project_id')
+        project = Project.objects.get(pk=project_id) if project_id else None
+
         # Start posting thread
         thread = threading.Thread(
             target=self._background_post,
-            args=(request, access_token, jsons, dependency, job_id),
+            args=(request, access_token, jsons, dependency, job_id, project),
             daemon=True,
         )
         thread.start()
@@ -166,7 +170,7 @@ class OauthProviderMixin:
 
     # ------------------- BACKGROUND PROCESS -------------------
 
-    def _background_post(self, request, access_token, jsons, dependency, job_id):
+    def _background_post(self, request, access_token, jsons, dependency, job_id, project):
         """
         Run the Wikibase posting in the background.
         Posts all 'Item*' payloads first, then all 'RELATION*' payloads.
@@ -248,7 +252,12 @@ class OauthProviderMixin:
                 time.sleep(0.1)
 
             # --- All done
-            ids = compare_items(init, jsons)
+            created = compare_items(init, jsons)
+            replace_ids(project, created)
+            ids = [
+                [f'{label} ({desc})' if desc else label, info['new_qid']]
+                for (label, desc), info in created.items()
+            ]
             _progress_store[job_id] = {
                 "progress": 100,
                 "done": True,

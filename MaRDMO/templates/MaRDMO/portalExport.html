@@ -11,13 +11,12 @@
         </figure>
         <br><br><br>
         {% if ids %}
-            <p style="color:Black;font-size:40px;;font-weight:bold">Entities added to MaRDI Portal!</p>
-            {% for key, value in ids.items %}
-                {% if forloop.counter == 1 %}
-                    <br>
-                    <p style="color:Black;font-size:20px;;font-weight:bold">Links to Entities:</p>
-                {% endif %}
-	            <p style="color:grey;font-size:20px;;font-weight:bold"><a href="{{mardi_uri}}{{value}}" style="color:dodgerblue;">{{key}}</a>&#x1F517;
+            <p style="color:Black;font-size:40px;font-weight:bold">Entities added to MaRDI Portal!</p>
+            <p style="color:#555555;font-size:15px;font-style:italic">Questionnaire entries updated with new MaRDI identifiers.</p>
+            <br>
+            <p style="color:Black;font-size:20px;;font-weight:bold">Links to Entities:</p>
+            {% for name, qid in ids %}
+	            <p style="color:grey;font-size:20px;;font-weight:bold"><a href="{{mardi_uri}}{{qid}}" style="color:dodgerblue;">{{name}}</a>&#x1F517;</p>
             {% endfor %}
         {% else %}
         <p style="color:Black;font-size:40px;;font-weight:bold">No new Entities added to MaRDI Portal!</p>

@@ -991,24 +991,154 @@ def process_question_dict(project, questions, get_answer):
     return answers
 
 def compare_items(old, new):
-    """Return a label→QID mapping for items that were newly created during export.
+    """Return a mapping of newly created items indexed by (label, description).
 
     Compares the ``id`` field of every ``Item*`` key: entries that had no id
     before posting (``old[key]['id']`` is falsy) and have one afterwards are
-    collected.
+    collected together with the original external ID and the new QID.
+
+    The original external ID is inferred from the item's statements: items
+    that carry a Wikidata QID external-id statement are tagged as
+    ``wikidata:<QID>``; all others are tagged as ``not found``.
 
     Args:
         old: Deep copy of the payload dict taken *before* posting.
         new: Payload dict *after* posting (ids filled in by Wikibase).
 
     Returns:
-        Dict mapping English label to the newly assigned QID string.
+        Dict mapping ``(label, description)`` tuples to
+        ``{'old_id': <original external id>, 'new_qid': <assigned QID>}``.
     """
-    ids = {}
+    from .getters import get_properties  # local import — avoids circular dependency
+    wikidata_qid_prop = get_properties().get('Wikidata QID')
+
+    created = {}
     for key, value in old.items():
         if key.startswith('Item') and not value['id']:
-            ids.update({new[key]['payload']['item']['labels']['en']: new[key]['id']})
-    return ids
+            item = new[key]
+            label = item['payload']['item']['labels']['en']
+            description = item['payload']['item'].get('descriptions', {}).get('en', '')
+
+            # Detect wikidata items by presence of the Wikidata QID statement.
+            old_id = 'not found'
+            if wikidata_qid_prop:
+                for stmt in value.get('statements', []):
+                    if stmt[0] == wikidata_qid_prop and stmt[1] == 'external-id':
+                        old_id = f'wikidata:{stmt[2]}'
+                        break
+
+            created[(label, description)] = {
+                'old_id':  old_id,
+                'new_qid': item['id'],
+            }
+    return created
+
+
+# Entity types that have dedicated ID / Name / Description question pages.
+# Used by replace_ids to locate sibling Values for 'not found' ID questions.
+_ID_ENTITY_URIS = [
+    'field', 'problem', 'model', 'formulation', 'quantity', 'task',
+    'algorithm', 'software', 'benchmark', 'workflow', 'hardware',
+    'dataset', 'processstep',
+]
+
+
+def replace_ids(project, created):
+    """Update RDMO project Values after a successful portal export.
+
+    For every newly created MaRDI Portal item, finds all RDMO
+    :class:`~rdmo.projects.models.Value` objects in *project* that still
+    reference the old external ID and overwrites them with the new
+    ``mardi:<QID>`` identifier.  Three cases are handled:
+
+    - **Wikidata items**: matched by ``external_id`` directly; ``[wikidata]``
+      is replaced by ``[mardi]`` in the text field.
+    - **User-defined items in relation / inline questions** (text stores
+      ``"label (description)"``): matched by parsing label + description from
+      ``value.text`` via :func:`extract_parts`.
+    - **User-defined items in ID questions** (text is ``"not found"``):
+      matched by looking up sibling Name and Description Values at the same
+      set index.
+
+    Args:
+        project: RDMO project instance whose Values should be updated.
+        created: Dict as returned by :func:`compare_items` —
+                 ``{(label, description): {'old_id': ..., 'new_qid': ...}}``.
+    """
+    from .constants import BASE_URI  # local import to avoid circular dependency
+
+    # ------------------------------------------------------------------ #
+    # Case A — wikidata items: one bulk query per export, matched by QID  #
+    # ------------------------------------------------------------------ #
+    wikidata_map = {
+        info['old_id']: f"mardi:{info['new_qid']}"
+        for (_, __), info in created.items()
+        if info['old_id'].startswith('wikidata:')
+    }
+    if wikidata_map:
+        for v in Value.objects.filter(
+            project=project, external_id__in=wikidata_map
+        ).select_related('attribute'):
+            v.external_id = wikidata_map[v.external_id]
+            v.text = v.text.replace('[wikidata]', '[mardi]')
+            v.save()
+
+    # ------------------------------------------------------------------ #
+    # Cases B1 + B2 — user-defined items ('not found')                   #
+    # ------------------------------------------------------------------ #
+    nf_map = {
+        (label, desc): f"mardi:{info['new_qid']}"
+        for (label, desc), info in created.items()
+        if info['old_id'] == 'not found'
+    }
+    if not nf_map:
+        return
+
+    for v in Value.objects.filter(
+        project=project, external_id='not found'
+    ).select_related('attribute'):
+
+        if v.text == 'not found':
+            # B2: ID question — resolve label+description via sibling Values
+            entity = next(
+                (e for e in _ID_ENTITY_URIS
+                 if v.attribute.uri == BASE_URI + f'domain/{e}/id'),
+                None
+            )
+            if entity is None:
+                continue
+            # Name/Description questions use set_prefix = parent set chain
+            sibling_prefix = (
+                f'{v.set_prefix}|{v.set_index}' if v.set_prefix
+                else str(v.set_index)
+            )
+            try:
+                v_label = Value.objects.get(
+                    project=project,
+                    attribute__uri=BASE_URI + f'domain/{entity}/name',
+                    set_prefix=sibling_prefix,
+                ).text
+            except (Value.DoesNotExist, Value.MultipleObjectsReturned):
+                continue
+            try:
+                v_desc = Value.objects.get(
+                    project=project,
+                    attribute__uri=BASE_URI + f'domain/{entity}/description',
+                    set_prefix=sibling_prefix,
+                ).text
+            except (Value.DoesNotExist, Value.MultipleObjectsReturned):
+                v_desc = ''
+            key = (v_label, v_desc)
+        else:
+            # B1: relation / inline question — parse label+description from text
+            v_label, v_desc, _ = extract_parts(v.text)
+            key = (v_label, v_desc)
+
+        if key in nf_map:
+            label, desc = key
+            v.external_id = nf_map[key]
+            v.text = f'{label} ({desc}) [mardi]' if desc else f'{label} [mardi]'
+            v.save()
 
 def is_flat(d):
     """Return ``True`` if *d* is a dict whose values are all strings (or *d* is empty).

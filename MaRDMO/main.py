@@ -26,13 +26,11 @@ from .checks import Checks
 from .constants import CATALOG_TEMPLATE_MAP
 from .getters import (
     get_answers,
-    get_item_url,
     get_options,
     get_questions,
     get_url
 )
-from .helpers import  (
-    compare_items,
+from .helpers import (
     is_cyclic,
     process_question_dict,
     topological_order
@@ -231,7 +229,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             data    = answers,
             catalog = str(self.project.catalog),
         )
-
         if err:
             return render(
                 self.request,
@@ -271,30 +268,6 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             )
 
         return self.post(self.request, payload, topological_order(dependency))
-
-    def post_success(self, request, init, final):
-        '''Render the success page listing all newly created MaRDI Portal items.
-
-        Args:
-            request: Django HTTP request.
-            init:    Deep copy of the original payload dict (before posting).
-            final:   Updated payload dict containing assigned Wikibase IDs.
-
-        Returns:
-            Rendered ``core/success.html`` response with links to created items.
-        '''
-        ids = compare_items(init, final)
-
-        # Links to newly created Entities
-        return render(
-            request,
-            'MaRDMO/portalExport.html',
-            {
-                'ids': ids,
-                'mardi_uri': get_item_url('mardi')
-            },
-            status=200
-        )
 
     def get_post_data(self, mode = 'submit'):
         '''Collect and pre-process user answers for the documentation catalogs.
