@@ -42,7 +42,7 @@ WHERE {{
         ?statement ps:{contains} ?confraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?confraw), STR(wd:))) AS ?conf)
 
-        ?confraw wdt:{instance of} wd:{mathematical expression}.
+        ?confraw wdt:{instance of} wd:{formula}.
         
                    
         OPTIONAL {{

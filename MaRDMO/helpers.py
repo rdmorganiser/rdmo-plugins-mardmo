@@ -1058,8 +1058,9 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
 
     Returns:
         List of ``[subject_label, subject_qid, property_name, object_label,
-        object_qid]`` lists, JSON-serializable.  ``object_qid`` is an empty
-        string for non-item value types.
+        object_qid, qualifiers]`` lists, JSON-serializable.  ``object_qid`` is
+        an empty string for non-item value types.  ``qualifiers`` is a list of
+        ``{"prop": name, "obj": label, "obj_qid": qid}`` dicts.
     """
     pid_to_name = pid_to_name or {}
     qid_to_name = qid_to_name or {}
@@ -1077,10 +1078,33 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
         if datatype == 'wikibase-item' and isinstance(value, str):
             return _resolve(value), value
         if datatype == 'quantity' and isinstance(value, dict):
-            amount = value.get('amount', '')
-            unit   = value.get('unit', '')
-            return f"{amount} {unit}".strip(), ''
+            return value.get('amount', '').lstrip('+'), ''
+        if datatype == 'monolingualtext' and isinstance(value, dict):
+            return value.get('text', str(value)), ''
+        if datatype == 'time' and isinstance(value, dict):
+            return value.get('time', '').lstrip('+').split('T')[0], ''
+        if datatype == 'math':
+            return f'\\({value}\\)', ''
         return str(value), ''
+
+    def _get_unit(datatype, value):
+        if datatype != 'quantity' or not isinstance(value, dict):
+            return '', ''
+        u_qid = value.get('unit', '').rsplit('/', 1)[-1]
+        if u_qid == '1':
+            return '', ''
+        return _resolve(u_qid), u_qid
+
+    def _format_qualifiers(quals_raw):
+        result = []
+        for q in quals_raw:
+            q_prop_id = q.get('property', {}).get('id', '')
+            q_dtype   = q.get('property', {}).get('data_type', 'string')
+            q_val     = q.get('value', {}).get('content', '')
+            q_prop_name      = pid_to_name.get(q_prop_id, q_prop_id)
+            q_obj, q_obj_qid = _format_value(q_dtype, q_val)
+            result.append({'prop': q_prop_name, 'obj': q_obj, 'obj_qid': q_obj_qid})
+        return result
 
     statements = []
 
@@ -1102,7 +1126,9 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
         value    = stmt['value']['content']
         prop_name          = pid_to_name.get(prop_id, prop_id)
         obj_label, obj_qid = _format_value(datatype, value)
-        statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid])
+        unit_label, unit_qid = _get_unit(datatype, value)
+        quals = _format_qualifiers(stmt.get('qualifiers', []))
+        statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid, quals, unit_label, unit_qid])
 
     # --- Statements embedded in newly created items
     for key, entry in jsons.items():
@@ -1118,9 +1144,12 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
             if len(stmt_tuple) < 3:
                 continue
             prop_id, datatype, value = stmt_tuple[0], stmt_tuple[1], stmt_tuple[2]
+            quals_raw = stmt_tuple[3] if len(stmt_tuple) >= 4 else []
             prop_name          = pid_to_name.get(prop_id, prop_id)
             obj_label, obj_qid = _format_value(datatype, value)
-            statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid])
+            unit_label, unit_qid = _get_unit(datatype, value)
+            quals = _format_qualifiers(quals_raw)
+            statements.append([subject_label, subject_qid, prop_name, obj_label, obj_qid, quals, unit_label, unit_qid])
 
     return statements
 

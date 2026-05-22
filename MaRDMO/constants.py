@@ -21,9 +21,19 @@ CATALOG_WORKFLOW     = 'https://rdmo.mardi4nfdi.de/terms/questions/mardmo-interd
 # Wikidata endpoint URLs (internal — not user-configurable)
 WIKIDATA = {
     'uri':    'https://www.wikidata.org',
+    'entity': 'https://www.wikidata.org/entity/',
     'api':    'https://www.wikidata.org/w/api.php',
     'sparql': 'https://query-main.wikidata.org/sparql',
 }
+
+DOI_BASE_URL             = 'https://doi.org/'
+SWMATH_BASE_URL          = 'https://www.swmath.org/software/'
+MORWIKI_BASE_URL         = 'https://modelreduction.org/morwiki/'
+QUDT_QUANTITYKIND_URL    = 'https://qudt.org/vocab/quantitykind/'
+QUDT_CONSTANT_URL        = 'https://qudt.org/vocab/constant/'
+ORCID_BASE_URL           = 'https://orcid.org/'
+ZBMATH_AUTHOR_BASE_URL   = 'https://zbmath.org/authors/?q=ai:'
+ISSN_BASE_URL            = 'http://www.issn.cc/'
 
 # Mapping from catalog slug to preview template
 CATALOG_TEMPLATE_MAP = {

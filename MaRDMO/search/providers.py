@@ -389,7 +389,7 @@ class Formula(Provider):
         return query_sources(
             search = search,
             item_class = [
-                _ITEMS['mathematical expression']
+                _ITEMS['formula']
             ],
             sources = ['mardi'],
             not_found = False

@@ -444,7 +444,7 @@ class PrepareModel(PublicationExport):
                 payload = payload,
                 community = self.items["MathModDB"],
                 description_long = True,
-                qclass =self.items["mathematical expression"],
+                qclass =self.items["formula"],
                 profile_type = "MaRDI formula profile",
             )
 

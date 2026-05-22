@@ -496,7 +496,7 @@ class MathematicalFormulation(Provider):
 
         return query_sources(
             search = search,
-            item_class = _ITEMS['mathematical expression']
+            item_class = _ITEMS['formula']
         )
 
 class RelatedMathematicalFormulationWithCreation(Provider):
@@ -528,7 +528,7 @@ class RelatedMathematicalFormulationWithCreation(Provider):
         setup = define_setup(
             query_attributes = ['formulation'],
             creation = True,
-            item_class = _ITEMS['mathematical expression']
+            item_class = _ITEMS['formula']
         )
 
         return query_sources_with_user_additions(
@@ -565,7 +565,7 @@ class RelatedMathematicalFormulationWithoutCreation(Provider):
         setup = define_setup(
             query_attributes = ['formulation'],
             sources = ['mardi'],
-            item_class = _ITEMS['mathematical expression']
+            item_class = _ITEMS['formula']
         )
 
         return query_sources_with_user_additions(
@@ -713,7 +713,7 @@ class RelatedModelEntityWithoutCreation(Provider):
                 _ITEMS['mathematical model'],
                 _ITEMS['quantity'],
                 _ITEMS['kind of quantity'],
-                _ITEMS['mathematical expression'],
+                _ITEMS['formula'],
                 _ITEMS['computational task']
             ]
         )

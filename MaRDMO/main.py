@@ -229,16 +229,16 @@ class MaRDMOExportProvider(BaseMaRDMOExportProvider):
             data    = answers,
             catalog = str(self.project.catalog),
         )
-        if err:
-            return render(
-                self.request,
-                'core/error.html',
-                {
-                    'title': _('Incomplete or Inconsistent Documentation'),
-                    'errors': err
-                },
-                status=200
-            )
+        #if err:
+        #    return render(
+        #        self.request,
+        #        'core/error.html',
+        #        {
+        #            'title': _('Incomplete or Inconsistent Documentation'),
+        #            'errors': err
+        #        },
+        #        status=200
+        #    )
 
         try:
             payload, dependency = prepare_class().export(

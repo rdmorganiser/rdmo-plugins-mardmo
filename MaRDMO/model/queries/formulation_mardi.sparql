@@ -86,7 +86,7 @@ WHERE {{
         ?id wdt:{assumes} ?assraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?assraw), STR(wd:))) AS ?ass)
                 
-        ?assraw wdt:{instance of} wd:{mathematical expression}.
+        ?assraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?assraw rdfs:label ?asslraw.
@@ -104,7 +104,7 @@ WHERE {{
     OPTIONAL {{
         ?id p:{contains} ?statement2.
         ?statement2 ps:{contains} ?confraw.
-        ?confraw wdt:{instance of} wd:{mathematical expression}.
+        ?confraw wdt:{instance of} wd:{formula}.
         BIND(CONCAT("mardi:", STRAFTER(STR(?confraw), STR(wd:))) AS ?conf)
         
         OPTIONAL {{
@@ -167,7 +167,7 @@ WHERE {{
         ?statement3 ps:{specialized by} ?sbfraw.                                    
         BIND(CONCAT("mardi:", STRAFTER(STR(?sbfraw), STR(wd:))) AS ?sbf)
                                                           
-        ?sbfraw wdt:{instance of} wd:{mathematical expression}.
+        ?sbfraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?sbfraw rdfs:label ?sbflraw
@@ -225,7 +225,7 @@ WHERE {{
         ?statement4 ps:{specialized by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?sfraw), STR(wd:))) AS ?sf)
                                                           
-        ?sfraw wdt:{instance of} wd:{mathematical expression}.
+        ?sfraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?sfraw rdfs:label ?sflraw
@@ -245,7 +245,7 @@ WHERE {{
         ?id wdt:{approximated by} ?abfraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?abfraw), STR(wd:))) AS ?abf)
 
-        ?abfraw wdt:{instance of} wd:{mathematical expression}.
+        ?abfraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?abfraw rdfs:label ?abflraw.
@@ -264,7 +264,7 @@ WHERE {{
         ?afraw wdt:{approximated by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?afraw), STR(wd:))) AS ?af)
          
-        ?afraw wdt:{instance of} wd:{mathematical expression}.
+        ?afraw wdt:{instance of} wd:{formula}.
         OPTIONAL {{
             ?afraw rdfs:label ?aflraw.
             FILTER (lang(?aflraw) = 'en')
@@ -282,7 +282,7 @@ WHERE {{
         ?id wdt:{nondimensionalized by} ?nbfraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?nbfraw), STR(wd:))) AS ?nbf)
         
-        ?nbfraw wdt:{instance of} wd:{mathematical expression}.
+        ?nbfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?nbfraw rdfs:label ?nbflraw.
@@ -301,7 +301,7 @@ WHERE {{
         ?nfraw wdt:{nondimensionalized by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?nfraw), STR(wd:))) AS ?nf)
         
-        ?nfraw wdt:{instance of} wd:{mathematical expression}.
+        ?nfraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?nfraw rdfs:label ?nflraw.
@@ -320,7 +320,7 @@ WHERE {{
         ?id wdt:{discretized by} ?dbfraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?dbfraw), STR(wd:))) AS ?dbf)
                   
-        ?dbfraw wdt:{instance of} wd:{mathematical expression}.
+        ?dbfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?dbfraw rdfs:label ?dbflraw.
@@ -339,7 +339,7 @@ WHERE {{
         ?dfraw wdt:{discretized by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?dfraw), STR(wd:))) AS ?df)
                    
-        ?dfraw wdt:{instance of} wd:{mathematical expression}.
+        ?dfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?dfraw rdfs:label ?dflraw.
@@ -359,7 +359,7 @@ WHERE {{
         ?id wdt:{linearized by} ?lbfraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?lbfraw), STR(wd:))) AS ?lbf)
         
-        ?lbfraw wdt:{instance of} wd:{mathematical expression}.
+        ?lbfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?lbfraw rdfs:label ?lbflraw.
@@ -378,7 +378,7 @@ WHERE {{
         ?lfraw wdt:{linearized by} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?lfraw), STR(wd:))) AS ?lf)
         
-        ?lfraw wdt:{instance of} wd:{mathematical expression}.
+        ?lfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?lfraw rdfs:label ?lflraw.
@@ -397,7 +397,7 @@ WHERE {{
         ?id wdt:{has weak formulation} ?hwffraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?hwffraw), STR(wd:))) AS ?hwff)
 
-        ?hwffraw wdt:{instance of} wd:{mathematical expression}.
+        ?hwffraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?hwffraw rdfs:label ?hwfflraw.
@@ -416,7 +416,7 @@ WHERE {{
         ?iwffraw wdt:{has weak formulation} ?id.
         BIND(CONCAT("mardi:", STRAFTER(STR(?iwffraw), STR(wd:))) AS ?iwff)
 
-        ?iwffraw wdt:{instance of} wd:{mathematical expression}.
+        ?iwffraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?iwffraw rdfs:label ?iwfflraw.
@@ -435,7 +435,7 @@ WHERE {{
         ?id wdt:{similar to} ?stfraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?stfraw), STR(wd:))) AS ?stf)
         
-        ?stfraw wdt:{instance of} wd:{mathematical expression}.
+        ?stfraw wdt:{instance of} wd:{formula}.
         
         OPTIONAL {{
             ?stfraw rdfs:label ?stflraw.

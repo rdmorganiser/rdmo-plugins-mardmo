@@ -69,7 +69,7 @@ ROUTING = {
         {
             'props': 'P2ME',
             'classes': [
-                'mathematical model', 'computational task', 'mathematical expression',
+                'mathematical model', 'computational task', 'formula',
                 'research problem', 'academic discipline', 'quantity', 'kind of quantity',
             ],
             'mapping': 'publication_mapping',
@@ -81,7 +81,7 @@ ROUTING = {
         {
             'props': 'P2ME',
             'classes': [
-                'mathematical model', 'computational task', 'mathematical expression',
+                'mathematical model', 'computational task', 'formula',
                 'research problem', 'academic discipline', 'quantity', 'kind of quantity',
             ],
             'mapping': 'publication_mapping',

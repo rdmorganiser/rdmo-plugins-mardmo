@@ -4,53 +4,544 @@
 {% load static %}
 
 {% block page %}
-    <div align='center'>
-        <br><br><br><br><br><br><br>
-        <figure>
-            <img src="{% static 'MaRDMO/images/MaRDMOLogo.png' %}" alt="Logo of MaRDMO Plugin">
-        </figure>
-        <br><br><br>
-        {% if grouped_ids %}
-            <p style="color:Black;font-size:40px;font-weight:bold">Entities added to MaRDI Portal!</p>
-            <p style="color:#555555;font-size:15px;font-style:italic">Questionnaire entries updated with new MaRDI identifiers.</p>
-            <br>
-            {% for class_name, items in grouped_ids %}
-                <p style="color:Black;font-size:22px;font-weight:bold;margin-bottom:4px">{{ class_name }}</p>
-                {% for item in items %}
-                    <p style="color:grey;font-size:18px;font-weight:bold;margin:4px 0 1px 0">
-                        <a href="{{mardi_uri}}{{item.qid}}" style="color:dodgerblue;">{{item.name}}</a>&#x1F517;
+<script>
+window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']] },
+    svg: { fontCache: 'none' }
+};
+</script>
+<script type="text/javascript" id="MathJax-script" async
+        src="{% static 'MaRDMO/js/mathjax/es5/tex-svg.js' %}"></script>
+<div align='center'>
+    <br><br><br><br><br><br><br>
+    <figure style="margin-bottom:6px;">
+        <img src="{% static 'MaRDMO/images/MaRDMOLogo.png' %}" alt="Logo of MaRDMO Plugin">
+    </figure>
+    <div style="font-size:11px;color:grey;margin-bottom:30px;">
+        MaRDMO Logo by <a href="https://www.mardi4nfdi.de/about/mission" target="_blank" style="color:grey;">MaRDI</a>, licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" style="color:grey;">CC BY-NC-ND 4.0</a>.
+    </div>
+
+    {% if grouped_ids or relation_stmts %}
+
+        <!-- Tab buttons -->
+        <div style="margin-bottom:30px;">
+            <button id="tab-list-btn" onclick="switchTab('list')"
+                    style="padding:8px 28px;font-size:16px;font-weight:bold;cursor:pointer;background:#333;color:white;border:none;border-radius:4px 0 0 4px;">
+                List
+            </button>
+            <button id="tab-graph-btn" onclick="switchTab('graph')"
+                    style="padding:8px 28px;font-size:16px;font-weight:bold;cursor:pointer;background:#ddd;color:#555;border:none;border-radius:0 4px 4px 0;">
+                Graph
+            </button>
+        </div>
+
+        <!-- LIST VIEW (default) -->
+        <div id="view-list" style="width:90%;margin:0 auto;text-align:left;">
+
+            {% if grouped_ids %}
+                <p style="color:Black;font-size:40px;font-weight:bold;margin:0 0 4px 0">Entities added to MaRDI Portal!</p>
+                <p style="color:#555555;font-size:15px;font-style:italic;margin:0 0 20px 0">Questionnaire entries updated with new MaRDI identifiers.</p>
+                {% for class_name, items in grouped_ids %}
+                    <p style="color:Black;font-size:22px;font-weight:bold;margin:16px 0 4px 0">{{ class_name }}</p>
+                    {% for item in items %}
+                        <p style="color:grey;font-size:18px;font-weight:bold;margin:4px 0 2px 20px">
+                            <a href="{{mardi_uri}}{{item.qid}}" style="color:dodgerblue;">{{item.name}}</a>
+                        </p>
+                        {% for s in item.stmts %}
+                            <p style="color:#666;font-size:14px;margin:1px 0 1px 40px">
+                                <em>{{s.prop}}</em> &rarr;
+                                {% if s.obj_url %}<a href="{{s.obj_url}}" target="_blank" style="color:dodgerblue;">{{s.obj}}</a>{% elif s.obj_qid %}<a href="{{mardi_uri}}{{s.obj_qid}}" style="color:dodgerblue;">{{s.obj}}</a>{% else %}{{s.obj}}{% endif %}{% if s.unit_qid %} <a href="{{mardi_uri}}{{s.unit_qid}}" style="color:dodgerblue;">{{s.unit_label}}</a>{% endif %}
+                            </p>
+                            {% for q in s.qualifiers %}
+                                <p style="color:#999;font-size:12px;margin:0 0 0 60px">
+                                    <em>{{q.prop}}</em> &rarr;
+                                    {% if q.obj_url %}<a href="{{q.obj_url}}" target="_blank" style="color:dodgerblue;">{{q.obj}}</a>{% elif q.obj_qid %}<a href="{{mardi_uri}}{{q.obj_qid}}" style="color:dodgerblue;">{{q.obj}}</a>{% else %}{{q.obj}}{% endif %}
+                                </p>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            {% else %}
+                <p style="color:Black;font-size:30px;font-weight:bold">No new Entities added to MaRDI Portal!</p>
+            {% endif %}
+
+            {% if relation_stmts %}
+                <p style="color:Black;font-size:40px;font-weight:bold;margin:32px 0 8px 0">Relations added to MaRDI Portal!</p>
+                {% for r in relation_stmts %}
+                    <p style="color:grey;font-size:16px;margin:3px 0 3px 20px">
+                        {% if r.subject_qid %}<a href="{{mardi_uri}}{{r.subject_qid}}" style="color:dodgerblue;">{{r.subject}}</a>{% else %}{{r.subject}}{% endif %}
+                        &nbsp;<em style="color:#888">{{r.prop}}</em>&nbsp;
+                        {% if r.obj_url %}<a href="{{r.obj_url}}" target="_blank" style="color:dodgerblue;">{{r.obj}}</a>{% elif r.obj_qid %}<a href="{{mardi_uri}}{{r.obj_qid}}" style="color:dodgerblue;">{{r.obj}}</a>{% else %}{{r.obj}}{% endif %}{% if r.unit_qid %} <a href="{{mardi_uri}}{{r.unit_qid}}" style="color:dodgerblue;">{{r.unit_label}}</a>{% endif %}
                     </p>
-                    {% for s in item.stmts %}
-                        <p style="color:#666;font-size:14px;margin:1px 0 1px 24px">
-                            <em>{{s.prop}}</em> &rarr;
-                            {% if s.obj_qid %}<a href="{{mardi_uri}}{{s.obj_qid}}" style="color:dodgerblue;">{{s.obj}}</a>{% else %}{{s.obj}}{% endif %}
+                    {% for q in r.qualifiers %}
+                        <p style="color:#999;font-size:13px;margin:0 0 0 40px">
+                            <em>{{q.prop}}</em> &rarr;
+                            {% if q.obj_url %}<a href="{{q.obj_url}}" target="_blank" style="color:dodgerblue;">{{q.obj}}</a>{% elif q.obj_qid %}<a href="{{mardi_uri}}{{q.obj_qid}}" style="color:dodgerblue;">{{q.obj}}</a>{% else %}{{q.obj}}{% endif %}
                         </p>
                     {% endfor %}
                 {% endfor %}
-                <br>
-            {% endfor %}
-        {% else %}
-        <p style="color:Black;font-size:40px;;font-weight:bold">No new Entities added to MaRDI Portal!</p>
-        <p style="color:Black;font-size:20px;;font-weight:bold">(If you defined new Relations, they were added successfully.)</p>
+            {% endif %}
+
+        </div><!-- end view-list -->
+
+        <!-- GRAPH VIEW -->
+        <div id="view-graph" style="display:none;">
+            <div style="width:90%;margin:0 auto;text-align:left;position:relative;">
+                <div id="cy" style="width:100%;height:680px;border:1px solid #ddd;border-radius:6px;background:#fafafa;"></div>
+                <div style="position:absolute;top:10px;right:10px;z-index:10;display:flex;flex-direction:column;gap:4px;">
+                    <button id="btn-zoom-in"  style="width:30px;height:30px;font-size:18px;font-weight:bold;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;">+</button>
+                    <button id="btn-zoom-out" style="width:30px;height:30px;font-size:18px;font-weight:bold;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;">&minus;</button>
+                    <button id="btn-fit"      style="width:30px;height:30px;font-size:13px;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;" title="Fit all">&#x26F6;</button>
+                </div>
+                <div id="cy-legend" style="margin-top:10px;font-size:12px;"></div>
+            </div>
+        </div>
+
+        <!-- Qualifier tooltip (shared, fixed position) -->
+        <div id="cy-tooltip"
+             style="display:none;position:fixed;background:white;border:1px solid #ccc;
+                    padding:7px 11px;border-radius:4px;font-size:12px;z-index:9999;
+                    max-width:280px;box-shadow:0 2px 6px rgba(0,0,0,0.18);
+                    text-align:left;line-height:1.6;">
+        </div>
+
+        {{ graph_data|json_script:"graph-data" }}
+        <script src="{% static 'MaRDMO/js/cytoscape.min.js' %}"></script>
+        <script>
+        var MARDI_URI = "{{ mardi_uri }}";
+        function switchTab(tab) {
+            var isList = tab === 'list';
+            document.getElementById('view-list').style.display = isList ? '' : 'none';
+            document.getElementById('view-graph').style.display = isList ? 'none' : '';
+            var lb = document.getElementById('tab-list-btn');
+            var gb = document.getElementById('tab-graph-btn');
+            lb.style.background = isList ? '#333' : '#ddd';
+            lb.style.color      = isList ? 'white' : '#555';
+            gb.style.background = isList ? '#ddd' : '#333';
+            gb.style.color      = isList ? '#555' : 'white';
+            if (!isList && !window._cyInitialized) {
+                window._cyInitialized = true;
+                requestAnimationFrame(initGraph);
+            }
+        }
+
+        var CLASS_COLORS = {
+            'Mathematical Model':     '#4e79a7',
+            'Research Problem':       '#f28e2b',
+            'Formula':                '#e15759',
+            'Computational Task':     '#76b7b2',
+            'Quantity':               '#59a14f',
+            'Algorithm':              '#edc948',
+            'Algorithmic Task':       '#b07aa1',
+            'Software':               '#ff9da7',
+            'Benchmark':              '#9c755f',
+            'Workflow':               '#bab0ac',
+            'Process Step':           '#86bcb6',
+            'Hardware':               '#d4a6c8',
+            'CPU Model':              '#a0cbe8',
+            'Dataset':                '#ffbe7d',
+            'Experimental Method':    '#8cd17d',
+            'Experimental Equipment': '#f1ce63',
+            'Academic Discipline':    '#d37295',
+            'Programming Language':   '#499894',
+            'Publication':            '#e05c56',
+            'Author':                 '#a0522d',
+            'Journal':                '#6a8eb3'
+        };
+
+        async function initGraph() {
+            var raw = JSON.parse(document.getElementById('graph-data').textContent);
+
+            // Pre-render math literal nodes to PNG background images
+            await MathJax.startup.promise;
+            await Promise.all(
+                raw.nodes
+                    .filter(function(n) { return n.node_type === 'literal' && n.label.startsWith('\\('); })
+                    .map(async function(n) {
+                        var latex = n.label.slice(2, -2);
+                        try {
+                            var wrapper = await MathJax.tex2svgPromise(latex, {display: false});
+                            var svgEl = wrapper.querySelector('svg');
+                            svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                            if (!svgEl.hasAttribute('xmlns:xlink')) {
+                                svgEl.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+                            }
+                            svgEl.style.cssText = 'position:fixed;left:-9999px;top:-9999px;visibility:hidden;';
+                            document.body.appendChild(svgEl);
+                            var rect = svgEl.getBoundingClientRect();
+                            var w = Math.ceil(rect.width)  || 60;
+                            var h = Math.ceil(rect.height) || 30;
+                            n.bg_w = w + 16;
+                            n.bg_h = h + 12;
+                            document.body.removeChild(svgEl);
+                            svgEl.style.cssText = '';
+                            // Render at 6× CSS pixels so Cytoscape can downsample without blurring
+                            // at any zoom level. SVG background-image is blocked in canvas renderers,
+                            // so we convert to PNG via an off-screen canvas.
+                            var RS = 6;
+                            svgEl.setAttribute('width',  (w * RS) + 'px');
+                            svgEl.setAttribute('height', (h * RS) + 'px');
+                            var svgUrl = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svgEl));
+                            n.bg_image = await new Promise(function(resolve) {
+                                var img = new Image();
+                                img.onload = function() {
+                                    var c = document.createElement('canvas');
+                                    c.width  = n.bg_w * RS;
+                                    c.height = n.bg_h * RS;
+                                    c.getContext('2d').drawImage(img,
+                                        Math.round((n.bg_w - w) / 2 * RS),
+                                        Math.round((n.bg_h - h) / 2 * RS),
+                                        w * RS, h * RS);
+                                    try { resolve(c.toDataURL('image/png')); } catch(e) { resolve(''); }
+                                };
+                                img.onerror = function() { resolve(''); };
+                                img.src = svgUrl;
+                            });
+                        } catch(e) { n.bg_image = ''; }
+                    })
+            );
+
+            var elements = raw.nodes.map(function(n) {
+                var color, textColor;
+                if (n.node_type === 'new') {
+                    color = CLASS_COLORS[n.cls] || '#888';
+                    textColor = '#fff';
+                } else if (n.node_type === 'literal') {
+                    color = '#e8e8e8';
+                    textColor = '#555';
+                } else {
+                    color = '#bbb';
+                    textColor = '#fff';
+                }
+                return { data: {
+                    id: n.id, label: n.bg_image ? '' : n.label,
+                    node_type: n.node_type, cls: n.cls,
+                    url: n.url, color: color, text_color: textColor,
+                    bg_image: n.bg_image || '', bg_w: n.bg_w || 0, bg_h: n.bg_h || 0,
+                    is_math: n.bg_image ? 1 : 0
+                }};
+            }).concat(raw.edges.map(function(e, i) {
+                return { data: {
+                    id: 'e' + i, source: e.source, target: e.target,
+                    label: e.label, qualifiers: e.qualifiers
+                }};
+            }));
+
+            var cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color':   'data(color)',
+                            'border-width':       2,
+                            'border-color':       '#fff',
+                            'label':              'data(label)',
+                            'color':              'data(text_color)',
+                            'font-size':          10,
+                            'text-valign':        'center',
+                            'text-halign':        'center',
+                            'text-wrap':          'wrap',
+                            'text-max-width':     100,
+                            'width':              'label',
+                            'height':             'label',
+                            'padding':            15,
+                            'text-outline-color': 'data(color)',
+                            'text-outline-width': 1.5,
+                            'cursor':             'pointer'
+                        }
+                    },
+                    {
+                        selector: 'node[node_type = "item"]',
+                        style: {
+                            'border-width': 3,
+                            'border-color': '#999'
+                        }
+                    },
+                    {
+                        selector: 'node[node_type = "literal"]',
+                        style: {
+                            'shape':              'rectangle',
+                            'width':              'label',
+                            'height':             'label',
+                            'padding':            6,
+                            'border-width':       2,
+                            'border-color':       '#4a4a4a',
+                            'text-outline-width': 0,
+                            'font-size':          9
+                        }
+                    },
+                    {
+                        selector: 'node[is_math = 1]',
+                        style: {
+                            'width':              'data(bg_w)',
+                            'height':             'data(bg_h)',
+                            'background-fit':     'contain',
+                            'background-clip':    'node',
+                            'background-color':   'white',
+                            'label':              '',
+                            'text-outline-width': 0,
+                            'border-color':       '#4a4a4a',
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'label':                     'data(label)',
+                            'font-size':                 8,
+                            'curve-style':               'bezier',
+                            'target-arrow-shape':        'triangle',
+                            'line-color':                '#ccc',
+                            'target-arrow-color':        '#ccc',
+                            'color':                     '#555',
+                            'text-rotation':             'autorotate',
+                            'text-background-color':     '#fff',
+                            'text-background-opacity':   0.8,
+                            'text-background-padding':   '2px',
+                            'cursor':                    'pointer'
+                        }
+                    },
+                    {
+                        selector: ':selected',
+                        style: {
+                            'border-width':        3,
+                            'border-color':        '#333',
+                            'line-color':          '#555',
+                            'target-arrow-color':  '#555'
+                        }
+                    }
+                ],
+                layout: {
+                    name:          'cose',
+                    animate:       false,
+                    nodeRepulsion: 8000,
+                    idealEdgeLength: 120,
+                    gravity:       0.25,
+                    numIter:       1000
+                }
+            });
+
+            cy.resize();
+            cy.fit(undefined, 30);
+
+            // background-image data() mapper is unreliable for data URIs — set directly
+            cy.nodes('[is_math = 1]').forEach(function(node) {
+                node.style('background-image', node.data('bg_image'));
+            });
+
+            // Zoom buttons
+            document.getElementById('btn-zoom-in').addEventListener('click', function() {
+                cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: cy.width()/2, y: cy.height()/2 }});
+            });
+            document.getElementById('btn-zoom-out').addEventListener('click', function() {
+                cy.zoom({ level: cy.zoom() / 1.3, renderedPosition: { x: cy.width()/2, y: cy.height()/2 }});
+            });
+            document.getElementById('btn-fit').addEventListener('click', function() {
+                cy.fit(undefined, 30);
+            });
+
+            // Node click → open portal link
+            cy.on('tap', 'node', function(evt) {
+                var url = evt.target.data('url');
+                if (url) window.open(url, '_blank');
+            });
+
+            // Edge click → show qualifier tooltip
+            var tooltip = document.getElementById('cy-tooltip');
+            cy.on('tap', 'edge', function(evt) {
+                var quals = evt.target.data('qualifiers') || [];
+                if (!quals.length) { tooltip.style.display = 'none'; return; }
+                var html = '<strong style="font-size:13px;">Qualifiers</strong><br>';
+                quals.forEach(function(q) {
+                    var objHtml;
+                    if (q.obj_url) {
+                        objHtml = '<a href="' + q.obj_url + '" target="_blank" style="color:dodgerblue;">' + q.obj + '</a>';
+                    } else if (q.obj_qid) {
+                        objHtml = '<a href="' + MARDI_URI + q.obj_qid + '" target="_blank" style="color:dodgerblue;">' + q.obj + '</a>';
+                    } else {
+                        objHtml = q.obj || '';
+                    }
+                    html += '<em>' + q.prop + '</em> &rarr; ' + objHtml + '<br>';
+                });
+                tooltip.innerHTML = html;
+                tooltip.style.display = 'block';
+                var e = evt.originalEvent;
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top  = (e.clientY + 14) + 'px';
+            });
+
+            // Click on background → hide tooltip
+            cy.on('tap', function(evt) {
+                if (evt.target === cy) tooltip.style.display = 'none';
+            });
+
+            // ── Filter state ──────────────────────────────────────────────
+            var hiddenClasses = new Set();
+            var hideLiterals  = false;
+            var hideExisting  = false;
+            var hiddenProps   = new Set();
+
+            function _applyFilters() {
+                cy.elements().show();
+                cy.nodes().filter(function(n) {
+                    return hideLiterals && n.data('node_type') === 'literal';
+                }).hide();
+                cy.nodes().filter(function(n) {
+                    return hideExisting && n.data('node_type') === 'item';
+                }).hide();
+                cy.nodes().filter(function(n) {
+                    return n.data('node_type') === 'new' && hiddenClasses.has(n.data('cls'));
+                }).hide();
+                cy.edges().filter(function(e) {
+                    return hiddenProps.has(e.data('label'));
+                }).hide();
+                cy.edges().filter(function(e) {
+                    return e.source().hidden() || e.target().hidden();
+                }).hide();
+                // After edge filtering, hide literal nodes with no visible connections
+                cy.nodes('[node_type = "literal"]').filter(function(n) {
+                    return n.connectedEdges(':visible').length === 0;
+                }).hide();
+            }
+
+            // ── Collect graph metadata for legend / filter panel ───────────
+            var presentClasses = {};
+            raw.nodes.forEach(function(n) {
+                if (n.node_type === 'new' && n.cls) presentClasses[n.cls] = CLASS_COLORS[n.cls] || '#888';
+            });
+            var hasExisting = raw.nodes.some(function(n) { return n.node_type === 'item'; });
+            var hasLiteral  = raw.nodes.some(function(n) { return n.node_type === 'literal'; });
+            var allProps = [];
+            var _propSeen = {};
+            raw.edges.forEach(function(e) {
+                if (e.label && !_propSeen[e.label]) { _propSeen[e.label] = true; allProps.push(e.label); }
+            });
+            allProps.sort();
+
+            // ── Build legend HTML (entries are click-to-toggle) ────────────
+            var lh = '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-bottom:8px;">';
+            Object.keys(presentClasses).forEach(function(cls) {
+                lh += '<span data-cls="' + cls + '" title="Click to toggle"'
+                    + ' style="display:inline-flex;align-items:center;cursor:pointer;user-select:none;">'
+                    + '<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:'
+                    + presentClasses[cls] + ';margin-right:5px;flex-shrink:0;"></span>New ' + cls + '</span>';
+            });
+            if (hasExisting) {
+                lh += '<span data-type="existing" title="Click to toggle"'
+                    + ' style="display:inline-flex;align-items:center;cursor:pointer;user-select:none;">'
+                    + '<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:#bbb;'
+                    + 'border:2px solid #999;margin-right:5px;flex-shrink:0;"></span>Existing item</span>';
+            }
+            if (hasLiteral) {
+                lh += '<span data-type="literal" title="Click to toggle"'
+                    + ' style="display:inline-flex;align-items:center;cursor:pointer;user-select:none;">'
+                    + '<span style="display:inline-block;width:15px;height:9px;background:#e8e8e8;'
+                    + 'border:2px solid #4a4a4a;margin-right:5px;flex-shrink:0;"></span>New Literal Value</span>';
+            }
+            lh += '</div>';
+
+            // ── Build filter panel HTML ────────────────────────────────────
+            lh += '<div style="text-align:center;margin-bottom:4px;">'
+                + '<button id="btn-filter-toggle" style="font-size:11px;padding:3px 12px;cursor:pointer;'
+                + 'background:#f0f0f0;border:1px solid #ccc;border-radius:4px;">Filters &#9660;</button></div>'
+                + '<div id="cy-filter-panel" style="display:none;border:1px solid #ddd;border-radius:4px;'
+                + 'padding:10px 16px;background:#fafafa;font-size:12px;margin-bottom:6px;text-align:left;">'
+                + '<div style="font-weight:bold;font-size:11px;color:#666;text-transform:uppercase;'
+                + 'letter-spacing:.05em;margin-bottom:6px;">Node types</div>'
+                + '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;margin-bottom:10px;">'
+                + '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;">'
+                + '<input type="checkbox" id="flt-literals" checked> Literal values</label>'
+                + '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;">'
+                + '<input type="checkbox" id="flt-existing" checked> Existing items</label>'
+                + '</div>';
+            if (allProps.length) {
+                lh += '<div style="font-weight:bold;font-size:11px;color:#666;text-transform:uppercase;'
+                    + 'letter-spacing:.05em;margin-bottom:6px;">Properties</div>'
+                    + '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;">';
+                allProps.forEach(function(p) {
+                    var pid = 'flt-p-' + p.replace(/[^a-zA-Z0-9]/g, '_');
+                    lh += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">'
+                        + '<input type="checkbox" class="flt-prop" data-prop="' + p + '" id="' + pid + '" checked> '
+                        + p + '</label>';
+                });
+                lh += '</div>';
+            }
+            lh += '</div>';
+
+            var legendDiv = document.getElementById('cy-legend');
+            legendDiv.innerHTML = lh;
+
+            // ── Wire up legend click-toggles ───────────────────────────────
+            function _setLegendActive(el, active) {
+                el.style.opacity      = active ? '' : '0.35';
+                el.style.textDecoration = active ? '' : 'line-through';
+            }
+
+            legendDiv.querySelectorAll('[data-cls]').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    var cls = el.getAttribute('data-cls');
+                    var nowHidden = !hiddenClasses.has(cls);
+                    if (nowHidden) hiddenClasses.add(cls); else hiddenClasses.delete(cls);
+                    _setLegendActive(el, !nowHidden);
+                    _applyFilters();
+                });
+            });
+
+            var elLegendExisting = legendDiv.querySelector('[data-type="existing"]');
+            var elLegendLiteral  = legendDiv.querySelector('[data-type="literal"]');
+            var cbExisting = document.getElementById('flt-existing');
+            var cbLiterals = document.getElementById('flt-literals');
+
+            if (elLegendExisting) elLegendExisting.addEventListener('click', function() {
+                hideExisting = !hideExisting;
+                _setLegendActive(elLegendExisting, !hideExisting);
+                cbExisting.checked = !hideExisting;
+                _applyFilters();
+            });
+            if (elLegendLiteral) elLegendLiteral.addEventListener('click', function() {
+                hideLiterals = !hideLiterals;
+                _setLegendActive(elLegendLiteral, !hideLiterals);
+                cbLiterals.checked = !hideLiterals;
+                _applyFilters();
+            });
+
+            // ── Wire up filter panel ───────────────────────────────────────
+            document.getElementById('btn-filter-toggle').addEventListener('click', function() {
+                var panel = document.getElementById('cy-filter-panel');
+                var open  = panel.style.display !== 'none';
+                panel.style.display = open ? 'none' : '';
+                this.innerHTML = 'Filters ' + (open ? '&#9660;' : '&#9650;');
+            });
+
+            cbLiterals.addEventListener('change', function() {
+                hideLiterals = !this.checked;
+                if (elLegendLiteral) _setLegendActive(elLegendLiteral, !hideLiterals);
+                _applyFilters();
+            });
+            cbExisting.addEventListener('change', function() {
+                hideExisting = !this.checked;
+                if (elLegendExisting) _setLegendActive(elLegendExisting, !hideExisting);
+                _applyFilters();
+            });
+
+            legendDiv.querySelectorAll('.flt-prop').forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    var prop = cb.getAttribute('data-prop');
+                    if (cb.checked) hiddenProps.delete(prop); else hiddenProps.add(prop);
+                    _applyFilters();
+                });
+            });
+        }
+        </script>
+
+    {% else %}
+        <p style="color:Black;font-size:40px;font-weight:bold">No new Entities added to MaRDI Portal!</p>
+        <p style="color:Black;font-size:20px;font-weight:bold">(If you defined new Relations, they were added successfully.)</p>
         <br>
-        <p style="color:Black;font-size:20px;;font-weight:bold">Checkout <a href="{{mardi_uri|cut:"wiki/Item:"}}" style="color:dodgerblue;">MaRDI Portal</a>&#x1F517;</p>
-        {% endif %}
-        {% if relation_stmts %}
-            <br>
-            <p style="color:Black;font-size:40px;font-weight:bold">Relations added to MaRDI Portal!</p>
-            <br>
-            {% for r in relation_stmts %}
-                <p style="color:grey;font-size:16px;margin:3px 0">
-                    {% if r.subject_qid %}<a href="{{mardi_uri}}{{r.subject_qid}}" style="color:dodgerblue;">{{r.subject}}</a>{% else %}{{r.subject}}{% endif %}
-                    &nbsp;<em style="color:#888">{{r.prop}}</em>&nbsp;
-                    {% if r.obj_qid %}<a href="{{mardi_uri}}{{r.obj_qid}}" style="color:dodgerblue;">{{r.obj}}</a>{% else %}{{r.obj}}{% endif %}
-                </p>
-            {% endfor %}
-        {% endif %}
-    </p>
-    </div>
-    <!-- Attribution Section -->
-    <div align='center' style="margin-top: 50px; font-size: 14px; color: grey;">
-        <p>MaRDMO Logo by <a href="https://www.mardi4nfdi.de/about/mission" target="_blank" style="color: grey;">MaRDI</a>, licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" style="color: grey;">CC BY-NC-ND 4.0</a>.</p>
-    </div>
-    {% endblock %}
+        <p style="color:Black;font-size:20px;font-weight:bold">Checkout <a href="{{mardi_uri|cut:"wiki/Item:"}}" style="color:dodgerblue;">MaRDI Portal</a>&#x1F517;</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}

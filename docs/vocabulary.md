@@ -95,7 +95,7 @@ MaRDMO communicates with the MaRDI Portal using a defined set of items and prope
 | MathAlgoDB | [Q6830558](https://portal.mardi4nfdi.de/wiki/Item:Q6830558) |
 | MathModDB | [Q6534265](https://portal.mardi4nfdi.de/wiki/Item:Q6534265) |
 | mathematical constant | [Q6672097](https://portal.mardi4nfdi.de/wiki/Item:Q6672097) |
-| mathematical expression | [Q96183](https://portal.mardi4nfdi.de/wiki/Item:Q96183) |
+| formula | [Q96183](https://portal.mardi4nfdi.de/wiki/Item:Q96183) |
 | mathematical model | [Q68663](https://portal.mardi4nfdi.de/wiki/Item:Q68663) |
 | mathematically irreproducible research workflow | [Q7226901](https://portal.mardi4nfdi.de/wiki/Item:Q7226901) |
 | mathematically reproducible research workflow | [Q6534210](https://portal.mardi4nfdi.de/wiki/Item:Q6534210) |

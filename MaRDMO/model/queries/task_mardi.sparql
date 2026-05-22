@@ -54,7 +54,7 @@ WHERE {{
         ?id wdt:{assumes} ?assraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?assraw), STR(wd:))) AS ?ass)
                
-        ?assraw wdt:{instance of} wd:{mathematical expression}.
+        ?assraw wdt:{instance of} wd:{formula}.
 
         OPTIONAL {{
             ?assraw rdfs:label ?asslraw.
@@ -74,7 +74,7 @@ WHERE {{
         ?statement ps:{contains} ?confraw.
         BIND(CONCAT("mardi:", STRAFTER(STR(?confraw), STR(wd:))) AS ?conf)
 
-        ?confraw wdt:{instance of} wd:{mathematical expression}.
+        ?confraw wdt:{instance of} wd:{formula}.
         
                    
         OPTIONAL {{
