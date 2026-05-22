@@ -72,4 +72,47 @@ After all items and relations have been posted, `compare_items()` compares the i
 - **Wikidata items**: the `external_id` is updated from `wikidata:<QID>` to `mardi:<QID>` and `[wikidata]` is replaced by `[mardi]` in the text field.
 - **User-defined items**: Values referencing `not found` are matched by their label/description pair and updated to `mardi:<QID>`.  ID-question Values (where `text` is `"not found"`) are resolved via sibling Name/Description Values at the same set index.
 
-Finally, a success page is rendered listing all newly created MaRDI Portal items with clickable links.
+After the catalog update, a success page is rendered showing the exported data in two switchable views.
+
+### List View
+
+All newly created MaRDI Portal items are shown grouped by class (Mathematical Model, Research Problem, Formula, …) in a fixed display order.  Each item is rendered as a collapsible section showing every statement that was written to the portal as `property → value` lines.
+
+- **Portal item objects** (another item on the MaRDI Portal) are shown as clickable blue links leading to that item's portal page.
+- **External identifier and URL properties** (Wikidata QID, DOI, ORCID, swMath work ID, MORwiki ID, zbMATH author ID, ISSN, QUDT quantity kind / constant, and plain URLs) are resolved to their canonical base URLs and rendered as clickable links.
+- **Quantity values** are displayed as the numeric amount followed by the unit name.  If the unit is a named portal item (e.g. *kilobyte*) it is rendered as a clickable blue link to that item's portal page.  The dimensionless unit `1` is suppressed.
+- **Formulas** stored with the `math` datatype are typeset inline using [MathJax](https://www.mathjax.org/) (Apache 2.0).
+- **Qualifier statements** are shown indented below their parent statement.  Qualifier objects follow the same link-resolution rules as top-level objects: portal items link to the portal, Wikidata QIDs, DOI/ORCID/URL identifiers link to their external base URL.
+- **Relations to existing items** (statements added to items that already existed on the portal before the export) are shown in a separate *Relations to existing items* section at the bottom of the list.
+
+### Graph View
+
+An interactive network diagram built with [Cytoscape.js](https://js.cytoscape.org/) (MIT) provides a visual overview of the exported data.
+
+**Node types:**
+
+| Shape | Colour | Meaning |
+|---|---|---|
+| Circle | Distinct colour per class | Newly created MaRDI Portal item |
+| Circle | Grey | Existing MaRDI Portal item (referenced but not created) |
+| Rectangle | Light yellow | Literal value (text, number, URL, …) |
+
+Formulas (`math` datatype) replace their node label with a rendered MathJax image inside the node rectangle.
+
+Clicking any circle node opens its MaRDI Portal page in a new tab.  Clicking any rectangle node that has an associated URL (e.g. a DOI or swMath link) opens the external URL.
+
+**Edges** are directed and labelled with the property name.  Quantity nodes are connected to their unit via an additional `unit` edge.
+
+**Qualifier tooltip**: clicking an edge opens a floating tooltip listing all qualifier statements for that edge.  Qualifier objects are rendered as clickable links using the same rules as the list view.
+
+**Zoom and pan**: standard Cytoscape scroll-to-zoom and drag-to-pan apply.  The fit button resets the viewport to show all nodes.
+
+### Filter Panel
+
+A collapsible *Filter* panel on the graph view lets users reduce visual noise:
+
+- **Legend (class toggles)**: clicking a class label in the legend dims the label and hides all nodes of that class together with their edges.  Clicking again restores them.
+- **Node-type toggles**: separate *Hide literal nodes* and *Hide existing items* checkboxes toggle those entire node layers.
+- **Property checklist**: each distinct edge-label (property name) has a checkbox.  Unchecking a property hides all edges with that label.  Literal nodes that become fully disconnected after property-edge filtering are automatically hidden to avoid floating rectangles with no visible connections.
+
+All filter dimensions compose: the effective visibility of any node or edge is the intersection of all active filters.

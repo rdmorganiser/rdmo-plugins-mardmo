@@ -1072,9 +1072,21 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
     }
 
     def _resolve(qid):
+        """Return a human-readable label for *qid*, falling back to the raw QID."""
         return qid_to_label.get(qid) or qid_to_name.get(qid) or qid
 
     def _format_value(datatype, value):
+        """Convert a Wikibase statement value to a ``(display_string, obj_qid)`` pair.
+
+        *obj_qid* is non-empty only for ``wikibase-item`` values so the caller
+        can render a portal link.  Special handling per datatype:
+
+        - ``wikibase-item``    — resolves QID to label via ``_resolve``
+        - ``quantity``         — strips leading ``+`` from amount (unit handled separately)
+        - ``monolingualtext``  — extracts the ``text`` field
+        - ``time``             — extracts the date portion (``YYYY-MM-DD``)
+        - ``math``             — wraps in ``\\(…\\)`` for MathJax inline rendering
+        """
         if datatype == 'wikibase-item' and isinstance(value, str):
             return _resolve(value), value
         if datatype == 'quantity' and isinstance(value, dict):
@@ -1088,6 +1100,12 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
         return str(value), ''
 
     def _get_unit(datatype, value):
+        """Return ``(unit_label, unit_qid)`` for a quantity value with a named unit.
+
+        Returns ``('', '')`` for non-quantity values or dimensionless quantities
+        (unit ``"1"``).  The unit QID is extracted from the tail of the unit URL
+        and resolved to a label via ``_resolve``.
+        """
         if datatype != 'quantity' or not isinstance(value, dict):
             return '', ''
         u_qid = value.get('unit', '').rsplit('/', 1)[-1]
@@ -1096,6 +1114,11 @@ def collect_statements(init, jsons, pid_to_name=None, qid_to_name=None):
         return _resolve(u_qid), u_qid
 
     def _format_qualifiers(quals_raw):
+        """Format a list of raw Wikibase qualifier dicts into display-ready dicts.
+
+        Each output dict has keys ``prop`` (property label), ``obj`` (formatted
+        value string), and ``obj_qid`` (portal QID or empty string).
+        """
         result = []
         for q in quals_raw:
             q_prop_id = q.get('property', {}).get('id', '')

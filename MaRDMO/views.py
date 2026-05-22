@@ -10,6 +10,26 @@ Provides:
 - ``show_progress``  — HTML view that renders a live progress page for a running task
 - ``show_success``   — HTML view that renders the completed-task result page
 - ``render_preview`` — helper that renders a Jinja2 template with questionnaire answers
+
+Success page (``show_success``)
+--------------------------------
+After a successful portal export the success page presents two views of the
+exported data, switchable via tab buttons:
+
+**List view** — every newly created MaRDI Portal item, grouped by class, with
+all its statements shown as ``property → value`` lines.  Values that are
+external identifiers (DOI, ORCID, swMath ID, …) or URLs are rendered as
+clickable links.  Qualifier statements are shown indented beneath their parent.
+Mathematical expressions (``math`` datatype) are typeset via
+`MathJax <https://www.mathjax.org/>`_ (Apache 2.0).
+
+**Graph view** — an interactive network graph built with
+`Cytoscape.js <https://js.cytoscape.org/>`_ (MIT) showing items as labelled
+circles and literal values as rectangles, connected by directed, labelled
+edges.  Features include zoom/pan controls, click-to-open portal links on
+nodes, a qualifier tooltip on edge click, and a filter panel that lets the user
+toggle individual node classes, literal/existing-item layers, and individual
+edge properties.
 '''
 
 from collections import defaultdict
@@ -116,6 +136,12 @@ def show_success(request, job_id):
     _SKIP_PROPS = {'community', 'MaRDI profile type'}
 
     def _obj_url(prop, obj, obj_qid):
+        """Return a clickable external URL for *obj* based on its property name.
+
+        Returns an empty string when *obj_qid* is set (the object is already a
+        portal item and needs no external URL) or when the property is not one
+        of the known identifier/URL properties.
+        """
         if obj_qid:
             return ''
         if prop == 'Wikidata QID':
@@ -183,6 +209,11 @@ def show_success(request, job_id):
     _lit_idx = 0
 
     def _add_item_node(qid, label, node_type, cls=''):
+        """Insert or upgrade a node entry in *graph_nodes*.
+
+        *node_type* ``'new'`` always wins over ``'item'``; an existing ``'new'``
+        node is never overwritten by an ``'item'`` entry for the same QID.
+        """
         if not qid:
             return
         existing = graph_nodes.get(qid)
@@ -195,6 +226,12 @@ def show_success(request, job_id):
             }
 
     def _get_obj_node(obj_qid, obj_label, obj_url=''):
+        """Return the graph node ID for a statement object, creating the node if needed.
+
+        If *obj_qid* is set the object is a portal item (circle node).  Otherwise
+        a fresh literal node (rectangle) is created with an auto-incremented ID
+        and optional *obj_url* for click-through linking.
+        """
         nonlocal _lit_idx
         if obj_qid:
             _add_item_node(obj_qid, obj_label, 'item')
