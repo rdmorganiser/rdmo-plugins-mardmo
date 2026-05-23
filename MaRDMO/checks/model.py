@@ -85,7 +85,7 @@ class ModelMixin:
                 from_class = 'Mathematical Model',
                 to_class   = 'Research Problem'
             )
-            self._check_static(
+            self._check_optional_static(
                 data       = ivalue,
                 page_name  = page_name,
                 relation   = 'RelationT',

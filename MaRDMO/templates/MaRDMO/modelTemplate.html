@@ -63,7 +63,7 @@
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MF" title="Formulas" relations=values.RelationMF class="FORMULA" empty_msg="True" %}
 
     {# Include Block for single Relation between Model and Task #}
-    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2CT" title="Computational Tasks" relation="used by" relatants=values.RelationT class="COMPUTATIONAL TASK" empty_msg="True"%}
+    {% include "MaRDMO/partials/_relation_block_single.html" with anchor="MM2CT" title="Computational Tasks" relation="used by" relatants=values.RelationT class="COMPUTATIONAL TASK" empty_msg="False"%}
 
     {# Include Block for multiple Relations between Model and Model #}
     {% include "MaRDMO/partials/_relation_block_multiple.html" with anchor="MM2MM" title="Mathematical Models" relations=values.RelationMM class="MATHEMATICAL MODEL" empty_msg="False"%}
