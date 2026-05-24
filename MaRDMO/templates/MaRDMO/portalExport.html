@@ -90,12 +90,13 @@ window.MathJax = {
 
         <!-- GRAPH VIEW -->
         <div id="view-graph" style="display:none;">
-            <div style="width:90%;margin:0 auto;text-align:left;position:relative;">
+            <div id="cy-wrapper" style="width:90%;margin:0 auto;text-align:left;position:relative;">
                 <div id="cy" style="width:100%;height:680px;border:1px solid #ddd;border-radius:6px;background:#fafafa;"></div>
                 <div style="position:absolute;top:10px;right:10px;z-index:10;display:flex;flex-direction:column;gap:4px;">
                     <button id="btn-zoom-in"  style="width:30px;height:30px;font-size:18px;font-weight:bold;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;">+</button>
                     <button id="btn-zoom-out" style="width:30px;height:30px;font-size:18px;font-weight:bold;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;">&minus;</button>
                     <button id="btn-fit"      style="width:30px;height:30px;font-size:13px;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;" title="Fit all">&#x26F6;</button>
+                    <button id="btn-fullscreen" style="width:30px;height:30px;font-size:14px;line-height:1;cursor:pointer;background:white;border:1px solid #ccc;border-radius:4px;" title="Fullscreen">&#x2922;</button>
                 </div>
                 <div id="cy-legend" style="margin-top:10px;font-size:12px;"></div>
             </div>
@@ -326,8 +327,13 @@ window.MathJax = {
                 }
             });
 
-            cy.resize();
-            cy.fit(undefined, 30);
+            // Defer resize/fit until after the browser has painted the container at its real size
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    cy.resize();
+                    cy.fit(undefined, 30);
+                });
+            });
 
             // background-image data() mapper is unreliable for data URIs — set directly
             cy.nodes('[is_math = 1]').forEach(function(node) {
@@ -343,6 +349,36 @@ window.MathJax = {
             });
             document.getElementById('btn-fit').addEventListener('click', function() {
                 cy.fit(undefined, 30);
+            });
+
+            // Fullscreen toggle — elevate #view-graph to a fixed full-viewport overlay so
+            // Cytoscape measures the correct width regardless of the surrounding page layout
+            var _fsActive = false;
+            document.getElementById('btn-fullscreen').addEventListener('click', function() {
+                var viewGraph = document.getElementById('view-graph');
+                var wrapper   = document.getElementById('cy-wrapper');
+                var cyDiv     = document.getElementById('cy');
+                _fsActive = !_fsActive;
+                if (_fsActive) {
+                    viewGraph.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;'
+                        + 'z-index:99999;background:white;overflow:hidden;box-sizing:border-box;';
+                    wrapper.style.cssText   = 'width:100%;height:100%;text-align:left;position:relative;';
+                    cyDiv.style.height      = 'calc(100vh - 80px)';
+                    this.innerHTML = '&#x2715;';
+                    this.title = 'Exit fullscreen';
+                } else {
+                    viewGraph.style.cssText = '';
+                    wrapper.style.cssText   = 'width:90%;margin:0 auto;text-align:left;position:relative;';
+                    cyDiv.style.height      = '680px';
+                    this.innerHTML = '&#x2922;';
+                    this.title = 'Fullscreen';
+                }
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        cy.resize();
+                        cy.fit(undefined, 30);
+                    });
+                });
             });
 
             // Node click → open portal link
