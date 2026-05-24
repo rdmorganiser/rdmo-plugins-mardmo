@@ -4,8 +4,11 @@ On every ``value_created`` or ``value_updated`` signal the post-save router chec
 whether the project's catalog is a MaRDMO catalog and, if so, looks up the
 saved attribute URI in ``HANDLER_MAP`` to call the matching handler method.
 
-On every ``post_delete`` signal on ``Value`` the post-delete router does the same
-lookup in ``DELETE_HANDLER_MAP``.
+On every Django ``post_delete`` signal on ``Value`` the post-delete router does the
+same lookup in ``DELETE_HANDLER_MAP``.  Using ``post_delete`` (rather than RDMO's
+custom ``value_deleted``) ensures the handler fires for both individual REST
+deletions and set deletions via RDMO's ``delete_set``, which calls
+``value.delete()`` directly.
 
 Both maps are assembled once at startup via :func:`~MaRDMO.builders.build_handler_map`
 and :func:`~MaRDMO.builders.build_delete_handler_map`.
@@ -18,9 +21,10 @@ Provides:
 - ``mardmo_router_post_delete`` — receiver wired to Django's ``post_delete`` on ``Value``
 '''
 
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from rdmo.projects.models import Value
-from rdmo.projects.signals import value_created, value_updated, value_deleted
+from rdmo.projects.signals import value_created, value_updated
 from .builders import build_post_save_handler_set, build_post_delete_handler_set
 
 HANDLER_MAP        = build_post_save_handler_set()
@@ -73,11 +77,14 @@ def mardmo_router_post_save(sender, instance, update_fields=None, **kwargs):  # 
         handler(instance)
 
 
-@receiver(value_deleted, sender=Value)
+@receiver(post_delete, sender=Value)
 def mardmo_router_post_delete(sender, instance, **kwargs):  # pylint: disable=unused-argument
     """Post-delete router: dispatch Value deletions to the correct MaRDMO handler.
 
-    Connected to RDMO's ``value_deleted`` signal on ``Value``.
+    Connected to Django's ``post_delete`` signal on ``Value``.  This covers both
+    individual REST deletions (via ``perform_destroy``) and set deletions (via
+    RDMO's ``delete_set``, which calls ``value.delete()`` directly without sending
+    ``value_deleted``).
     Looks up the project catalog and attribute URI in ``DELETE_HANDLER_MAP`` and
     calls the matching handler, if any.
 
